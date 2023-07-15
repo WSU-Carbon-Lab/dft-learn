@@ -40,4 +40,5 @@ The accompanying python files are there to:
 5. Open an IGOR instance. There should be a tab titled Macros there. Within the dropdown menu in Macros there should be an option titled "Clustering Algorithm" which will load in the control panel for the algorithm.
 
 Bug reporting/Help
+
 For any concerns email me at victor.murcia@wsu.edu
