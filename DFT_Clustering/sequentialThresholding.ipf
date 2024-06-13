@@ -82,6 +82,7 @@ Function seqThresholds(atomName,fnum,osWave,ovpWave,maxRot,LUMOwave,[broadShift,
 	Variable currentOS, currentOVP
 	
 	Make/O/N=(nOS,nOVP) pDiff,rchiSqDFTCl,nPeaks,rchiSqExpCl,chiSqDFTClw,chiSqExpClw,GFBBClw,GFExpClw,compTimew,rchiSqDFTClurefW,chiSqDFTClurefW,GFBBClurefW
+	// Threadsafe this
 	for(i=0;i<=nOS-1;i+=1)
 		currentOS = osWave[i]
 		for(j=0;j<=nOVP-1;j+=1)

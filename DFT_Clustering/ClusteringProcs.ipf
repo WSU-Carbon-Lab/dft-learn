@@ -816,6 +816,7 @@ Function consolidateTransitionClusters(pw)
 
 	Wave pw	//Parameter wave after filtering
 	
+	
 	String cPkList = WaveList("clusteredPks_ALL*",";","")//List of clustering iteration waves
 	Variable nw = ItemsInList(cPkList)
 	Variable nTransDFT = DimSize(pw,0)//How many DFT transitions are there

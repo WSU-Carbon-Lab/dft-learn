@@ -19,7 +19,9 @@ Function filteringRoutines(fnum,iniFolder,baseFolderName,atomName,erange,tval,br
 	//5. Makes the peaks corresponding to the OS filtered transitions 
 	//6. Calculates the overlap matrix for ALL transition pairs [OPTIONAL]
 	//7. Organizes waves into folders
-	print "Starting operations on original transitions..."
+
+	print "               ╠═════════════════ FILTERING ═══════════════════╣                    "
+	
 	initialTransitionsWrapper(fnum,atomName,erange,baseFolderName,Eini,Efin,gRes,broad1,broad2,tval,corrWave,LUMOwave,IPwave)
 	
 	//This wrapper function contains routines that do the following:
@@ -27,7 +29,7 @@ Function filteringRoutines(fnum,iniFolder,baseFolderName,atomName,erange,tval,br
 	//2. Makes the peaks corresponding to the OS filtered transitions 
 	//3. Calculates the overlap matrix for ALL transition pairs [OPTIONAL]
 	//4. Organizes waves into folders
-	print "Starting operations on OS filtered transitions..."
+	
 	osFilteredTransitionsWrapper(fnum,atomName,erange,baseFolderName,Eini,Efin,gRes,broad1,broad2,tval,corrWave,LUMOwave,IPwave)
 	
 	Variable F1Transitions
@@ -38,7 +40,6 @@ Function filteringRoutines(fnum,iniFolder,baseFolderName,atomName,erange,tval,br
 	consolidateTransitionClusters(allParamsF1Sorted)
 	
 	//Start transition clustering based on symmetry
-	print "Starting clustering of transitions using overlap threshold of " + num2str(ovpMax) + " %"
 	String ffFolder = GetdataFolder(1)
 	Variable cMethod = 2//
 	Variable clusteringAlgorithm = 1
@@ -67,47 +68,46 @@ Function initialTransitionsWrapper(fnum,atomName,erange,baseFolderName,Eini,Efin
 	Wave LUMOwave
 	Wave IPWave
 	
-	//Determine the maximum oscillator strength for each Carbon atom within 280-erange eV
+	// -------------------------------------------------------------------------
+	// Determine the threshold filter
+	// - Determines the max os from all atoms
+	// - Set min os as percentage of max
+	// -------------------------------------------------------------------------
+	
 	determineMaxOS(fnum,atomName,erange)
 	Wave maxOS
 	WaveStats/Q maxOS
 	Variable/G globalMaxOS = V_max
-	//Set minimum OS threshold for ALL atoms as a given percentage of maximum OS.
-	//If tval is set to zero then consider ALL transitions within 280-erange eV
 	Variable/G minOSThreshold = (tval/100)*V_max 
-	print "The Oscillator Strength threshold value at " + num2str(tval) +"% is " + num2str(minOSThreshold)
+
+	print  "               ║                                               ║                    "
+	printf "               ║    Min Strength     ·         %010.8f      ║                    \r", minOSThreshold
+	printf "               ║    Max Strength     ·         %010.8f      ║                    \r", V_max
 	
-	print "Making energy filtered waves..."
-	//Make filtered OS,Energy, and Theta waves that correspond to threshold constraint 
+	
+	// -------------------------------------------------------------------------
+	// Perform an intial Filter and Organize waves
+	// - Copy raw data and slice to desired os threshold and 
+	// - Organize the newly made w
+	// - Construct 2d Waves
+	// - Calculating Peaks
+	// - Organization
+	// -------------------------------------------------------------------------
+	
 	energyFilter(fnum,atomName,erange,minOSThreshold,LUMOwave)
-	print "Energy filtered waves made"
-	
-	print "Organizing original data"
-	//Organize Data from into Folders
 	organizeEnergyFilter(baseFolderName)
-	
-	print "Making peaks for original transitions"
-	//Prepare to make original peaks prior to filtering
 	origPeaksPrep(baseFolderName,atomName,fnum,Eini,erange,gRes,"f0")
 	Wave nF0Trans
 	WaveStats/Q nF0Trans
 	
-	print "Making 2D parameter wave for original peaks"
-	//Make 2D parameter Waves for Original Peaks
+	// pWave made here!
 	makePWave(fnum,broad1,broad2,erange,"f0",baseFolderName,corrWave,LUMOwave,IPwave)
 	Wave allParams
-	Wave allParamsSorted
-	//Look for any transitions that have an oscillator strength of 0,NaN, or Inf and remove them from pWave
+	Wave allParamsSorted	
 	removeZeroAmplitude(allParamsSorted)
 	Wave allParamsSorted
-	
-	//Make peaks from each TDM component
-	print "Making peaks derived from TDM components"
 	makeNEXAFS(allParamsSorted,Eini,erange,gRes,"f0")
-	print "Organizing original peaks"
-	//Organize original peaks
 	organizePeaks(atomName,baseFolderName,"f0")
-	print "Making 2D wave containing original peaks"
 	//Make 2D wave containing original peaks
 	//makeGPeaks2D(allParamsSorted,nF0Trans,Eini,Efin,gRes,"f0")
 End	
@@ -128,32 +128,18 @@ Function osFilteredTransitionsWrapper(fnum,atomName,erange,baseFolderName,Eini,E
 	Wave LUMOwave
 	Wave IPwave
 	
-	print "Preparing to make peaks from first filtering..."
-	//Prepare to make peaks from first filtering (i.e. filtered by oscillator strength)
+	// Prepare Filtering by OS
 	origPeaksPrep(baseFolderName,atomName,fnum,Eini,Efin,gRes,"f1")
 	Wave nF1Trans
 	WaveStats/Q nF1Trans
-	
-	print "Making parameter wave for first filter peaks..."
-	//Make 2D parameter Waves for First Filter Peaks
 	makePWave(fnum,broad1,broad2,erange,"f1",baseFolderName,corrWave,LUMOwave,IPwave)	
 	Wave allParamsF1Sorted
 	Variable F1Transitions = DimSize(allParamsF1Sorted,0)
 		
-	//Calculate percent overlap between all filtered peaks using the average OS
-	print "Determine overlap for OS filtered peaks"
+	// Determine overlaps and calculate NEXAFS
 	peakOverlap(allParamsF1Sorted,"All")
-
-	//Make peaks from each TDM component
-	print "Making peaks derived from TDM components"
 	makeNEXAFS(allParamsF1Sorted,Eini,erange,gRes,"f1")
-	print "Organizing data..."
-	//Organize the peaks from first filtering into a folder
 	organizePeaks(atomName,baseFolderName,"f1")	
-	
-	print "Making 2D  Wave for Oscialltor Strength filtered peaks..."
-	//Make 2D wave containing filtered peaks
-	//makeGPeaks2D(allParamsF1Sorted,nF1Trans,Eini,Efin,gRes,"f1")
 End
 
 Function newThreshold(pWave,osThreshold,tdmSym,Emax)
@@ -204,7 +190,7 @@ Function determineMaxOS(fnum,atomName,erange)
 	Variable i
 	//Determine the maximum oscillator strength for each Carbon atom within 280-erange eV
 	Make/O/N=(fnum) maxOS
-	print "Upper Energy[eV]	Max OS		Energy of MaxOS[eV]"
+	//print "Upper Energy[eV]	Max OS		Energy of MaxOS[eV]"
 	for(i=0;i<=fnum-1;i+=1)
 		String cAtom = atomName + num2str(i+1)
 		String osWaveName = "OS_" + cAtom
@@ -215,7 +201,7 @@ Function determineMaxOS(fnum,atomName,erange)
 		WaveStats/Q/R=[0,finalE] $osWaveName
 		maxOS[i] = V_max
 		Variable OSmaxEnergy = eWave[V_maxloc]
-		print "     ",finalE,"   ",V_max,"     ",OSmaxEnergy
+		//print "     ",finalE,"   ",V_max,"     ",OSmaxEnergy
 	endfor
 End
 
@@ -224,8 +210,10 @@ Function energyFilter(fnum,atomName,erange,minOSThreshold,LUMOwave)
 	String atomName
 	Wave LUMOwave
 	
+	
+	// FOR NOW CONSTRUCTING A FILTERED WAVE OF DELETED POINTS
+	
 	Variable i,j,k=0,l
-	print "Initial Transitions	OS Filtered Transitions"
 	for(i=1;i<=fnum;i+=1)
 		String cAtom = atomName + num2str(i)
 		String f1OSname = "f1OS_" + cAtom
@@ -242,6 +230,7 @@ Function energyFilter(fnum,atomName,erange,minOSThreshold,LUMOwave)
 		Wave sym = $symName
 		Variable nTrans = numpnts(os)
 		
+		
 		Duplicate/D/O os,$f1OSname
 		Duplicate/D/O en,$f1enName
 		Duplicate/D/O sym,$f1symName
@@ -256,28 +245,29 @@ Function energyFilter(fnum,atomName,erange,minOSThreshold,LUMOwave)
 		Variable lumoVal = LUMOwave[i-1]
 		Variable nTrans2 =numpnts($f1OSname)
 		
-		for(l=0;l<nTrans2;l+=1)
+//		print nTrans2
+		
+		for(l=0;l<nTrans2;l++)
 			mos[l] = lumoVal
 			lumoVal+=1
 		endfor
 		
 		//If the OS value is greater than or equal to threshold value, keep the value, else delete it
-		for(j=nTrans2-1;j>=0;j-=1)
+		
+		for(j=nTrans2-1;j>=0;j--)
 			if(minOSThreshold > 0)
 				if(f1OS[j] >= minOSThreshold)
 					f1OS[j] = f1OS[j]	
 				elseif(f1OS[j] < minOSThreshold)
+					//Update truth value of col17 of the param wave
 					DeletePoints j,1,$f1OSname,$f1enName,$f1symName,$f1MOsName
 				endif
 			//If the OS threshold is set to 0, remove transitions that have an OS of 0.
 			elseif(minOSThreshold == 0)
-				if(f1OS[j] > minOSThreshold)
-					f1OS[j] = f1OS[j]	
-				elseif(f1OS[j] <= minOSThreshold)
-					DeletePoints j,1,$f1OSname,$f1enName,$f1symName,$f1MOsName
-				endif
+				printf "ThresholdWarning: Zero strength transitions filtered by default. Consider a higher threshold"
 			else
-				print "Error while filtering oscillator strengths"
+				printf "ThresholdError: Unexpected strength %d", minOSThreshold
+				abort
 			endif
 			
 			if(k>j)
@@ -287,7 +277,7 @@ Function energyFilter(fnum,atomName,erange,minOSThreshold,LUMOwave)
 		
 		Variable nTransf1 = numpnts(f1OS)
 	
-		print "       ",nTrans,"          ", nTransf1
+//		print "       ",nTrans,"          ", nTransf1
 	endfor
 End
 
@@ -529,8 +519,6 @@ Function makePWave(fnum,broad1,broad2,ewid2,fStep,baseFolderName,corrWave,LUMOwa
 	Wave LUMOwave
 	Wave IPWave
 	
-	print "Making parameter wave..."
-	
 	Variable i,j,n=0
 	broad1 = broad1/fwhmConversion
 	broad2 = broad2/fwhmConversion
@@ -560,7 +548,7 @@ Function makePWave(fnum,broad1,broad2,ewid2,fStep,baseFolderName,corrWave,LUMOwa
 	
 	Wave allParams = $pWaveName
 	
-	Make/O/N=(n,17) allParams
+	Make/O/N=(n,18) allParams
 	//Col0 is dft transition energy
 	//col1 is the total oscillator strength,
 	//col2 is the transition width, 
@@ -570,7 +558,8 @@ Function makePWave(fnum,broad1,broad2,ewid2,fStep,baseFolderName,corrWave,LUMOwa
 	//Col8,9,10,11,12,13 are the xx,yy,zz,xy,xz,and yz tensor elements respectively
 	//Col14 is the atom from which that transition derives from
 	//Col15 is the molecular orbital associated with that transition
-	//Col16 is the cluster that transition belongs to.
+	//Col16 is the cluster that transition belongs to.	
+	//Col17 is the boolan flag if the transition makes it though the threshold
 	for(i=1;i<=fnum;i+=1)
 		if(StringMatch(fStep,"f0")==1)
 			String energyList = SortList(WaveList("eV_*",";",""),";",16)
@@ -643,6 +632,7 @@ Function makePWave(fnum,broad1,broad2,ewid2,fStep,baseFolderName,corrWave,LUMOwa
 				allParams[j][15] = z[k]
 			endif
 			allParams[j][16] = 0			//Transition Cluster
+			allParams[j][17] = 1			//Assume they all pass
 			k+=1
 		endfor		
 	endfor
@@ -677,7 +667,7 @@ Function makePWave(fnum,broad1,broad2,ewid2,fStep,baseFolderName,corrWave,LUMOwa
 	
 	MDSort(sortedPWave,0,rn=0)
 	
-	print "Parameter Wave containing transition energies, oscillator strengths, TDM theta, and peak widths has been generated"
+	// print "Parameter Wave containing transition energies, oscillator strengths, TDM theta, and peak widths has been generated"
 End
 
 Function energyCorrection(pWave,corrWave)	

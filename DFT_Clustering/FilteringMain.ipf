@@ -102,57 +102,67 @@ Function filterDFT(atomName,fnum,tval,ovpmax,maxRot,LUMOwave,[broadShift,erange,
 	Variable pkToRefine
 	Wave refitPWave
 	
-	print "---------------------------------------------------------------------------------------------------------------------------------------------"
-	print "--------------------------------Optical Tensor Modeling of NEXAFS via Filtering and Clustering of DFT calculations---------------------------"
-	print "Victor Manuel Murcia Ruiz ---------Department of Materials Science and Engineering, Washington State University---------victor.murcia@wsu.edu"
-	print "Brian A. Collins -----------------------Department of Physics and Astronomy, Washington State University----------------brian.collins@wsu.edu"
-	print "---------------------------------------------------------------------------------------------------------------------------------------------" 
-	
-	print "Initializing algorithm..."
+	print ""
+	print "                                                                                    "
+	print "              Optical Tensor Modeling via Filtering and Clustering                  "
+	print "                               of DFT calculations                                  "
+	print "                                                                                    "
+	print "               ╔═════════ Washington State University ═════════╗                    "
+	print "               ║  Manuel M. Ruiz     ·   victor.murcia@wsu.edu ║                    "
+	print "               ║   Brian A. Collins  ·   brian.collins@wsu.edu ║                    "
+	print "               ║  Harlan D. Heilman  ·  harlan.heilman@wsu.edu ║                    "
+	print "               ╚═══════════════════════════════════════════════╝                    "     
+	print "                                                                                    "
+	print "                            Initializing Algorithm                                  "
+	print " "
+	print "               ╔══════════════ Configurations ═════════════════╗                    "
 	
 	if(!ParamIsDefault(modelAlpha))
 		if(StringMatch(modelAlpha,"yes"))
-			print "Molecular tilt angle will be modeled."
-			print "Checking that necessary waves are present..."
+			print "               ║      TILT ANGLE     ·   [MODEL] / NOT MODEL   ║                    "
 			if(ParamIsDefault(IPwave))
-				print "Please provide wave containing Ionization Potentials before proceeding."
+				print "               ╚═══════════════════════════════════════════════╝                    " 
+				print "FileNotFoundErr: Please provide wave containing Ionization Potentials before proceeding."
 				Abort
 			endif
 		
 			if(ParamIsDefault(expSpecName))
-				print "Please provide the base name for the experimental angle resolved NEXAFS waves before proceeding."
+				print "               ╚═══════════════════════════════════════════════╝                    " 
+				print "ExpDataErr: Please provide the base name for the experimental angle resolved NEXAFS waves before proceeding."
 				Abort
 			endif
 		
 			if(ParamIsDefault(expEnergyName))
-				print "Please provide the base name for the experimental energy waves before proceeding."
+				print "               ╚═══════════════════════════════════════════════╝                    " 
+				print "ExpDataErr: Please provide the base name for the experimental energy waves before proceeding."
 				Abort
 			endif
 		
 			if(ParamIsDefault(expFolderPath))
-				print "Please provide the IGOR path to the experimental NEXAFS waves and experimental energy waves before proceeding."
+				print "               ╚═══════════════════════════════════════════════╝                    " 
+				print "ExpDataErr: Please provide the IGOR path to the experimental NEXAFS waves and experimental energy waves before proceeding."
 				Abort
 			endif
 		
 			if(ParamIsDefault(mol))
-				print "Please specify the name of the molecule to be processed before proceeding. The name of the molecule should be the same name used when building the bare atom absorption."
+				print "               ╚═══════════════════════════════════════════════╝                    " 
+				print "FileNotFoundErr: Please specify the name of the molecule to be processed before proceeding. The name of the molecule should be the same name used when building the bare atom absorption."
 				Abort
 			endif
 		
 			String baWave = "root:Packages:NXA:" + mol + "_mu"
 			if(!WaveExists($baWave))
-				print "The bare atom absorption for " + mol + " was not in the folder root:Packages:NXA: . Please make sure that the bare atom absorption wave was constructed prior to starting algorithm."
+				print "               ╚═══════════════════════════════════════════════╝                    " 
+				print "FileNotFoundErr: The bare atom absorption for " + mol + " was not in the folder root:Packages:NXA: . Please make sure that the bare atom absorption wave was constructed prior to starting algorithm."
 			endif
 		
 			if(ParamIsDefault(thetaList))
-				print "Please enter a list of semi-colon separated values corresponding to the NEXAFS alignments for the experimental data before proceeding."
+				print "               ╚═══════════════════════════════════════════════╝                    " 
+				print "ExpDataErr: Please enter a list of semi-colon separated values corresponding to the NEXAFS alignments for the experimental data before proceeding."
 				Abort
 			endif
-		
-			print "All necessary waves are present. Starting filtering algorithm"
 		else
-			print "Molecular tilt angle will not be modeled."
-			print "Starting filtering algorithm."
+			print "               ║      TILT ANGLE     ·   MODEL / [NOT MODEL]   ║                    "
 		endif
 	endif
 	
@@ -179,15 +189,18 @@ Function filterDFT(atomName,fnum,tval,ovpmax,maxRot,LUMOwave,[broadShift,erange,
 	String startFolder = "root:Packages:DFTClustering:PolarAngles_" + mol +":"
 	String baseFolderName = startFolder + "TransitionFiltering_" + replacestring(".", num2str(tval),"p") + "OS_" + replacestring(".", num2str(ovpMax),"p") + "OVP"
 	String fitFolder = baseFolderName + ":AmplitudeFitting:"
-	print fitFolder
-	//Just model the NEXAFS with the BB model using the results of a previous clustering run
+	
+	//	TUI Like Display
+	printf "               ╟────────────── OVERLAP PARAMS ─────────────────╢                    \r"
+	printf "               ║        OST          ·          %.2d%%            ║                    \r", tval
+	printf "               ║        OVP          ·          %.2d%%            ║                    \r", ovpMax
+	printf "               ║                                               ║                    \r"
+		
 	if(justModel)
 		SetDataFolder $fitFolder
-		print "Modeling the NEXAFS using results obtained by clustering with a " + num2str(tval) + "% OS threshold and a " + num2str(ovpMax) + "% OVP threshold."
 		simDFT(tval,ovpmax,IPwave,mol,alpha,i0,phi,expSpecName,expEnergyName,expFolderPath,"no",rigidShift,thetaList,anchorStep1,anchorStep2,anchorExp1,anchorExp2,stepWid1,stepWid2,stepE1,stepE2,holdAmps=holdAmps,holdWidths=holdWidths,holdPos=holdPos,d=1,NEXAFStype=NEXAFStype,holdModTheta=holdTensorElems)
 	//Just fit the NEXAFS with the BB model using the results of a previous clustering run
 	elseif(justFit)
-		print "Fitting the NEXAFS using results obtained by clustering with a " + num2str(tval) + "% OS threshold and a " + num2str(ovpMax) + "% OVP threshold."
 		//NEED TO FIX THIS SO THAT IT'S JUST FOR SINGLE PEAK
 		if(refinement)
 			String refitFolder = fitFolder + "Alpha_" + num2str(alpha) + ":TensorMisc:"
@@ -203,7 +216,11 @@ Function filterDFT(atomName,fnum,tval,ovpmax,maxRot,LUMOwave,[broadShift,erange,
 				DoWindow/K $summaryPlot
 				DoWindow/K $gName2
 				DoWindow/K $corrGName
-				KillDataFolder $dfName
+				try
+					KillDataFolder $dfName
+				catch
+					print "KillFolderWarning: Trace in active window"
+				endtry
 			endif	
 			
 			simDFT(tval,ovpmax,IPwave,mol,alpha,i0,phi,expSpecName,expEnergyName,expFolderPath,"yes",rigidShift,thetaList,anchorStep1,anchorStep2,anchorExp1,anchorExp2,stepWid1,stepWid2,stepE1,stepE2,holdAmps=holdAmps,holdWidths=holdWidths,holdPos=holdPos,d=1,NEXAFStype=NEXAFStype,maskEnergy1=maskEnergy1,maskEnergy2=maskEnergy2,pkToRefine=pkToRefine,holdModTheta=holdTensorElems)

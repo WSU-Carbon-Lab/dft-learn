@@ -17,32 +17,32 @@ Function clusterPanelSimple()
 	if(V_Flag)
 		KillWindow/Z ClusteringAlgorithmBasic
 	endif
-	
+
 	NewPanel/K=1/N=ClusteringAlgorithmBasic/W=(0,0,500,500)
-	
+
 	//Section background color definitions
 	Variable bc1=21588//25700
 	Variable bc2=2827//0
 	Variable bc3=3598//8995
-	
+
 	//Font color definition
 	Variable fc1=65535
 	Variable fc2=65535
 	Variable fc3=65535
-	
+
 	//Load Button color definitions
 	Variable lb1 = 53713
 	Variable lb2 = 42148
 	Variable lb3 = 13878
-	
+
 	//Set "SetVariable" valueback color
 	Variable sv1 = 57825
 	Variable sv2 = 53970
 	Variable sv3 = 46774
-	
+
 	String atomName	 = "C"	//What kind of atom are we processing?
 	Variable nAtoms	 = 1		//How many atoms to process?
-	Variable osThre	 = 10		//Set a value between 0 and 100%. 
+	Variable osThre	 = 10		//Set a value between 0 and 100%.
 	Variable ovpThre	 = 50	//Peak overlap threshold, number between 0 and 100
 	Variable rotSym	 = 1		//What's the symmetry of the molecule? Currently supported (1 = no symmetry, 2 = 2-fold rotation [180 degrees], 3 = 3 fold rotation [120 degrees], 4 = 4-fold rotation [90 degrees])
 	Variable nPasses = 1
@@ -57,7 +57,7 @@ Function clusterPanelSimple()
 	Variable fwhmConversion = 2.355 		//Conversion factor between FWHM and standard deviation
 	Variable broadShift = 0				//Allows for the adjustment of the energies at which to apply the broadening scheme
 	Variable d = 0							//Display the data?
-	Variable gRes = 2000					//Energy Resolution of the Gaussian peaks 
+	Variable gRes = 2000					//Energy Resolution of the Gaussian peaks
 	Variable buildSym	= 1				//Calculate TDM tensor and determine theta,symmetry type and x,y,z components of OS? Yes or no
 	Variable ovpOri		= 0 					//Determine overlap matrix for original transitions? ***Can be a bit of a lengthy process***
 	Variable dClusters	= 0					//Display cluster plots from symmetry/overlap routines?
@@ -79,13 +79,13 @@ Function clusterPanelSimple()
 	//Optional Parameters for fitting of DFT to experiment
 	Variable alpha	= 54.7
 	Variable i0		= 1.0E5
-	Variable phi		= 0 
+	Variable phi		= 0
 	Variable fitARNEXAFS	= 0
 	Variable rigidShift		= 0
 	Variable stepShift		= 0
 	String thetaList			= "20;40;54.7;70;90"
 	String NEXAFStype
-	
+
 	Variable modelOnly		= 0
 	Variable fitOnly			= 0
 	Variable anchorStep1	= 280
@@ -104,7 +104,7 @@ Function clusterPanelSimple()
 	Variable stepE1 = 288
 	Variable stepE2 = 320
 	Variable refine = 0
-	
+
 	//DFT Data Loading section
 	SetDrawEnv fillfgc= (bc1,bc2,bc3),fillpat= 1,linejoin= 2,linethick= 3.00
 	DrawRect 5,3,259,113
@@ -113,33 +113,33 @@ Function clusterPanelSimple()
 	SetVariable atomName     title="Element"              ,size={75,20} ,pos={176,36},value=_STR:atomName               ,valueBackColor=(sv1,sv2,sv3),fColor=(fc1,fc2,fc3),help={"What element are we processing?"}
 	Button loadDFT           title="Load DFT Data"        ,size={200,30},pos={33,81} ,proc=loadDFTButton                ,fColor=(lb1,lb2,lb3),fSize=16,fstyle=3, appearance={os9}
 	SetVariable mol          title="Molecule Name"        ,size={175,20},pos={44,61} ,value=_STR:mol                    ,valueBackColor=(sv1,sv2,sv3),fColor=(fc1,fc2,fc3)
-	SetDrawEnv fillfgc= (49151,53155,65535),linethick= 2.00 
+	SetDrawEnv fillfgc= (49151,53155,65535),linethick= 2.00
 	DrawRect 226,6,251,33
 	SetDrawEnv fstyle= 1,fsize= 20
-	DrawText 234,32,"1"	
+	DrawText 234,32,"1"
 End
 
 Function clusterPanel()
-	
+
 	if(DataFolderExists("root:Packages:"))
 		NewDataFolder/O/S root:Packages:DFTClustering
 	else
 		NewDataFolder/O/S root:Packages
 		NewDataFolder/O/S root:Packages:DFTClustering
 	endif
-	
+
 	DoWindow ClusteringAlgorithm
 	if(V_Flag)
 		KillWindow/Z ClusteringAlgorithm
-	endif	
-	
+	endif
+
 	//W=(left,top,right,bottom) (0,0,410,460)
 	NewPanel/K=1/N=ClusteringAlgorithm/W=(680,0,1393,753)
-	//SetWindow ClusteringAlgorithm graphicsTech=3 
+	//SetWindow ClusteringAlgorithm graphicsTech=3
 	//MoveWindow/W=ClusteringAlgorithm 360,0,1110,420
 	String atomName	 = "C"	//What kind of atom are we processing?
 	Variable nAtoms	 = 1		//How many atoms to process?
-	Variable osThre	 = 10		//Set a value between 0 and 100%. 
+	Variable osThre	 = 10		//Set a value between 0 and 100%.
 	Variable ovpThre	 = 50	//Peak overlap threshold, number between 0 and 100
 	Variable rotSym	 = 1		//What's the symmetry of the molecule? Currently supported (1 = no symmetry, 2 = 2-fold rotation [180 degrees], 3 = 3 fold rotation [120 degrees], 4 = 4-fold rotation [90 degrees])
 	Variable nPasses = 1
@@ -154,7 +154,7 @@ Function clusterPanel()
 	Variable fwhmConversion = 2.355 		//Conversion factor between FWHM and standard deviation
 	Variable broadShift = 0				//Allows for the adjustment of the energies at which to apply the broadening scheme
 	Variable d = 0							//Display the data?
-	Variable gRes = 2000					//Energy Resolution of the Gaussian peaks 
+	Variable gRes = 2000					//Energy Resolution of the Gaussian peaks
 	Variable buildSym	= 1				//Calculate TDM tensor and determine theta,symmetry type and x,y,z components of OS? Yes or no
 	Variable ovpOri		= 0 					//Determine overlap matrix for original transitions? ***Can be a bit of a lengthy process***
 	Variable dClusters	= 0					//Display cluster plots from symmetry/overlap routines?
@@ -176,13 +176,13 @@ Function clusterPanel()
 	//Optional Parameters for fitting of DFT to experiment
 	Variable alpha	= 54.7
 	Variable i0		= 1.0E5
-	Variable phi		= 0 
+	Variable phi		= 0
 	Variable fitARNEXAFS	= 0
 	Variable rigidShift		= 0
 	Variable stepShift		= 0
 	String thetaList			= "20;40;54.7;70;90"
 	String NEXAFStype
-	
+
 	Variable modelOnly		= 0
 	Variable fitOnly			= 0
 	Variable anchorStep1	= 280
@@ -203,44 +203,44 @@ Function clusterPanel()
 	Variable stepE2 = 320
 	Variable refine = 0
 	String clusterPltName = "TEST"
-	Variable alphaFitVal = 0	
+	Variable alphaFitVal = 0
 	//Fit refinement stuff
 	Variable maskEnergyIni=270
 	Variable maskEnergyFin=360
 	Variable pkToRefine=0
-		
+
 	//Color palette used: https://coolors.co/540b0e-9e2a2b-335c67-fff3b0-e09f3e
-	
+
 	//Section background color definitions
 	Variable bc1=21588//25700
 	Variable bc2=2827//0
 	Variable bc3=3598//8995
-	
+
 	//Font color definition
 	Variable fc1=65535
 	Variable fc2=65535
 	Variable fc3=65535
-	
+
 	//Load Button color definitions
 	Variable lb1 = 53713
 	Variable lb2 = 42148
 	Variable lb3 = 13878
-	
+
 	//Set "SetVariable" valueback color
 	Variable sv1 = 57825
 	Variable sv2 = 53970
-	Variable sv3 = 46774 
-	
+	Variable sv3 = 46774
+
 	//Display functions button color
 	Variable df1 = 13107
 	Variable df2 = 23644
 	Variable df3 = 26471
-	
+
 	//Run Algorithm button color
 	Variable rb1 = 0
 	Variable rb2 = 43176
 	Variable rb3 = 30840
-	
+
 	//DFT Data Loading section
 	SetDrawEnv fillfgc= (bc1,bc2,bc3),fillpat= 1,linejoin= 2,linethick= 3.00
 	DrawRect 5,3,259,113
@@ -249,30 +249,30 @@ Function clusterPanel()
 	SetVariable atomName     title="Element"              ,size={75,20} ,pos={176,36},value=_STR:atomName               ,valueBackColor=(sv1,sv2,sv3),fColor=(fc1,fc2,fc3),help={"What element are we processing?"}
 	Button loadDFT           title="Load DFT Data"        ,size={200,30},pos={33,81} ,proc=loadDFTButton                ,fColor=(lb1,lb2,lb3),fSize=16,fstyle=3, appearance={os9}
 	SetVariable mol          title="Molecule Name"        ,size={175,20},pos={44,61} ,value=_STR:mol                    ,valueBackColor=(sv1,sv2,sv3),fColor=(fc1,fc2,fc3)
-	SetDrawEnv fillfgc= (49151,53155,65535),linethick= 2.00 
+	SetDrawEnv fillfgc= (49151,53155,65535),linethick= 2.00
 	DrawRect 226,6,251,33
 	SetDrawEnv fstyle= 1,fsize= 20
-	DrawText 234,32,"1"	
-	
+	DrawText 234,32,"1"
+
 	//Reorient Molecular Coordinate System Section
-	SetDrawEnv fillfgc= (bc1,bc2,bc3),fillpat= 1,linejoin= 2,linethick= 3.00	 
+	SetDrawEnv fillfgc= (bc1,bc2,bc3),fillpat= 1,linejoin= 2,linethick= 3.00
 	DrawRect 264,3,555,113
-	TitleBox reorienting  title="Reorient Molecular Coordinate System"                            ,pos={292,8}              ,fstyle=1                                      ,fColor=(fc1,fc2,fc3)		
+	TitleBox reorienting  title="Reorient Molecular Coordinate System"                            ,pos={292,8}              ,fstyle=1                                      ,fColor=(fc1,fc2,fc3)
 	CheckBox realign      title="Reorient the Coordinate Frame of the Molecule?"                  ,pos={270,80}                            ,value = realign      ,fColor=(fc1,fc2,fc3)
 	SetVariable thx       title="thx"                                            ,size={60,20}    ,pos={295,57} ,limits={0,360,1}          ,value=_NUM:thx       ,fColor=(fc1,fc2,fc3),valueBackColor=(sv1,sv2,sv3)
 	SetVariable thy       title="thy"                                            ,size={60,20}    ,pos={371,57} ,limits={0,360,1}          ,value=_NUM:thy       ,fColor=(fc1,fc2,fc3),valueBackColor=(sv1,sv2,sv3)
 	SetVariable thz       title="thz"                                            ,size={60,20}    ,pos={443,57} ,limits={0,360,1}          ,value=_NUM:thz       ,fColor=(fc1,fc2,fc3),valueBackColor=(sv1,sv2,sv3)
 	SetVariable rotOrder  title="Order of Axis Rotations"                        ,size={200,20}   ,pos={294,35}                            ,value=_STR:rotOrder  ,fColor=(fc1,fc2,fc3),valueBackColor=(sv1,sv2,sv3)
-	
+
 	//3D structure loader, Molecule JPEG loader, and Support Website link
 	Button load3D       title="Load 3D Model\rfor Molecule from .xyz",pos={561,5}  ,size={150,50},proc=load3Dstruct      ,fColor=(lb1,lb2,lb3),fSize=13,fstyle=2		, appearance={os9}
 	Button LoadStruct   title="Load Molecule Structure"              ,pos={561,59} ,size={150,20},proc=loadMolStructure	,fColor=(lb1,lb2,lb3)	, appearance={os9}
 	Button DownloadLink title="Support Website"                      ,pos={561,85} ,size={150,30},proc=supportButton, fsize=12,Help={"Link to website to download analysis panel"},fcolor=(52428,1,1), appearance={os9}
-	
+
 	//Experimental Data Inputs Section
-	SetDrawEnv fillfgc= (bc1,bc2,bc3),fillpat= 1,linejoin= 2,linethick= 3.00		
-	DrawRect 4,120,555,225	
-	TitleBox experimentParams title="Experimental Data Inputs"     ,pos={270,122} ,fstyle=1                                                       ,fColor=(fc1,fc2,fc3)		
+	SetDrawEnv fillfgc= (bc1,bc2,bc3),fillpat= 1,linejoin= 2,linethick= 3.00
+	DrawRect 4,120,555,225
+	TitleBox experimentParams title="Experimental Data Inputs"     ,pos={270,122} ,fstyle=1                                                       ,fColor=(fc1,fc2,fc3)
 	PopupMenu spectraType     title="NEXAFS Type"                  ,pos={137,151}              ,value="BL;TEY;PEY"                     ,fColor=(fc1,fc2,fc3)
 	SetVariable rigidShift    title="DFT-EXP Shift"                ,pos={13,151} ,size={120,20},value=_NUM:rigidShift,limits={-5,5,0.1},fColor=(fc1,fc2,fc3),valueBackColor=(sv1,sv2,sv3)
 	SetVariable expSpecName   title="Experiment NEXAFS Base Name"  ,pos={14,174},size={250,20},value=_STR:expSpecName                 ,fColor=(fc1,fc2,fc3),valueBackColor=(sv1,sv2,sv3)
@@ -281,7 +281,7 @@ Function clusterPanel()
 	SetVariable anchorExp1    title="Low Exp Anchor"               ,pos={249,151},size={130,20},value=_NUM:anchorExp1                  ,fColor=(fc1,fc2,fc3),valueBackColor=(sv1,sv2,sv3)
 	SetVariable anchorExp2    title="High Exp Anchor"              ,pos={385,151},size={135,20},value=_NUM:anchorExp2                  ,fColor=(fc1,fc2,fc3),valueBackColor=(sv1,sv2,sv3)
 
-	//Main Clustering Parameters Section 
+	//Main Clustering Parameters Section
 	SetDrawEnv fillfgc= (bc1,bc2,bc3),fillpat= 1,linejoin= 2,linethick= 3.00
 	DrawRect 4,231,386,355
 	TitleBox clusteringTitle title="Main Clustering Parameters"         ,pos={114,236}         ,fstyle=1                                             ,fColor=(fc1,fc2,fc3)
@@ -292,7 +292,7 @@ Function clusterPanel()
 	//CheckBox ovpOri          title="Construct Original Overlap Matrix?" ,pos={513,313}                                 ,value = ovpOri     ,fColor=(fc1,fc2,fc3),help={"Calculate the Overlap Matrix for the initial transitions? Can take several minutes."}
 	CheckBox buildSym        title="Symmetrize Transitions?"            ,pos={165,288}                                  ,value = buildSym   ,fColor=(fc1,fc2,fc3),help={"Enforce molecule symmetry?"}
 	//Select Energy correction wave
-	
+
 	Button selECorrWave                                                 ,pos={204,307} ,size={150,20}
 	MakeButtonIntoWSPopupButton("ClusteringAlgorithm", "selECorrWave", "notifyEcorrWaveSelection", options=PopupWS_OptionFloat)
 	TitleBox WSPopupTitle1                                              ,pos={15,307} ,size={115,12},title="Select DFT Energy Correction Wave",frame=0,fColor=(fc1,fc2,fc3)
@@ -302,26 +302,26 @@ Function clusterPanel()
 	MakeButtonIntoWSPopupButton("ClusteringAlgorithm", "selLUMOwave", "notifyLUMOWaveSelection", options=PopupWS_OptionFloat)
 	TitleBox WSPopupTitle3                                              ,pos={98,327} ,size={115,12},title="Select LUMO Wave",frame=0,fColor=(fc1,fc2,fc3)
 	String/G pathtoLUMO
-	
+
 	//Peak Broadening Parameters Section
 	SetDrawEnv fillfgc= (bc1,bc2,bc3),fillpat= 1,linejoin= 2,linethick= 3.00
-	DrawRect 390,231,538,355			
-	TitleBox BroadeningParams title="Broadening Parameters"              ,pos={399,236}           ,fstyle=1                              ,fColor=(fc1,fc2,fc3)		
+	DrawRect 390,231,538,355
+	TitleBox BroadeningParams title="Broadening Parameters"              ,pos={399,236}           ,fstyle=1                              ,fColor=(fc1,fc2,fc3)
 	SetVariable broad1        title="Width 1"                              ,size={100,20},pos={414,261},limits={0,50,0.1}  ,value=_NUM:broad1 ,valueBackColor=(sv1,sv2,sv3),fColor=(fc1,fc2,fc3),help={"What is the peak broadening before Width Energy 1?"}
 	SetVariable broad2        title="Width 2"                              ,size={100,20},pos={414,282},limits={0,50,1}    ,value=_NUM:broad2 ,valueBackColor=(sv1,sv2,sv3),fColor=(fc1,fc2,fc3),help={"What is the peak broadening before Width Energy 2?"}
-	
-	//Peak Making Parameters Section	
+
+	//Peak Making Parameters Section
 	SetDrawEnv fillfgc= (bc1,bc2,bc3),fillpat= 1,linejoin= 2,linethick= 3.00
 	DrawRect 544,231,708,355
-	TitleBox PeakParams         title="Wave Scaling"                 ,pos={593,236}       ,fstyle=1                                            ,fColor=(fc1,fc2,fc3),valueBackColor=(sv1,sv2,sv3)	
+	TitleBox PeakParams         title="Wave Scaling"                 ,pos={593,236}       ,fstyle=1                                            ,fColor=(fc1,fc2,fc3),valueBackColor=(sv1,sv2,sv3)
 	SetVariable Eini            title="Min Energy"   ,size={120,20},pos={561,263},limits={270,12000,10}   ,value=_NUM:Eini           ,fColor=(fc1,fc2,fc3),valueBackColor=(sv1,sv2,sv3)
 	SetVariable Efin            title="Max Energy"   ,size={120,20},pos={561,286},limits={270,12000,10}   ,value=_NUM:Efin           ,fColor=(fc1,fc2,fc3),valueBackColor=(sv1,sv2,sv3)
-	SetVariable gRes            title="Points"   ,size={90,20},pos={591,308},limits={100,10000,100},value=_NUM:gRes           ,fColor=(fc1,fc2,fc3),valueBackColor=(sv1,sv2,sv3)	
-		
-	//Modeling Tilt Angle Section	
-	SetDrawEnv fillfgc= (bc1,bc2,bc3),fillpat= 1,linejoin= 2,linethick= 3.00	
+	SetVariable gRes            title="Points"   ,size={90,20},pos={591,308},limits={100,10000,100},value=_NUM:gRes           ,fColor=(fc1,fc2,fc3),valueBackColor=(sv1,sv2,sv3)
+
+	//Modeling Tilt Angle Section
+	SetDrawEnv fillfgc= (bc1,bc2,bc3),fillpat= 1,linejoin= 2,linethick= 3.00
 	DrawRect  4,361,428,571
-	TitleBox modelTiltName   title="Modeling Molecular Tilt Angle"   ,pos={87,365}   ,fstyle=1                                                               ,fColor=(fc1,fc2,fc3)		
+	TitleBox modelTiltName   title="Modeling Molecular Tilt Angle"   ,pos={87,365}   ,fstyle=1                                                               ,fColor=(fc1,fc2,fc3)
 	SetVariable thetaList    title="NEXAFS θ List"                   ,pos={10,395} ,size={175,20}                  ,value=_STR:thetaList                      ,fColor=(fc1,fc2,fc3),valueBackColor=(sv1,sv2,sv3)
 	CheckBox fitARNEXAFS     title="Fit AR NEXAFS to DFT-BB Model?"  ,pos={80,463}                                 ,value = fitARNEXAFS 							 ,fColor=(fc1,fc2,fc3),proc=CheckProc1
 	CheckBox modelAlpha      title="Model alpha for DFT-BB Model?"   ,pos={80,444}                                 ,value = modelAlpha                        ,fColor=(fc1,fc2,fc3),proc=CheckProc4
@@ -338,17 +338,17 @@ Function clusterPanel()
 	SetVariable MaskE2       title="Mask Energy2"                    ,pos={218,418},size={140,20}                  ,value=_NUM:maskEnergyFin                  ,fColor=(fc1,fc2,fc3),valueBackColor=(sv1,sv2,sv3)
 	SetVariable PeakToRefine title="Peak To Refine"            	   ,pos={137,510},size={120,20}                   ,value=_NUM:pkToRefine                     ,fColor=(fc1,fc2,fc3),valueBackColor=(sv1,sv2,sv3)
 	CheckBox holdTensorElems title="Hold modθ?"                      ,pos={288,487},size={200,20}                  ,value=holdTensorElems                      ,fColor=(fc1,fc2,fc3)
-	
+
 	//Select Refinement Paramter wave
 	Button selRefPWave                                                 ,pos={275,547} ,size={150,20}
 	MakeButtonIntoWSPopupButton("ClusteringAlgorithm", "selRefPWave", "notifyselRefPWaveSelection", options=PopupWS_OptionFloat)
 	TitleBox WSPopupTitle4                                              ,pos={16,547} ,size={115,12},title="Select Refinement Parameter Wave",frame=0,fColor=(fc1,fc2,fc3)
-	String/G pathtoRefPWave 
-	
+	String/G pathtoRefPWave
+
 	//DFT Step Edge Section
-	SetDrawEnv fillfgc= (bc1,bc2,bc3),fillpat= 1,linejoin= 2,linethick= 3.00	
+	SetDrawEnv fillfgc= (bc1,bc2,bc3),fillpat= 1,linejoin= 2,linethick= 3.00
 	DrawRect 433,361,708,509
-	TitleBox stepParamsTitle title="DFT Step Edge Parameters"                        ,pos={495,365},fColor=(fc1,fc2,fc3),fstyle=1 
+	TitleBox stepParamsTitle title="DFT Step Edge Parameters"                        ,pos={495,365},fColor=(fc1,fc2,fc3),fstyle=1
 	SetVariable stepWid1     title="σ\\BS1"                           ,size={75,20}  ,pos={437,392},limits={0,100,1}    ,value=_NUM:stepWid1    ,valueBackColor=(sv1,sv2,sv3),fColor=(fc1,fc2,fc3),help={"How many atoms are being processed?"}
 	SetVariable stepWid2     title="σ\\BS2"                           ,size={75,20}  ,pos={437,416},limits={0,100,1}    ,value=_NUM:stepWid2    ,valueBackColor=(sv1,sv2,sv3),fColor=(fc1,fc2,fc3),help={"How many atoms are being processed?"}
 	SetVariable stepE1       title="E\\BS1"                           ,size={75,20}  ,pos={521,392},limits={200,900,1}  ,value=_NUM:stepE1      ,valueBackColor=(sv1,sv2,sv3),fColor=(fc1,fc2,fc3),help={"How many atoms are being processed?"}
@@ -360,17 +360,17 @@ Function clusterPanel()
 	String/G pathtoIP
 	SetVariable anchorStep1  title="Anchor\\BLO"  ,size={100,20},pos={605,392},value=_NUM:anchorStep1,fColor=(fc1,fc2,fc3),valueBackColor=(sv1,sv2,sv3)
 	SetVariable anchorStep2  title="Anchor\\BHI"  ,size={100,20},pos={605,416},value=_NUM:anchorStep2,fColor=(fc1,fc2,fc3),valueBackColor=(sv1,sv2,sv3)
-	
+
 	//Display fit results section
-	SetDrawEnv fillfgc= (bc1,bc2,bc3),fillpat= 1,linejoin= 2,linethick= 3.00	
+	SetDrawEnv fillfgc= (bc1,bc2,bc3),fillpat= 1,linejoin= 2,linethick= 3.00
 	DrawRect 435,513,707,571
-	TitleBox fitResults title="Show Fit Results",pos={526,515},fColor=(fc1,fc2,fc3),fstyle=1 
+	TitleBox fitResults title="Show Fit Results",pos={526,515},fColor=(fc1,fc2,fc3),fstyle=1
 	SetVariable bbPeak title = "BB Peak",pos={443,540},size={80,20},limits={0,inf,1},value=_NUM:0,valueBackColor=(sv1,sv2,sv3)    ,fColor=(fc1,fc2,fc3),proc=SetVarProc4
 	SetVariable resAlpha title = "Alpha",pos={529,540},size={80,20},limits={0,90,1},value=_NUM:0,valueBackColor=(sv1,sv2,sv3),fColor=(fc1,fc2,fc3)
 	Button fitPlot        title="Plot Fits"       ,pos={618,540} ,size={80,20}                                               ,valueColor=(65535,65535,65535)  ,fColor=(df1,df2,df3)      ,proc=displayfitResults,fSize=12,fstyle=3 , appearance={os9}
 
 	//This button displays information about a particular cluster
-	SetDrawEnv fillfgc= (bc1,bc2,bc3),fillpat= 1,linejoin= 2,linethick= 3.00	
+	SetDrawEnv fillfgc= (bc1,bc2,bc3),fillpat= 1,linejoin= 2,linethick= 3.00
 	DrawRect 4,575,223,746
 	TitleBox clusterInfoTitle   title="Cluster Info Panel" ,pos={54,582}  ,fstyle=1                                                                                              ,fColor=(fc1,fc2,fc3)
 	Button clusterInfo          title="Cluster Info"       ,pos={73,724} ,size={100,20}                                               ,valueColor=(65535,65535,65535)  ,fColor=(df1,df2,df3)      ,proc=displayClusterInfo,fSize=12,fstyle=3 , appearance={os9}
@@ -378,24 +378,24 @@ Function clusterPanel()
 	SetVariable transitionID    title="Transition ID"      ,pos={53,635} ,size={150,20},limits={0,150,1},value=_NUM:transitionID         ,valueBackColor=(sv1,sv2,sv3)    ,fColor=(fc1,fc1,fc1)   ,proc=ChangeTransitionView
 	SetVariable alphaFitVal     title="Alpha From Fit"     ,pos={53,658} ,size={130,20} ,value=_NUM:alphaFitVal
 	SetVariable clusterPlotName title="Plot Name"          ,pos={23,682} ,size={160,20} ,value=_STR:clusterPltName
-	
+
 	//This button displays the overlap matrix
-	SetDrawEnv fillfgc= (bc1,bc2,bc3),fillpat= 1,linejoin= 2,linethick= 3.00	
+	SetDrawEnv fillfgc= (bc1,bc2,bc3),fillpat= 1,linejoin= 2,linethick= 3.00
 	DrawRect 238,645,383,746
 	TitleBox ovpMatTitle  title="Display Overlap Matrix"  ,pos={248,649}    ,fstyle=1                                                                                         ,fColor=(fc1,fc2,fc3)
 	Button ovpMat         title="Display Matrix"          ,pos={268,724},size={100,20}                                               ,valueColor=(65535,65535,65535),fColor=(df1,df2,df3),proc=displayOVPMatButton,fSize=12,fstyle=3, appearance={os9}
 	SetVariable stage     title="Algorithm Stage"         ,pos={252,679},size={120,20},limits={0,inf,1},value=_NUM:pass              ,valueBackColor=(sv1,sv2,sv3)  ,fColor=(fc1,fc2,fc3),proc=SetVarProc2
-	
+
 	//This button plots the OS for a given symmetry at the different stages of the algorithm
-	SetDrawEnv fillfgc= (bc1,bc2,bc3),fillpat= 1,linejoin= 2,linethick= 3.00	
-	DrawRect 392,645,526,746        
+	SetDrawEnv fillfgc= (bc1,bc2,bc3),fillpat= 1,linejoin= 2,linethick= 3.00
+	DrawRect 392,645,526,746
 	TitleBox otherPlots   title="Plot OS"      ,pos={436,649}  ,fstyle=1                                                                                           ,fColor=(fc1,fc2,fc3)
-	Button plotStuff      title="Display OS"   ,pos={410,724},size={100,20}                                               ,valueColor=(65535,65535,65535) ,fColor=(df1,df2,df3),proc=displayOSPlot ,fSize=12,fstyle=3  , appearance={os9} 
+	Button plotStuff      title="Display OS"   ,pos={410,724},size={100,20}                                               ,valueColor=(65535,65535,65535) ,fColor=(df1,df2,df3),proc=displayOSPlot ,fSize=12,fstyle=3  , appearance={os9}
 	SetVariable stage2    title="Merge Stage"  ,pos={400,679},size={120,20},limits={1,inf,1},value=_NUM:pass              ,valueBackColor=(sv1,sv2,sv3)   ,fColor=(fc1,fc2,fc3),proc=SetVarProc3
-	
+
 	//Explore Parameter Space Section
 	SetDrawEnv fillfgc= (bc1,bc2,bc3),fillpat= 1,linejoin= 2,linethick= 3.00
-	DrawRect 239,579,705,640   	
+	DrawRect 239,579,705,640
 	TitleBox paramSpace   title="Explore Parameter Space"      ,pos={348,582}  ,fstyle=1  ,fColor=(fc1,fc2,fc3)
 	Button selOSTWave,pos={305,616},size={150,20}
 	MakeButtonIntoWSPopupButton("ClusteringAlgorithm", "selOSTWave", "notifyOSTwaveSelection", options=PopupWS_OptionFloat)
@@ -409,35 +409,35 @@ Function clusterPanel()
 
 	//This is the Run Algorithm button
 	Button run title="Run \rAlgorithm",pos={532,643},size={179,104},proc=RunAlgorithmButton,fColor=(rb1,rb2,rb3),fSize=32,fstyle=3, appearance={os9}
-	
+
 	//Display WSU logo in bottom left corner of panel
-	DisplayWSULogo()	
+	DisplayWSULogo()
 End
 
 Function runAlgorithmButton(ba) : ButtonControl
 	STRUCT WMButtonAction &ba
-	
+
 	switch( ba.eventCode )
 		case 2: // mouse up
 			String startFolder = GetdataFolder(1)
 			ControlInfo/W=ClusteringAlgorithm atomName
 			String atomName = S_Value
-			
+
 			ControlInfo/W=ClusteringAlgorithm nFiles
 			Variable nAtoms = V_Value
-			
+
 			ControlInfo/W=ClusteringAlgorithm rotSym
 			Variable rotSym = V_Value
-			
+
 			ControlInfo/W=ClusteringAlgorithm osThre
 			Variable osThre = V_Value
-			
+
 			ControlInfo/W=ClusteringAlgorithm ovpThre
 			Variable ovpThre = V_Value
-			
+
 			ControlInfo/W=ClusteringAlgorithm erange
-			Variable erange = V_Value			
-			
+			Variable erange = V_Value
+
 			ControlInfo/W=ClusteringAlgorithm buildSym
 			Variable buildSym = V_Value
 			String bSym
@@ -446,42 +446,42 @@ Function runAlgorithmButton(ba) : ButtonControl
 			else
 				bSym = "no"
 			endif
-			
+
 			ControlInfo/W=ClusteringAlgorithm broad1
 			Variable broad1 = V_Value
-			
+
 			ControlInfo/W=ClusteringAlgorithm broad2
 			Variable broad2 = V_Value
-			
+
 			ControlInfo/W=ClusteringAlgorithm Eini
 			Variable Eini = V_Value
-			
+
 			ControlInfo/W=ClusteringAlgorithm Efin
 			Variable Efin = V_Value
-			
+
 			ControlInfo/W=ClusteringAlgorithm gRes
 			Variable gRes = V_Value
-			
+
 			Wave Ecorr = $GetEcorrPath()
-			
+
 			ControlInfo/W=ClusteringAlgorithm mol
 			String mol = S_Value
-			
+
 			ControlInfo/W=ClusteringAlgorithm spectraType
 			String spectraType = S_Value
-			
+
 			ControlInfo/W=ClusteringAlgorithm rigidShift
 			Variable rigidShift = V_Value
-			
+
 			ControlInfo/W=ClusteringAlgorithm expSpecName
 			String expSpecName = S_Value
-			
+
 			ControlInfo/W=ClusteringAlgorithm expEnergyName
 			String expEnergyName = S_Value
-			
+
 			ControlInfo/W=ClusteringAlgorithm expFolderPath
 			String expFolderPath = S_Value
-			
+
 			ControlInfo/W=ClusteringAlgorithm fitARNEXAFS
 			Variable fitARNEXAFS = V_Value
 			String fitExpNEXAFS
@@ -490,36 +490,36 @@ Function runAlgorithmButton(ba) : ButtonControl
 			else
 				fitExpNEXAFS = "no"
 			endif
-			
+
 			ControlInfo/W=ClusteringAlgorithm alpha
 			Variable alpha = V_Value
-			
+
 			ControlInfo/W=ClusteringAlgorithm i0
 			Variable i0 = V_Value
-			
+
 			ControlInfo/W=ClusteringAlgorithm phi
 			Variable phi = V_Value
-			
+
 			ControlInfo/W=ClusteringAlgorithm thetaList
-			String thetaList = S_Value	
-			
+			String thetaList = S_Value
+
 			Wave IP    = $GetIPPath()
-			
+
 			ControlInfo/W=ClusteringAlgorithm realign
 			Variable realign = V_Value
-			
+
 			ControlInfo/W=ClusteringAlgorithm thx
 			Variable thx = V_Value
-			
+
 			ControlInfo/W=ClusteringAlgorithm thy
 			Variable thy = V_Value
-			
+
 			ControlInfo/W=ClusteringAlgorithm thz
 			Variable thz = V_Value
-			
+
 			ControlInfo/W=ClusteringAlgorithm rotOrder
-			String rotOrder = S_Value	
-	
+			String rotOrder = S_Value
+
 			ControlInfo/W=ClusteringAlgorithm modelAlpha
 			Variable modelAlpha = V_Value
 			String modAlpha
@@ -528,84 +528,88 @@ Function runAlgorithmButton(ba) : ButtonControl
 			else
 				modAlpha = "no"
 			endif
-			
+
 			ControlInfo/W=ClusteringAlgorithm justModel
 			Variable justModel = V_Value
-			
+
 			ControlInfo/W=ClusteringAlgorithm justFit
 			Variable justFit = V_Value
-					
+
 			Wave LUMOwave = $GetLUMOPath()
-			
+
 			ControlInfo/W=ClusteringAlgorithm anchorStep1
 			Variable anchorStep1 = V_Value
-			
+
 			ControlInfo/W=ClusteringAlgorithm anchorStep2
 			Variable anchorStep2 = V_Value
-			
+
 			ControlInfo/W=ClusteringAlgorithm anchorExp1
 			Variable anchorExp1 = V_Value
-			
+
 			ControlInfo/W=ClusteringAlgorithm anchorExp2
 			Variable anchorExp2 = V_Value
-				
+
 			ControlInfo/W=ClusteringAlgorithm stepWid1
 			Variable stepWid1 = V_Value
-			
+
 			ControlInfo/W=ClusteringAlgorithm stepWid2
 			Variable stepWid2 = V_Value
-			
+
 			ControlInfo/W=ClusteringAlgorithm stepE1
 			Variable stepE1 = V_Value
-			
+
 			ControlInfo/W=ClusteringAlgorithm stepE2
 			Variable stepE2 = V_Value
-			
+
 			ControlInfo/W=ClusteringAlgorithm holdAmps
 			Variable holdAmps = V_Value
-			
+
 			ControlInfo/W=ClusteringAlgorithm holdPos
 			Variable holdPos = V_Value
-			
+
 			ControlInfo/W=ClusteringAlgorithm holdWidths
 			Variable holdWidths = V_Value
-			
+
 			ControlInfo/W=ClusteringAlgorithm refine
 			Variable refine = V_Value
-			
+
 			ControlInfo/W=ClusteringAlgorithm MaskE1
 			Variable maskEnergy1 = V_Value
-			
+
 			ControlInfo/W=ClusteringAlgorithm MaskE2
 			Variable maskEnergy2 = V_Value
-			
+
 			ControlInfo/W=ClusteringAlgorithm PeakToRefine
 			Variable pkToRefine = V_Value
-			
+
 			Wave refitPWave = $GetrefitPWavePath()
-			
+
 			ControlInfo/W=ClusteringAlgorithm holdTensorElems
 			Variable holdTensorElems = V_Value
-			
+
 			ControlInfo/W=ClusteringAlgorithm expParamSpace
 			Variable paramSpaceExplore = V_Value
-			
+
 			if(!paramSpaceExplore)
 				Variable timeRefNum = StartMSTimer
 				filterDFT(atomName,nAtoms,osThre,ovpThre,rotSym,LUMOwave,erange=erange,broad1=broad1,broad2=broad2,Eini=Eini,Efin=Efin,gRes=gRes,buildSym=bSym,corrWave=Ecorr,realign=realign,thx=thx,thy=thy,thz=thz,rotOrder=rotOrder,modelAlpha=modAlpha,IPwave=IP,expSpecName=expSpecName,expEnergyName=expEnergyName,expFolderPath=expFolderPath,mol=mol,alpha=alpha,i0=i0,phi=phi,fit=fitExpNEXAFS,rigidShift=rigidShift,thetaList=thetaList,NEXAFStype=spectraType,justModel=justModel,justFit=justFit,anchorStep1=anchorStep1,anchorStep2=anchorStep2,anchorExp1=anchorExp1,anchorExp2=anchorExp2,stepWid1=stepWid1,stepWid2=stepWid2,stepE1=stepE1,stepE2=stepE2,holdAmps=holdAmps,holdWidths=holdWidths,holdPos=holdPos,refinement=refine,maskEnergy1=maskEnergy1,maskEnergy2=maskEnergy2,pkToRefine=pkToRefine,refitPWave=refitPWave,holdTensorElems=holdTensorElems)
 				SetDataFolder $startFolder
 				Variable tFFEnd =stopMSTimer(timeRefNum)/(1E6)
-				print "All operations completed."
-				print "The process took " +num2str(tFFEnd) + " seconds."
+				
+				print "               ╔══════════════     STATS      ═════════════════╗                    "
+				printf "               ║   Process Time      ·              %03.1f       ║                    \r", tFFEnd
+				print "               ╚═══════════════════════════════════════════════╝                    " 
+				
+				
 				NVAR compTime = root:compTime
 				compTime = tFFEnd
 				return 0
 				break
 			else
 				Wave osWave  = $GetOSTPath()
-				Wave ovpWave = $GetOVPTPath()	
-				seqThresholds(atomName,nAtoms,osWave,ovpWave,rotSym,LUMOwave,erange=erange,broad1=broad1,broad2=broad2,Eini=Eini,Efin=Efin,gRes=gRes,buildSym=bSym,corrWave=Ecorr,realign=realign,thx=thx,thy=thy,thz=thz,rotOrder=rotOrder,modelAlpha=modAlpha,IPwave=IP,expSpecName=expSpecName,expEnergyName=expEnergyName,expFolderPath=expFolderPath,mol=mol,alpha=alpha,i0=i0,phi=phi,fit=fitExpNEXAFS,rigidShift=rigidShift,thetaList=thetaList,NEXAFStype=spectraType,justModel=justModel,justFit=justFit,anchorStep1=anchorStep1,anchorStep2=anchorStep2,anchorExp1=anchorExp1,anchorExp2=anchorExp2,stepWid1=stepWid1,stepWid2=stepWid2,stepE1=stepE1,stepE2=stepE2,holdAmps=holdAmps,holdWidths=holdWidths,holdPos=holdPos,refinement=refine,maskEnergy1=maskEnergy1,maskEnergy2=maskEnergy2,pkToRefine=pkToRefine,refitPWave=refitPWave,holdTensorElems=holdTensorElems)				
-			endif			
+				Wave ovpWave = $GetOVPTPath()
+				seqThresholds(atomName,nAtoms,osWave,ovpWave,rotSym,LUMOwave,erange=erange,broad1=broad1,broad2=broad2,Eini=Eini,Efin=Efin,gRes=gRes,buildSym=bSym,corrWave=Ecorr,realign=realign,thx=thx,thy=thy,thz=thz,rotOrder=rotOrder,modelAlpha=modAlpha,IPwave=IP,expSpecName=expSpecName,expEnergyName=expEnergyName,expFolderPath=expFolderPath,mol=mol,alpha=alpha,i0=i0,phi=phi,fit=fitExpNEXAFS,rigidShift=rigidShift,thetaList=thetaList,NEXAFStype=spectraType,justModel=justModel,justFit=justFit,anchorStep1=anchorStep1,anchorStep2=anchorStep2,anchorExp1=anchorExp1,anchorExp2=anchorExp2,stepWid1=stepWid1,stepWid2=stepWid2,stepE1=stepE1,stepE2=stepE2,holdAmps=holdAmps,holdWidths=holdWidths,holdPos=holdPos,refinement=refine,maskEnergy1=maskEnergy1,maskEnergy2=maskEnergy2,pkToRefine=pkToRefine,refitPWave=refitPWave,holdTensorElems=holdTensorElems)
+			endif
 			case -1: // control being killed
 				break
 	endswitch
@@ -656,9 +660,9 @@ Function loadMolStructure(ba) : ButtonControl
 	STRUCT WMButtonAction &ba
 	switch( ba.eventCode )
 		case 2: // mouse up
-		
+
 			DoWindow/W=moleculeHost ClusteringAlgorithm
-			
+
 			if(V_Flag)
 				KillWindow/Z moleculeHost
 				DoWindow ClusteringAlgorithm
@@ -666,7 +670,7 @@ Function loadMolStructure(ba) : ButtonControl
 			else
 				DoWindow ClusteringAlgorithm
 				Button LoadStruct title="Hide Molecule Structure"
-				
+
 				DoWindow/W=moleculeHost ClusteringAlgorithm
 				ControlInfo/W=ClusteringAlgorithm mol
 				Wave molStruct = $S_Value
@@ -811,7 +815,7 @@ Function notifyOVPTwaveSelection(event, wavepath, windowName, ctrlName)
 end
 
 function/S GetEcorrPath()
-   
+
    SVAR pathtoEcorr = root:Packages:DFTClustering:pathtoEcorr
    if(SVAR_Exists(pathtoEcorr))
 	   	return pathtoEcorr
@@ -821,7 +825,7 @@ function/S GetEcorrPath()
 end
 
 function/S GetIPPath()
-   
+
    SVAR pathtoIP = root:Packages:DFTClustering:pathtoIP
    if(SVAR_Exists(pathtoIP))
 	   	return pathtoIP
@@ -831,7 +835,7 @@ function/S GetIPPath()
 end
 
 function/S GetLUMOPath()
-   
+
    SVAR pathtoLUMO = root:Packages:DFTClustering:pathtoLUMO
    if(SVAR_Exists(pathtoLUMO))
 	   	return pathtoLUMO
@@ -841,7 +845,7 @@ function/S GetLUMOPath()
 end
 
 function/S GetrefitPWavePath()
-   
+
    SVAR pathtoRefPWave = root:Packages:DFTClustering:pathtoRefPWave
    if(SVAR_Exists(pathtoRefPWave))
 	   	return pathtoRefPWave
@@ -851,7 +855,7 @@ function/S GetrefitPWavePath()
 end
 
 function/S GetOSTPath()
-   
+
    SVAR pathtoOST = root:Packages:DFTClustering:pathtoOST
    if(SVAR_Exists(pathtoOST))
 	   	return pathtoOST
@@ -861,7 +865,7 @@ function/S GetOSTPath()
 end
 
 function/S GetOVPTPath()
-   
+
    SVAR pathtoOVPT = root:Packages:DFTClustering:pathtoOVPT
    if(SVAR_Exists(pathtoOVPT))
 	   	return pathtoOVPT
@@ -880,7 +884,7 @@ Function DisplayWSULogo()
 			return 0 //No logo found, no hard feelings
 		endif
 	endif
-	
+
 	Display/W=(559,120,710,225)/N=Logo/HOST=ClusteringAlgorithm
 	//Display/W=(9,435,175,555)/N=Logo/HOST=ClusteringAlgorithm
 	AppendImage/T/W=$("ClusteringAlgorithm#Logo") root:Packages:DFTClustering:WSUlogo
@@ -889,7 +893,7 @@ Function DisplayWSULogo()
 	ModifyGraph/W=$("ClusteringAlgorithm#Logo") mirror=0,nticks=0,standoff=0,axthick=0,btlen=3
 	ModifyGraph/W=$("ClusteringAlgorithm#Logo") tkLblRot(left)=90
 	SetAxis/W=$("ClusteringAlgorithm#Logo")/A/R left
-	
+
 End
 
 Function load3Dstruct(ba) : ButtonControl
@@ -899,7 +903,7 @@ Function load3Dstruct(ba) : ButtonControl
 		case 2: // mouse up
 			ControlInfo/W=clusteringAlgorithm mol
 			String molName = S_Value
-			SetDataFolder root: 
+			SetDataFolder root:
 			loadAtomCoords(molName,"")
 			Chem3Dmodule#Chem3Dstart()
 		case -1: // control being killed
@@ -919,22 +923,22 @@ Function loadAtomCoords(molName,pathName)
 	columnInfoStr += "C=1,F=0,W=16,N=atomY;"
 	columnInfoStr += "C=1,F=0,W=16,N=atomZ;"
 	LoadWave/F={4,9,0}/B=columnInfoStr/D/K=0/O/Q/A/L={0, 2, 0, 0, 4 }/P=$pathName molName
-	
+
 	//Make2D wave with x,y,z coordinates for molecule
 	String wName = "atomicCoords_" + molName
 	Wave atomicCoordinates = $wName
 	if(WaveExists(atomicCoordinates))
 		KillWaves/Z atomicCoordinates
 	endif
-	
-	String aCoordList = WaveLIst("atom*",";","")	
+
+	String aCoordList = WaveLIst("atom*",";","")
 	Concatenate/O aCoordList, $wName
-	
+
 	String wName2 = "elementNames_" + molName
 	Wave/T Element
 	Duplicate/O Element, $wName2
 	KillWaves/Z Element,atomX,atomY,atomZ
-	//endif	
+	//endif
 End
 
 Function displayClusterInfo(ba) : ButtonControl
@@ -973,7 +977,7 @@ Function ChangeClusterView(sva) : SetVariableControl
 		case 3: // Live update
 			Variable dval = sva.dval
 			String sval = sva.sval
-			
+
 			ControlInfo/W=ClusteringAlgorithm mol
 			String molName = S_Value
 			ControlInfo/W=ClusteringAlgorithm clusterPlotName
@@ -1007,7 +1011,7 @@ Function ChangeTransitionView(sva) : SetVariableControl
 		case 3: // Live update
 			Variable dval = sva.dval
 			String sval = sva.sval
-			
+
 			ControlInfo/W=ClusteringAlgorithm mol
 			String molName = S_Value
 			ControlInfo/W=ClusteringAlgorithm clusterPlotName
@@ -1038,12 +1042,12 @@ Function makeOVPMatPlots(tval,ovpMax,mol,stage)
 	Variable ovpMax
 	String mol
 	Variable stage
-	
+
 	//Define initial clustering run folder
 	String iniFName = "root:Packages:DFTClustering:PolarAngles_" + mol +":TransitionFiltering_" + replacestring(".",num2str(tval),"p") + "OS_" + replacestring(".",num2str(ovpMax),"p") + "OVP:"
 	String ovpFolder, folderLoc , ovpWaveName
 	String stageName
-	
+
 	if(stage == 0)
 		ovpFolder = "originalPeaks:"
 		folderLoc = iniFName + ovpFolder
@@ -1060,31 +1064,31 @@ Function makeOVPMatPlots(tval,ovpMax,mol,stage)
 		ovpWaveName = "ovpWaveALL" + num2str(stage-1)
 		stageName = "\\f01Merge Stage #" + num2str(stage-1)
 	endif
-	
+
 	if(!DataFolderExists(folderLoc))
 		Abort "Folder containing overlap matrix doesn't exist for specified clustering parameters."
 	endif
-	
+
 	SetDataFolder $folderLoc
-	Wave ovpWave = $ovpWaveName 
-	
+	Wave ovpWave = $ovpWaveName
+
 	if(!WaveExists(ovpWave))
 		Abort "This system does not have an overlap matrix information for this symmetry at this stage."
 	endif
-	
+
 	//Plot clusters
 	String plotName = "Overlap_Matrix_Display"
 	String tableName = "Overlap_Matrix_Values"
 	DoWindow/F $plotName
 	Variable n = 200,nTrans = DimSize(ovpWave,0)
-	
+
 	if(!V_Flag)
 		NewImage/N=$plotName/K=1 ovpWave
 		ModifyGraph/W=$plotName width  = n , height = n , margin(right)=108, margin(left)=36, margin(top)=36
 		ModifyImage $ovpWaveName  ctab= {*,*,ColdWarm,0}
 		ColorScale/C/N=text0/A=RC/E image=$ovpWaveName,fsize=14,fstyle=1,nticks=10
 		ColorScale/C/N=text0 "\\Z14\\f01Peak Overlap[%]"
-		ModifyGraph fStyle=1,fSize=14,lblPosMode=1 , nticks=10,minor=0 
+		ModifyGraph fStyle=1,fSize=14,lblPosMode=1 , nticks=10,minor=0
 		if(nTrans <=10)
 			ModifyGraph manTick(left)={0,1,0,0},manMinor(left)={0,0},manTick(top)={0,1,0,0},manMinor(top)={0,0}
 		endif
@@ -1145,7 +1149,7 @@ Function SetVarProc2(sva) : SetVariableControl
 		case 3: // Live update
 			Variable dval = sva.dval
 			String sval = sva.sval
-			
+
 			ControlInfo/W=ClusteringAlgorithm mol
 			String mol = S_Value
 			ControlInfo/W=ClusteringAlgorithm osThre
@@ -1171,7 +1175,7 @@ Function PopMenuProc2(pa) : PopupMenuControl
 		case 2: // mouse up
 			Variable popNum = pa.popNum
 			String popStr = pa.popStr
-			
+
 			ControlInfo/W=ClusteringAlgorithm mol
 			String mol = S_Value
 			ControlInfo/W=ClusteringAlgorithm osThre
@@ -1191,11 +1195,11 @@ Function PopMenuProc2(pa) : PopupMenuControl
 End
 
 Function makeOSPlotComparison(tval,ovpMax,mol)
-	
+
 	Variable tval
 	Variable ovpMax
 	String mol
-	
+
 	//Find data folders containing relevant waves
 	String baseFolderName = "root:Packages:DFTClustering:PolarAngles_" + mol + ":TransitionFiltering_" + replacestring(".",num2str(tval),"p") + "OS_" + replacestring(".",num2str(ovpMax),"p") + "OVP:"
 	SetDataFolder $baseFolderName
@@ -1203,15 +1207,15 @@ Function makeOSPlotComparison(tval,ovpMax,mol)
 	String pathToFFOS    = baseFolderName + "firstFilter:"
 	String pathToMergeOS = baseFolderName + "AmplitudeFitting:ALL:"
 	//Plot the oscillator strengths for each of the filtering stages
-	
+
 	String oriName = pathToOriOS   + "allParamsSorted"
 	String ffName  = pathToFFOS    + "allParamsF1Sorted"
 	String mName   = pathToMergeOS + "pw2DOriginal"
-	
+
 	Wave allParamsSorted   = $oriName
 	Wave allParamsF1Sorted = $ffName
 	Wave mergedPWave2D     = $mName
-	
+
 	Variable n = DimSize(allParamsSorted,0),n1 = DimSize(allParamsF1Sorted,0),n2 = DimSize(mergedPWave2D,0)
 	String pathToMinOS = baseFolderName + "minOSThreshold"
 	NVAR minOSthreshold = $pathToMinOS
@@ -1220,7 +1224,7 @@ Function makeOSPlotComparison(tval,ovpMax,mol)
 	String mName2 = "pw2DOriginal"
 	String plotName = "OscillatorStrengthsComparison"
 	Variable col=1
-					
+
 	DoWindow $plotName
 	if(!V_Flag)
 		Display/N=$plotName/K=1/W=(0,0,400,524) allParamsSorted[*][col] vs allParamsSorted[*][0]
@@ -1242,7 +1246,7 @@ Function makeOSPlotComparison(tval,ovpMax,mol)
 		ModifyGraph mode(OSthreshold)=0,lstyle(OSthreshold)=3,lsize(OSthreshold)=2,rgb(OSthreshold)=(0,0,0)
 		ModifyGraph mode(OSthreshold#1)=0,lstyle(OSthreshold#1)=3,lsize(OSthreshold#1)=2,rgb(OSthreshold#1)=(0,0,0)
 		ModifyGraph mode(OSthreshold#2)=0,lstyle(OSthreshold#2)=3,lsize(OSthreshold#2)=2,rgb(OSthreshold#2)=(0,0,0)
-		ModifyGraph rgb(allParamsF1Sorted)=(1,26221,39321)		
+		ModifyGraph rgb(allParamsF1Sorted)=(1,26221,39321)
 		ModifyGraph grid(left)=2,grid(f1)=2,grid(f2)=2,log(left)=1,log(f1)=1,log(f2)=1,tick(f2)=2,fStyle=1,fSize=11,lblPosMode(left)=1,lblPosMode(f1)=1,lblPosMode(f2)=1
 		SetAxis left 0.0001,1
 		SetAxis f1 0.0001,1
@@ -1251,7 +1255,7 @@ Function makeOSPlotComparison(tval,ovpMax,mol)
 		String legendText = "\\JC\\JL\\s(allParamsSorted) Unfiltered	["+ num2str(n) +"]\r\\s(allParamsF1Sorted) Filtered		["+ num2str(n1) +"]\r\\s("+mName2+") Clustered	["+ num2str(n2) +"]"
 		Legend/C/N=text0/A=MC/E=2/X=0/Y=41 legendText
 	else
-		Variable i		
+		Variable i
 		KillWindow/Z $plotName
 		Display/N=$plotName/K=1/W=(0,0,400,524) allParamsSorted[*][col] vs allParamsSorted[*][0]
 		AppendToGraph/W=$plotName OSthreshold
@@ -1272,13 +1276,13 @@ Function makeOSPlotComparison(tval,ovpMax,mol)
 		ModifyGraph mode(OSthreshold)=0,lstyle(OSthreshold)=3,lsize(OSthreshold)=2,rgb(OSthreshold)=(0,0,0)
 		ModifyGraph mode(OSthreshold#1)=0,lstyle(OSthreshold#1)=3,lsize(OSthreshold#1)=2,rgb(OSthreshold#1)=(0,0,0)
 		ModifyGraph mode(OSthreshold#2)=0,lstyle(OSthreshold#2)=3,lsize(OSthreshold#2)=2,rgb(OSthreshold#2)=(0,0,0)
-		ModifyGraph rgb(allParamsF1Sorted)=(1,26221,39321)		
+		ModifyGraph rgb(allParamsF1Sorted)=(1,26221,39321)
 		ModifyGraph grid(left)=2,grid(f1)=2,grid(f2)=2,log(left)=1,log(f1)=1,log(f2)=1,tick(f2)=2,fStyle=1,fSize=11,lblPosMode(left)=1,lblPosMode(f1)=1,lblPosMode(f2)=1
 		SetAxis left 0.0001,1
 		SetAxis f1 0.0001,1
 		SetAxis f2 0.0001,1
 		SetAxis bottom 284,320
-		legendText = "\\JC\\JL\\s(allParamsSorted) Unfiltered	["+ num2str(n) +"]\r\\s(allParamsF1Sorted) Filtered		["+ num2str(n1) +"]\r\\s("+mName2+") Clustered	["+ num2str(n2) +"]"		
+		legendText = "\\JC\\JL\\s(allParamsSorted) Unfiltered	["+ num2str(n) +"]\r\\s(allParamsF1Sorted) Filtered		["+ num2str(n1) +"]\r\\s("+mName2+") Clustered	["+ num2str(n2) +"]"
 		Legend/C/N=text0/A=MC/E=2/X=0/Y=41 legendText
 	endif
 End
@@ -1311,7 +1315,7 @@ Function SetVarProc3(sva) : SetVariableControl
 		case 3: // Live update
 			Variable dval = sva.dval
 			String sval = sva.sval
-			
+
 			ControlInfo/W=ClusteringAlgorithm mol
 			String mol = S_Value
 			ControlInfo/W=ClusteringAlgorithm osThre
@@ -1337,7 +1341,7 @@ Function SetVarProc4(sva) : SetVariableControl
 		case 3: // Live update
 			Variable dval = sva.dval
 			String sval = sva.sval
-			
+
 			ControlInfo/W=ClusteringAlgorithm osThre
 			Variable osThre = V_Value
 			ControlInfo/W=ClusteringAlgorithm ovpThre
@@ -1371,7 +1375,7 @@ Function PopMenuProc3(pa) : PopupMenuControl
 		case 2: // mouse up
 			Variable popNum = pa.popNum
 			String popStr = pa.popStr
-			
+
 			ControlInfo/W=ClusteringAlgorithm mol
 			String mol = S_Value
 			ControlInfo/W=ClusteringAlgorithm osThre
@@ -1482,21 +1486,21 @@ Function CheckProc4(cba) : CheckBoxControl
 End
 
 Function displayDFTBBmodel(tval,ovpVal,alpha,whichMerge,thetaList,whichPk,mol)
-	
+
 	Variable tval,ovpVal,alpha,whichMerge,whichPk
 	String thetaList,mol
-	
+
 	String filterFolder = "root:Packages:DFTClustering:PolarAngles_"+mol+":TransitionFiltering_"+replaceString(".",num2str(tval),"p")+"OS_"+replaceString(".",num2str(ovpVal),"p")+"OVP:"
 	String ampFitFolder = "AmplitudeFitting:"
 	String alphaFolder  = "Alpha_" + replaceString(".",num2str(alpha),"p") + ":"
 	String baseFolder = filterFolder + ampFitFolder + alphaFolder
 	String miscFolder = baseFolder + "TensorMisc:"
-	
+
 	Variable nItems = ItemsInList(thetaList,";"),i,j,magicAngleSpec = findMagicAngle(thetaList)
 	SetDataFolder $miscFolder
 	DoWindow DFT_BB_FIT
 	if(!V_Flag)
-		Display/K=1/N=DFT_BB_FIT/W=(0,0,600,400) 
+		Display/K=1/N=DFT_BB_FIT/W=(0,0,600,400)
 		//Append Experimental NEXAFS and fits to Graph
 		for(i=0;i<nItems;i+=1)
 			String expSpecList = WaveList("expSpec*",";","")
@@ -1508,19 +1512,19 @@ Function displayDFTBBmodel(tval,ovpVal,alpha,whichMerge,thetaList,whichPk,mol)
 			String fitList = WaveList("fitresults*",";","")
 			String cFitWave = StringFromList(i,fitList,";")
 			Wave z = $cFitWave
-			AppendToGraph w,z vs y 
+			AppendToGraph w,z vs y
 			ModifyGraph lstyle($cFitWave)=3
 		endfor
 		ApplyColorTableToTopGraph("ColdWarm")
-		
+
 		//Append Step Edge to Graph
 		String stepList = WaveList("dftStep*",";","")
 		String cStepWave = StringFromList(magicAngleSpec,stepList,";")
 		Wave step = $cStepWave
-		AppendToGraph step vs y 
+		AppendToGraph step vs y
 		ModifyGraph lsize=1.5
 		//Append BB model to Graph
-		String pkList = WaveList("pk*"+num2str(magicAngleSpec),";","") 
+		String pkList = WaveList("pk*"+num2str(magicAngleSpec),";","")
 		Variable nPks = ItemsInList(pkList)
 		NewFreeAxis/L BB
 		ModifyGraph axisEnab(left)={0.35,1},axisEnab(BB)={0,0.3},freePos(BB)=0,lblPosMode(BB)=1
@@ -1537,7 +1541,7 @@ Function displayDFTBBmodel(tval,ovpVal,alpha,whichMerge,thetaList,whichPk,mol)
 		Label BB "BB\\U"
 		Label bottom "Photon Energy[eV]"
 	endif
-	
+
 	//Get the 3D tensor info for sym elements
 	Wave normTensor3D,fitEns
 	if(whichPk >= numpnts(fitEns))
@@ -1565,16 +1569,16 @@ Function displayDFTBBmodel(tval,ovpVal,alpha,whichMerge,thetaList,whichPk,mol)
 			endif
 		endfor
 	endfor
-	
+
 	symElemList =  SortList(symElemList)
 	//Recolor BB model pks to gray
-	pkList = SortList(WaveList("pk*"+num2str(magicAngleSpec),";",""),";",16) 
+	pkList = SortList(WaveList("pk*"+num2str(magicAngleSpec),";",""),";",16)
 	nPks = ItemsInList(pkList)
 	for(i=0;i<nPks;i+=1)
 		cPk = StringFromList(i,pkList,";")
 		ModifyGraph/W=DFT_BB_FIT rgb($cPk)=(52428,52428,52428)
 	endfor
-	
+
 	//Highlight current BB peak and show sym elements
 	String pkToShow = StringFromList(whichPk,pkList)
 //	DoWindow DFT_BB_FIT
@@ -1615,14 +1619,14 @@ End
 Function breakPWaveIntoClusters(pw,mName)
 	Wave pw
 	String mName//Model Name representative of clustering/broadening method
-	
+
 	Variable nTrans = DimSize(pw,0),i,j=0,cc=0,tc
-	Make/O/N=1 clusterList = 1 
+	Make/O/N=1 clusterList = 1
 	for(i=0;i<nTrans;i+=1)
-		
+
 		tc = pw[i][16]	//current transition cluster
-		
-		String cweName   = "cEn_" + num2str(tc) + "_" + mName	
+
+		String cweName   = "cEn_" + num2str(tc) + "_" + mName
 		String cwOSName  = "cOS_" + num2str(tc) + "_" + mName
 		String cwWiName  = "cWi_" + num2str(tc) + "_" + mName
 		String cwThiName = "cTh_" + num2str(tc) + "_" + mName
@@ -1638,13 +1642,13 @@ Function breakPWaveIntoClusters(pw,mName)
 			clusterList[tc] += 1	//Update number of transitions in cluster
 			Redimension/N=(clusterList[tc]) $cweName,$cwOSName,$cwWiName,$cwThiName,$cwMOName,$cwATName
 		endif
-		
+
 		en[clusterList[tc]-1] = pw[i][0]	   //Populate energy wave
-		os[clusterList[tc]-1] = pw[i][1]	   //Populate os wave	
-		wi[clusterList[tc]-1] = pw[i][2]	   //Populate width wave	
-		th[clusterList[tc]-1] = pw[i][6] 	//Populate th wave	
-		mo[clusterList[tc]-1] = pw[i][15]	//Populate MO wave	
-		at[clusterList[tc]-1] = pw[i][14]	//Populate atom wave				
+		os[clusterList[tc]-1] = pw[i][1]	   //Populate os wave
+		wi[clusterList[tc]-1] = pw[i][2]	   //Populate width wave
+		th[clusterList[tc]-1] = pw[i][6] 	//Populate th wave
+		mo[clusterList[tc]-1] = pw[i][15]	//Populate MO wave
+		at[clusterList[tc]-1] = pw[i][14]	//Populate atom wave
 	endfor
 End
 
@@ -1657,32 +1661,32 @@ Function tdmInfo(mName,OS,OVP,alpha,molName,[corr,tr,cl])
 	Variable corr //Energy correction
 	Variable tr //Which DFT transition to get info for
 	Variable cl	//Which cluster to focus on
-	
+
 	String baseFolder = GetDataFolder(1)
 	Variable p1,p2,i,j=0,k=0
-	
+
 	//Check that only the transition or the cluster is being specified. Reduce bulk in visualizer
 	if(!ParamIsDefault(tr) && !ParamIsDefault(cl))
 		Abort "Please only specify either a cluster or a transition to get information for."
-	endif 
-	
+	endif
+
 	//Add functionality to fetch the clusters made at different iterations
 	//Use it to include clustered peak in tdm plot
 	String mFolder = "root:Packages:DFTClustering:PolarAngles_" + molName +":"//Base folder
 	String aFolder = "TransitionFiltering_"+replaceString(".",num2str(OS),"p")+"OS_"+replaceString(".",num2str(OVP),"p")+"OVP:"//Start folder of current filtering/clustering run
-	
+
 	String fFolder   = mFolder + aFolder +"AmplitudeFitting:Alpha_"+replacestring(".",num2str(alpha),"p")+":TensorMisc:"//Folder with results of DFT BB Model fit to experiment
 	String iniFolder = mFolder + aFolder +"firstFilter:"
-	SetDataFolder $iniFolder	
-	
+	SetDataFolder $iniFolder
+
 	Wave pw = AllParamsF1Sorted
-	//Make waves containing the tdm component values within desired energy range 
+	//Make waves containing the tdm component values within desired energy range
 	breakPWaveIntoClusters(pw,mName)
-	
+
 	//Make color wave
 	Wave M_colors = makeColorWave(0.5)
 	Variable nColors = DimSize(M_colors,0),row
-	
+
 	//Information about the transition of interest
 	Variable atom = pw[tr][14] //What atom the transition derives from
 	Variable trEn = pw[tr][0]  //Transition energy
@@ -1711,7 +1715,7 @@ Function tdmInfo(mName,OS,OVP,alpha,molName,[corr,tr,cl])
 	//These are variables and strings used for the cluster label
 	Variable loE,hiE,loOS,hiOS,loW,hiW,maxOS 	//Range of Energies,OS and Widths.Transition w/ max OS
 	String cenLabel,camLabel,cwiLabel,cthLabel,cmtLabel,tenLabel,twiLabel,tosLabel,tensorLabel,ntcLabel,trMaxLabel,clPCClabel
-	
+
 	//These are variables and strings used for the transition label
 	Variable trE  = pw[tr][0]	 //Transition energy
 	Variable trW  = truncate2(2.355*pw[tr][2],2)//2.355*pw[tr][2]  //Transition width
@@ -1722,7 +1726,7 @@ Function tdmInfo(mName,OS,OVP,alpha,molName,[corr,tr,cl])
 	Variable tryy = truncate2(pw[tr][9],3)  //Transition yy tensor element
 	Variable trzz = truncate2(pw[tr][10],3) //Transition zz tensor element
 	String trLabel
-	
+
 	SetDataFolder $iniFolder
 	Wave percentDiff
 	if(!WaveExists(percentDiff))
@@ -1751,7 +1755,7 @@ Function tdmInfo(mName,OS,OVP,alpha,molName,[corr,tr,cl])
 				loOS = truncate2(V_min,3);hiOS = truncate2(V_max,3);maxOS = V_maxloc	//Range of oscillator strengths
 				WaveStats/Q wiw
 				loW  = 2.355*V_min;hiW  = 2.355*V_max	//Range of peak widths
-				//Determine percent difference between summed and merged peak 
+				//Determine percent difference between summed and merged peak
 				Variable transInCl = numpnts(enw)
 				for(k=0;k<transInCl;k+=1)
 					dSumPk += osw[k] * gauss(x,enw[k],wiw[k])//sqrt(2*Pi) * wiw[k] * osw[k] * gauss(x,enw[k],wiw[k])
@@ -1774,8 +1778,8 @@ Function tdmInfo(mName,OS,OVP,alpha,molName,[corr,tr,cl])
 			if(j>=nColors)
 				j = 0
 			endif
-		endfor 
-		
+		endfor
+
 		//Determine color to use for info box
 		j=0
 		for(i=0;i<nw;i+=1)
@@ -1810,7 +1814,7 @@ Function tdmInfo(mName,OS,OVP,alpha,molName,[corr,tr,cl])
 		String whichOSWave = StringFromList(trCl,osList)
 		Wave ew = $whichEWave
 		Variable trPos = ew[BinarySearch(ew,trE)]
-		
+
 		//Fetch final clustered peaks
 		SetDataFolder $fFolder
 		String clusteredPeaks = WaveList("*spec2",";","")
@@ -1859,11 +1863,11 @@ Function tdmInfo(mName,OS,OVP,alpha,molName,[corr,tr,cl])
 		trMaxLabel = "\rMax OS Transition = "  + num2str(maxOS)// +  " " + num2str(maxOS)
 		clPCClabel = "\r%Diff = " + num2str(pd)
 		String clusterToTag = StringFromList(cl,osList)
-		
+
 		//Stuff for Transition Label
 		if(!ParamIsDefault(cl))
 			Tag/C/W=$pltName/N=text0/S=1/G=(M_colors[row][0],M_colors[row][1],M_colors[row][2])/D=1.25/TL={lineRGB=(M_colors[row][0],M_colors[row][1],M_colors[row][2]),lThick=2} $clusterToTag, 0,"\\K(0,0,0)\\JCCluster " + num2str(cl) + " Info" + cenLabel + camLabel + cwiLabel + cthLabel + cmtLabel + ntcLabel + trMaxLabel + clPCClabel
-			AppendText/N=text0 tenLabel + twiLabel + tosLabel + "\rCluster Tensor:" + tensorLabel	
+			AppendText/N=text0 tenLabel + twiLabel + tosLabel + "\rCluster Tensor:" + tensorLabel
 			Tag/K/W=$pltName/N=text1
 		elseif(!ParamIsDefault(tr))
 			Tag/C/W=$pltName/N=text1/S=1/G=(M_colors[row][0],M_colors[row][1],M_colors[row][2])/D=1.25/TL={lineRGB=(M_colors[row][0],M_colors[row][1],M_colors[row][2]),lThick=2}/TL={lThick=2} $whichOSWave, trPos,"\\JCTransition "+num2str(tr)+" Info\rEn = "+num2str(trE)+" eV W = "+num2str(trW)+" eV\rOS = "+num2str(tros)+" θ = "+num2str(trTh)+"°\rCluster: "+num2str(trCl)+"\rTransition Tensor\rxx ="+num2str(trxx)+"\ryy ="+num2str(tryy)+"\rzz ="+num2str(trzz)
@@ -1890,7 +1894,7 @@ Function tdmInfo(mName,OS,OVP,alpha,molName,[corr,tr,cl])
 				loOS = truncate2(V_min,3);hiOS = truncate2(V_max,3);maxOS = V_maxloc	//Range of oscillator strengths
 				WaveStats/Q wiw
 				loW  = 2.355*V_min;hiW  = 2.355*V_max	//Range of peak widths
-				//Determine PCC 
+				//Determine PCC
 				transInCl = numpnts(enw)
 				for(k=0;k<transInCl;k+=1)
 					dSumPk += osw[k] * gauss(x,enw[k],wiw[k])//sqrt(2*Pi) * wiw[k] * osw[k] * gauss(x,enw[k],wiw[k])
@@ -1907,7 +1911,7 @@ Function tdmInfo(mName,OS,OVP,alpha,molName,[corr,tr,cl])
 				percentDiff[i] = dummypd
 			endif
 		endfor
-		
+
 		//Determine color to use for info box
 		j=0
 		for(i=0;i<nw;i+=1)
@@ -1930,7 +1934,7 @@ Function tdmInfo(mName,OS,OVP,alpha,molName,[corr,tr,cl])
 				j=0
 			endif
 		endfor
-		
+
 		//Find the wave that contains the transition to get info for
 		whichEWave  = StringFromList(trCl,enList)
 		whichOSWave = StringFromList(trCl,osList)
@@ -1945,21 +1949,21 @@ Function tdmInfo(mName,OS,OVP,alpha,molName,[corr,tr,cl])
 		twiLabel = "\rTr Wid Range: " + num2str(loW)  + " - "  + num2str(hiW) + "eV"
 		ntcLabel = "  #Trs: " +  num2str(ntc)
 		tosLabel = "\rTr OS Range: "    + num2str(loOS) + " - " + num2str(hiOS) + "eV"
-		tensorLabel = "\r\n\\JC\rxx= " + num2str(clXX) +"\ryy= "+ num2str(clYY) + "\rzz="+ num2str(clZZ)	
-		trMaxLabel = "\rMax OS Transition = "  + num2str(maxOS) 
+		tensorLabel = "\r\n\\JC\rxx= " + num2str(clXX) +"\ryy= "+ num2str(clYY) + "\rzz="+ num2str(clZZ)
+		trMaxLabel = "\rMax OS Transition = "  + num2str(maxOS)
 		clPCClabel = "\r%Diff = " + num2str(pd)
 		clusterToTag = StringFromList(cl,osList)
 		//Stuff for Transition Label
 		if(!ParamIsDefault(cl))
 			Tag/C/W=$pltName/N=text0/S=1/G=(M_colors[row][0],M_colors[row][1],M_colors[row][2])/D=1.25/TL={lineRGB=(M_colors[row][0],M_colors[row][1],M_colors[row][2]),lThick=2} $clusterToTag, 0,"\\K(0,0,0)\\JCCluster " + num2str(cl) + " Info" + cenLabel + camLabel + cwiLabel + cthLabel + cmtLabel + ntcLabel + trMaxLabel + clPCClabel
-			AppendText/W=$pltName/N=text0 tenLabel + twiLabel + tosLabel + "\rCluster Tensor:" + tensorLabel	
+			AppendText/W=$pltName/N=text0 tenLabel + twiLabel + tosLabel + "\rCluster Tensor:" + tensorLabel
 			Tag/K/W=$pltName/N=text1
 		elseif(!ParamIsDefault(tr))
 			Tag/C/W=$pltName/N=text1/S=1/G=(M_colors[row][0],M_colors[row][1],M_colors[row][2])/D=1.25/TL={lineRGB=(M_colors[row][0],M_colors[row][1],M_colors[row][2]),lThick=2} $whichOSWave, trPos,"\\JCTransition "+num2str(tr)+" Info\rEn = "+num2str(trE)+" eV W = "+num2str(trW)+" eV\rOS = "+num2str(tros)+" θ = "+num2str(trTh)+"°\rCluster: "+num2str(trCl)+"\rTransition Tensor\rxx ="+num2str(trxx)+"\ryy ="+num2str(tryy)+"\rzz ="+num2str(trzz)
 			Tag/K/W=$pltName/N=text0
-		endif 
+		endif
 	endif
-	
+
 	//Plot the summed Peak and the clustered peak along the corresponding PCC
 	DoWindow sumVSCluster
 	if(!V_Flag)
@@ -1974,7 +1978,7 @@ Function tdmInfo(mName,OS,OVP,alpha,molName,[corr,tr,cl])
 		Legend/C/N=text2/J/W=sumVSCluster "\\JCCluster "+num2str(cl)+"\r\\s(dClPk) Clustered Pk\r\\s(dSumPk) Summed Pk\r%Diff = " + num2str(pd)
 		SetAxis/W=sumVSCluster bottom clEn-2*clWi,clEn+2*clWi
 	endif
-	
+
 	DoWindow tdmOSPlot
 	SetDataFolder $iniFolder
 	enn = StringFromList(cl,enList)
@@ -1986,7 +1990,7 @@ Function tdmInfo(mName,OS,OVP,alpha,molName,[corr,tr,cl])
 	if(!V_Flag)
 		Display/N=tdmOSPlot/W=(0,0,400,250)/K=1 osw vs enw
 		//NewFreeAxis/L Theta
-		AppendToGraph/W=tdmOSPlot/R th vs enw 
+		AppendToGraph/W=tdmOSPlot/R th vs enw
 		ModifyGraph/W=tdmOSPlot grid=2,nticks=10,minor=1,fStyle=1
 		Label/W=tdmOSPlot left  "ƒ[A.U.]\U"
 		Label/W=tdmOSPlot right "θ[°]\U"
@@ -2004,8 +2008,8 @@ Function tdmInfo(mName,OS,OVP,alpha,molName,[corr,tr,cl])
 			String cTrace = StringFromList(i,tlist)
 			RemoveFromGraph/W=tdmOSPlot $cTrace
 		endfor
-		AppendToGraph/W=tdmOSPlot osw vs enw 
-		AppendToGraph/W=tdmOSPlot/R th vs enw 
+		AppendToGraph/W=tdmOSPlot osw vs enw
+		AppendToGraph/W=tdmOSPlot/R th vs enw
 		ModifyGraph/W=tdmOSPlot lblPosMode(left)=1,nticks=10,fStyle=1,grid=2,grid(left)=0,grid(bottom)=0,nticks(bottom)=3,fSize=12
 		ModifyGraph/W=tdmOSPlot mode($osn)=1,mode($thn)=3,marker($thn)=19,rgb($thn)=(0,0,0),lsize($osn)=1.5,mirror(bottom)=1
 		SetAxis/W=tdmOSPlot bottom V_min,V_max
@@ -2014,7 +2018,7 @@ Function tdmInfo(mName,OS,OVP,alpha,molName,[corr,tr,cl])
 		Label/W=tdmOSPlot left  "ƒ[A.U.]\U"
 		Label/W=tdmOSPlot right "θ[°]\U"
 		Label/W=tdmOSPlot bottom "Transition Energy [eV]"
-		Legend/W=tdmOSPlot/C/N=text0/J/F=0/D=1.2/A=RC "\\JCCluster "+num2str(cl)+"\r\\s("+osn+") OS\r\\s("+thn+") θ"	
+		Legend/W=tdmOSPlot/C/N=text0/J/F=0/D=1.2/A=RC "\\JCCluster "+num2str(cl)+"\r\\s("+osn+") OS\r\\s("+thn+") θ"
 	endif
 	//Plot the Oscillators Strengths for just that one cluster and TDM Thetas
 	SetDataFolder $baseFolder
@@ -2022,36 +2026,36 @@ End
 
 Function/WAVE makeColorWave(alpha)
 	Variable alpha
-	
+
 	Variable opacity = 65535 * alpha
 	Make/O/N=(9,4) M_colors = 0 //Make color wave
-	M_colors[0][0] = 230; M_colors[0][1] = 25 ; M_colors[0][2] = 75 
-	M_colors[1][0] = 60 ; M_colors[1][1] = 180; M_colors[1][2] = 75 
+	M_colors[0][0] = 230; M_colors[0][1] = 25 ; M_colors[0][2] = 75
+	M_colors[1][0] = 60 ; M_colors[1][1] = 180; M_colors[1][2] = 75
 	M_colors[2][0] = 0  ; M_colors[2][1] = 130; M_colors[2][2] = 200
 	M_colors[3][0] = 145; M_colors[3][1] = 30 ; M_colors[3][2] = 180
 	M_colors[4][0] = 70 ; M_colors[4][1] = 240; M_colors[4][2] = 240
 	M_colors[5][0] = 250; M_colors[5][1] = 190; M_colors[5][2] = 212
 	M_colors[6][0] = 0  ; M_colors[6][1] = 128; M_colors[6][2] = 128
-	M_colors[7][0] = 170; M_colors[7][1] = 110; M_colors[7][2] = 40 
-	M_colors[8][0] = 128; M_colors[8][1] = 0  ; M_colors[8][2] = 0  
-	
+	M_colors[7][0] = 170; M_colors[7][1] = 110; M_colors[7][2] = 40
+	M_colors[8][0] = 128; M_colors[8][1] = 0  ; M_colors[8][2] = 0
+
 	M_colors *= 256
-	
-	M_colors[0][3] = opacity 
-	M_colors[1][3] = opacity 
-	M_colors[2][3] = opacity  
-	M_colors[3][3] = opacity  
-	M_colors[4][3] = opacity  
-	M_colors[5][3] = opacity  
-	M_colors[6][3] = opacity  
-	M_colors[7][3] = opacity  
-	M_colors[8][3] = opacity  
+
+	M_colors[0][3] = opacity
+	M_colors[1][3] = opacity
+	M_colors[2][3] = opacity
+	M_colors[3][3] = opacity
+	M_colors[4][3] = opacity
+	M_colors[5][3] = opacity
+	M_colors[6][3] = opacity
+	M_colors[7][3] = opacity
+	M_colors[8][3] = opacity
 	return M_colors
 End
 
 Function BIC_Panel(OS)
 	Wave OS
-	
+
 	Variable nx = numpnts(OS),i
 	Make/O/N=(nx)/T ost2
 	Make/O/N=(nx) osScale2
@@ -2059,11 +2063,11 @@ Function BIC_Panel(OS)
 		ost2[i] = num2str(OS[i])
 		osScale2[i] = i
 	endfor
-	
+
 	NewPanel/N=BICvsRCS/K=1/W=(0,0,300,250)
 	Slider slider0 vert=0,side=2,limits={0,nx-1,1},pos={38,183},size={235,57},userTicks={osScale2,ost2},proc=BIC_Slider
 	TitleBox SliderName title="OS[%]",pos={129,159}
-	
+
 	//Select BIC wave
 	Button selBICwave                                                  ,pos={142,16} ,size={150,20}
 	MakeButtonIntoWSPopupButton("BICvsRCS", "selBICwave", "notifyBICWaveSelection", options=PopupWS_OptionFloat)
@@ -2075,7 +2079,7 @@ Function BIC_Panel(OS)
 	MakeButtonIntoWSPopupButton("BICvsRCS", "selRCSwave", "notifyRCSWaveSelection", options=PopupWS_OptionFloat)
 	TitleBox selRCSwaveTitle                                           ,pos={36,39} ,size={115,12},title="Select RCS Wave",frame=0//,fColor=(fc1,fc2,fc3)
 	String/G pathtoRCS
-			
+
 	//Select nPeaks wave
 	Button selnPeakswave                                                  ,pos={142,62} ,size={150,20}
 	MakeButtonIntoWSPopupButton("BICvsRCS", "selnPeakswave", "notifynPeaksWaveSelection", options=PopupWS_OptionFloat)
@@ -2087,13 +2091,13 @@ Function BIC_Panel(OS)
 	MakeButtonIntoWSPopupButton("BICvsRCS", "selpDiffwave", "notifypDiffWaveSelection", options=PopupWS_OptionFloat)
 	TitleBox selpDiffwaveTitle                                           ,pos={36,85} ,size={115,12},title="Select pDiff Wave",frame=0//,fColor=(fc1,fc2,fc3)
 	String/G pathtopDiff
-	
+
 	//Select OVP wave
 	Button selOVPwave                                                  ,pos={142,108} ,size={150,20}
 	MakeButtonIntoWSPopupButton("BICvsRCS", "selOVPwave", "notifyOVPWaveSelection", options=PopupWS_OptionFloat)
 	TitleBox selOVPwaveTitle                                           ,pos={36,108} ,size={115,12},title="Select OVP Wave",frame=0//,fColor=(fc1,fc2,fc3)
 	String/G pathtoOVP
-	
+
 	//Select OS wave
 	Button selOSwave                                                  ,pos={142,131} ,size={150,20}
 	MakeButtonIntoWSPopupButton("BICvsRCS", "selOSwave", "notifyOSWaveSelection", options=PopupWS_OptionFloat)
@@ -2175,7 +2179,7 @@ Function notifyOSWaveSelection(event, wavepath, windowName, ctrlName)
 end
 
 function/S GetnPeaksPath()
-   
+
    SVAR pathtonPeaks = root:pathtonPeaks
    if(SVAR_Exists(pathtonPeaks))
 	   	return pathtonPeaks
@@ -2185,7 +2189,7 @@ function/S GetnPeaksPath()
 end
 
 function/S GetpDiffPath()
-   
+
    SVAR pathtopDiff = root:pathtopDiff
    if(SVAR_Exists(pathtopDiff))
 	   	return pathtopDiff
@@ -2195,7 +2199,7 @@ function/S GetpDiffPath()
 end
 
 function/S GetRCSPath()
-   
+
    SVAR pathtoRCS = root:pathtoRCS
    if(SVAR_Exists(pathtoRCS))
 	   	return pathtoRCS
@@ -2205,7 +2209,7 @@ function/S GetRCSPath()
 end
 
 function/S GetBICPath()
-   
+
    SVAR pathtoBIC = root:pathtoBIC
    if(SVAR_Exists(pathtoBIC))
 	   	return pathtoBIC
@@ -2215,7 +2219,7 @@ function/S GetBICPath()
 end
 
 function/S GetOVPPath()
-   
+
    SVAR pathtoOVP = root:pathtoOVP
    if(SVAR_Exists(pathtoOVP))
 	   	return pathtoOVP
@@ -2225,7 +2229,7 @@ function/S GetOVPPath()
 end
 
 function/S GetOSPath()
-   
+
    SVAR pathtoOS = root:pathtoOS
    if(SVAR_Exists(pathtoOS))
 	   	return pathtoOS
@@ -2262,15 +2266,15 @@ Function BIC_Slider(sa) : SliderControl
 End
 
 Function dispBICandRCS(RCS,BIC,nPeaks,pDiff,row,OVP,OS)
-	
+
 	Wave RCS,BIC,nPeaks,pDiff,OVP,OS
 	Variable row
-	
+
 	String name1 = NameOfWave(RCS)
 	String name2 = NameOfWave(BIC)
 	String name3 = NameOfWave(nPeaks)
 	String name4 = NameOfWave(pDiff)
-	
+
 	if(row >= numpnts(OS))
 		Abort "No further data."
 	endif
@@ -2285,7 +2289,7 @@ Function dispBICandRCS(RCS,BIC,nPeaks,pDiff,row,OVP,OS)
 	Variable OSval = OS[row]
 	DoWindow/F BICvsRCSPlot
 	if(!V_Flag)
-		Display/W=(0,0,400,500)/N=BICvsRCSPlot/K=1 
+		Display/W=(0,0,400,500)/N=BICvsRCSPlot/K=1
 		AppendToGraph/W=BICvsRCSPlot RCS[row][*] VS OVP
 		AppendToGraph/R/W=BICvsRCSPlot BIC[row][*] VS OVP
 		ModifyGraph mode=4,marker=19,rgb($name2)=(0,0,0)
@@ -2347,7 +2351,7 @@ end
 
 Function PlottingPanel(OS,OVP)
 	Wave OS,OVP
-	
+
 	Variable nx = numpnts(OS),ny=numpnts(OVP),i
 	Make/O/N=(nx)/T ost2
 	Make/O/N=(ny)/T ovpt2
@@ -2361,7 +2365,7 @@ Function PlottingPanel(OS,OVP)
 		ovpt2[i] = num2str(OVP[i])
 		ovpScale2[i] = i
 	endfor
-	
+
 	NewPanel/N=ClusterResultPlotter/K=1/W=(0,0,850,250)
 	Slider slider0 vert=0,side=2,limits={0,nx-1,1},pos={275,160},size={235,57},userTicks={osScale2,ost2},proc=DFTPlotter_Slider
 	Slider slider1 vert=0,side=2,limits={0,ny-1,1},pos={15,57},size={803,57},userTicks={ovpScale2,ovpt2},proc=DFTPlotter_Slider
@@ -2422,7 +2426,7 @@ End
 Function plotRawDFTvsClusterDFT(osVal,ovpVal,mol)
 	Variable osVal,ovpVal
 	String mol
-	
+
 	String iniFolder = "root:Packages:DFTClustering:PolarAngles_"+mol+":"//GetDataFolder(1)
 	String ampFolder = iniFolder + "TransitionFiltering_" + replaceString(".",num2str(osVal),"p")+"OS_" +replaceString(".",num2str(ovpVal),"p")+"OVP:AmplitudeFitting:ALL:"
 	SetDataFolder $ampFolder
@@ -2443,7 +2447,7 @@ Function plotRawDFTvsClusterDFT(osVal,ovpVal,mol)
 		NewFreeAxis/W=RawDFTvsClusterDFT/L oss
 		NewFreeAxis/W=RawDFTvsClusterDFT/R oss2
 		AppendToGraph/W=RawDFTvsClusterDFT/L=residual res2
-		//Make waves containing the tdm component values within desired energy range 
+		//Make waves containing the tdm component values within desired energy range
 		String aFolder = "TransitionFiltering_"+replaceString(".",num2str(osVal),"p")+"OS_"+replaceString(".",num2str(ovpVal),"p")+"OVP:"//Start folder of current filtering/clustering run
 		String ffFolder = iniFolder + aFolder +"firstFilter:"
 		SetDataFolder $ffFolder
@@ -2457,7 +2461,7 @@ Function plotRawDFTvsClusterDFT(osVal,ovpVal,mol)
 		String osList = WaveList("cOS*"+mol+"",";","")
 		String wiList = WaveList("cWi*"+mol+"",";","")
 		Variable nw = ItemsInList(enList)
-		
+
 		Make/O/N=(nw) osMAX,enMAX
 		//Make the summed peak from all transitions in cluster and append it to the graph
 		for(i=0;i<nw;i+=1)
@@ -2477,7 +2481,7 @@ Function plotRawDFTvsClusterDFT(osVal,ovpVal,mol)
 				dSumPk += osw[k] * gauss(x,enw[k],wiw[k])//sqrt(2*Pi) * wiw[k] * osw[k] * gauss(x,enw[k],wiw[k])
 			endfor
 			AppendToGraph/W=RawDFTvsClusterDFT/L=oss2 osw vs enw
-			AppendToGraph/W=RawDFTvsClusterDFT/L=oss dSumPk,clp 
+			AppendToGraph/W=RawDFTvsClusterDFT/L=oss dSumPk,clp
 			ModifyGraph rgb($osn)=(M_colors[j][0],M_colors[j][1],M_colors[j][2],M_colors[j][3]),mode($osn)=1,offset($osn)={corr,0}
 			ModifyGraph rgb($pkName)=(M_colors[j][0],M_colors[j][1],M_colors[j][2],M_colors[j][3]),mode($pkName)=0,offset($pkName)={corr,0}
 			ModifyGraph rgb($clnNoPath)=(M_colors[j][0],M_colors[j][1],M_colors[j][2],M_colors[j][3]),mode($clnNoPath)=0,lstyle($clnNoPath)=3,offset($clnNoPath)={corr,0}
@@ -2489,7 +2493,7 @@ Function plotRawDFTvsClusterDFT(osVal,ovpVal,mol)
 				j = 0
 			endif
 		endfor
-		
+
 		AppendToGraph/W=RawDFTvsClusterDFT/L=oss2 osMAX vs enMAX
 		ModifyGraph mode(osMAX)=1,rgb(osMAX)=(0,0,0) ,rgb(mergedOriAll)=(3,52428,1)
 		ModifyGraph/W=RawDFTvsClusterDFT axisEnab(oss)={0,0.2},axisEnab(oss2)={0,0.2},axisEnab(left)={0.25,0.75},axisEnab(residual)={0.8,1},freePos(residual)=0, freePos(oss)=0,freePos(oss2)=0,lblPosMode=1
@@ -2515,18 +2519,18 @@ Function plotRawDFTvsClusterDFT(osVal,ovpVal,mol)
 			String cTrace = StringFromList(i,tlist)
 			RemoveFromGraph/W=RawDFTvsClusterDFT $cTrace
 		endfor
-		AppendToGraph/W=RawDFTvsClusterDFT Total_Specf0,fitSpecAll,mergedOriAll vs energy		
+		AppendToGraph/W=RawDFTvsClusterDFT Total_Specf0,fitSpecAll,mergedOriAll vs energy
 		AppendToGraph/W=RawDFTvsClusterDFT/L=residual res2
 		ModifyGraph/W=RawDFTvsClusterDFT lsize=1.5,lstyle(fitSpecAll)=3,rgb(fitSpecAll)=(0,0,0),rgb(res2)=(52428,34958,1),grid=2,mirror=1,nticks=5,minor=1,fStyle=1,lsize(fitSpecAll)= 2.5
 		ModifyGraph/W=RawDFTvsClusterDFT mirror(bottom)=2,rgb(mergedOriAll)=(3,52428,1)
-		ModifyGraph/W=RawDFTvsClusterDFT axisEnab(oss)={0,0.2},axisEnab(oss2)={0,0.2},axisEnab(left)={0.25,0.75},axisEnab(residual)={0.8,1},freePos(residual)=0, freePos(oss)=0,freePos(oss2)=0,lblPosMode=1		
+		ModifyGraph/W=RawDFTvsClusterDFT axisEnab(oss)={0,0.2},axisEnab(oss2)={0,0.2},axisEnab(left)={0.25,0.75},axisEnab(residual)={0.8,1},freePos(residual)=0, freePos(oss)=0,freePos(oss2)=0,lblPosMode=1
 		WaveStats/Q res2
 		SetAxis/W=RawDFTvsClusterDFT residual -1,1
 		Label/W=RawDFTvsClusterDFT residual "Residual[%]\\U"
 		WaveStats/Q OS
 		SetAxis/W=RawDFTvsClusterDFT oss 0,0.2
 		SetAxis/W=RawDFTvsClusterDFT oss2 0,0.05
-		//Make waves containing the tdm component values within desired energy range 
+		//Make waves containing the tdm component values within desired energy range
 		aFolder = "TransitionFiltering_"+replaceString(".",num2str(osVal),"p")+"OS_"+replaceString(".",num2str(ovpVal),"p")+"OVP:"//Start folder of current filtering/clustering run
 		ffFolder = iniFolder + aFolder +"firstFilter:"
 		SetDataFolder $ffFolder
@@ -2572,7 +2576,7 @@ Function plotRawDFTvsClusterDFT(osVal,ovpVal,mol)
 			endif
 		endfor
 		AppendToGraph/W=RawDFTvsClusterDFT/L=oss2 osMAX vs enMAX
-		ModifyGraph mode(osMAX)=1,rgb(osMAX)=(0,0,0) 
+		ModifyGraph mode(osMAX)=1,rgb(osMAX)=(0,0,0)
 		ModifyGraph/W=RawDFTvsClusterDFT lsize=1.5,lstyle(fitSpecAll)=3,rgb(fitSpecAll)=(0,0,0),rgb(res2)=(52428,34958,1),grid=2,mirror=1,nticks=5,minor=1,fStyle=1,lsize(fitSpecAll)= 2.5
 		SetAxis bottom 283,310
 		ModifyGraph lblMargin(residual)=10,lblMargin(oss)=10,lblMargin(oss2)=10,lblMargin(left)=10,lblMargin(bottom)=5
@@ -2584,7 +2588,7 @@ Function plotRawDFTvsClusterDFT(osVal,ovpVal,mol)
 		ModifyGraph nticks(residual)=2,nticks(oss)=2,nticks(oss2)=3,nticks(left)=3
 		Legend/C/N=text0/J/A=RC/X=4.11/Y=20.00/W=RawDFTvsClusterDFT "OS = " + num2str(osVal) + "% OVP=" + num2str(ovpVal) + "%\r\\s(Total_Specf0) DFT\r\\s(fitSpecAll) Refined\r\\s(mergedOriAll) Unrefined\r\\s(res2) Residual\r% Diff = " + num2str(pDiff) +"%\r\\s(osMax) OS"
 	endif
-	
+
 	SetDataFolder $iniFolder
 
 End
@@ -2593,7 +2597,7 @@ Function plotParamChanges(osVal,ovpVal,alpha,mol)
 
 	Variable osVal,ovpVal,alpha
 	String mol
-	
+
 	String iniFolder = "root:Packages:DFTClustering:PolarAngles_"+mol+":"//GetDataFolder(1)
 	String ampFolder = iniFolder + "TransitionFiltering_" + replaceString(".",num2str(osVal),"p")+"OS_" +replaceString(".",num2str(ovpVal),"p")+"OVP:AmplitudeFitting:Alpha_"+ replaceString(".",num2str(alpha),"p")+":TensorMisc:"
 	SetDataFolder $ampFolder
@@ -2602,7 +2606,7 @@ Function plotParamChanges(osVal,ovpVal,alpha,mol)
 	DoWindow ParamChangePlot
 	if(!V_Flag)
 		Display/N=ParamChangePlot/W=(405,0,705,500)/K=1 ampChange
-		NewFreeAxis/L deltaEn 
+		NewFreeAxis/L deltaEn
 		NewFreeAxis/L deltaTh
 		NewFreeAxis/L deltaTDM
 		NewFreeAxis/L widths
@@ -2628,7 +2632,7 @@ Function plotParamChanges(osVal,ovpVal,alpha,mol)
 		SetAxis left -1,1
 		ModifyGraph zero(left)=1,zero(deltaEn)=1,zero(deltaTh)=1,zero(deltaTDM)=1,zeroThick(left)=2,zeroThick(deltaEn)=2,zeroThick(deltaTh)=2,zeroThick(deltaTDM)=2
 		SetAxis widths -1,1
-		Legend/W=ParamChangePlot/C/N=text0/J/A=MC/X=-36.00/Y=16.00 "\\s(fitTDMTheta) DFT\r\\s(iniTDMTheta) EXP"
+		Legend/W=ParamChangePlot/C/N=text0/J/A=MC/X=-36.00/Y=16.00 "\\s(fitTDMTheta) Refined\r\\s(iniTDMTheta) Initial"
 	else
 		DoWindow/F ParamChangePlot
 		String tlist = TraceNameList("ParamChangePlot",";",1)
@@ -2660,9 +2664,9 @@ Function plotParamChanges(osVal,ovpVal,alpha,mol)
 		SetAxis left -1,1
 		ModifyGraph zero(left)=1,zero(deltaEn)=1,zero(deltaTh)=1,zero(deltaTDM)=1,zeroThick(left)=2,zeroThick(deltaEn)=2,zeroThick(deltaTh)=2,zeroThick(deltaTDM)=2
 		SetAxis widths -1,1
-		Legend/W=ParamChangePlot/C/N=text0/J/A=MC/X=-36.00/Y=16.00 "\\s(fitTDMTheta) DFT\r\\s(iniTDMTheta) EXP"
+		Legend/W=ParamChangePlot/C/N=text0/J/A=MC/X=-36.00/Y=16.00 "\\s(fitTDMTheta) Refined\r\\s(iniTDMTheta) Initial"
 	endif
-	
+
 	SetDataFolder $iniFolder
 End
 
@@ -2670,13 +2674,12 @@ Function plotDFTBBvsEXP(thetaList,osVal,ovpVal,alpha,mol)
 
 	String thetaList,mol
 	Variable osVal,ovpVal,alpha
-	
+
 	String iniFolder = "root:Packages:DFTClustering:PolarAngles_"+mol+":"//GetDataFolder(1)
 	String fitFolder = iniFolder + "TransitionFiltering_" + replaceString(".",num2str(osVal),"p")+"OS_" +replaceString(".",num2str(ovpVal),"p")+"OVP:AmplitudeFitting:Alpha_"+ replaceString(".",num2str(alpha),"p")+":TensorMisc:"
-	
+
 	Variable n = ItemsInList(thetaList),i,pDiff,rcsVal,alphaVal
 	SetDataFolder $fitFolder
-	print fitFolder
 	//root:Packages:DFTClustering:PolarAngles_CuPc:TransitionFiltering_0p5OS_86OVP:AmplitudeFitting:Alpha_20:TensorMisc:
 	Wave rcs2,alphaFit
 	WaveStats/Q rcs2
@@ -2691,11 +2694,11 @@ Function plotDFTBBvsEXP(thetaList,osVal,ovpVal,alpha,mol)
 			alphaVal = alphaFit[2]
 		elseif(V_minloc == 3)
 			rcsVal = rcs2[3]
-			alphaVal = alphaFit[3]	
+			alphaVal = alphaFit[3]
 		elseif(V_minloc == 4)
 			rcsVal = rcs2[4]
 			alphaVal = alphaFit[4]
-		elseif(V_minloc == 5)	
+		elseif(V_minloc == 5)
 			rcsVal = rcs2[5]
 			alphaVal = alphaFit[5]
 		endif
@@ -2704,57 +2707,57 @@ Function plotDFTBBvsEXP(thetaList,osVal,ovpVal,alpha,mol)
 	String pks = WaveList("pk*"+num2str(2),";","")
 	Variable npks = ItemsInList(pks)
 	String energies = WaveList("expEnergy*",";",""),enWaveName = StringFromList(0,energies)
-	Wave enWave = $enWaveName 
-	String expNXFS = WaveList("expSpec*",";","")	
+	Wave enWave = $enWaveName
+	String expNXFS = WaveList("expSpec*",";","")
 	String steps = WaveList("dftStep*",";","")
 	Wave step = $StringFromList(0,steps)
 	rcsVal   = roundToSigDig(rcsVal, 3)
 	alphaVal = roundToSigDig(alphaVal, 2)
 	DoWindow ModelvsExpPlot
-	
+
 	String Rlist = "0;1;39321;65535",Glist = "3204;34817;1;43690",Blist = "13107;52428;1;0"
 	DoWindow ModelvsExpPlot
 	if(!V_Flag)
 		Display/N=ModelvsExpPlot/K=1/W=(720,0,1430,500)
 		NewFreeAxis/L residuals
 		NewFreeAxis/L peaks
-		
+
 		for(i=0;i<n;i+=1)
-			Variable r = str2num(StringFromList(i,Rlist))	,g = str2num(StringFromList(i,Glist)),b = str2num(StringFromList(i,Blist))	
+			Variable r = str2num(StringFromList(i,Rlist))	,g = str2num(StringFromList(i,Glist)),b = str2num(StringFromList(i,Blist))
 			SetDataFolder $fitFolder
 			String expName = StringFromList(i,expNXFS)
 			Wave nxfs = $expName
 			AppendToGraph/W=ModelvsExpPlot nxfs vs enWave
-			
+
 			Variable x = numpnts(nxfs)
 			String resName = "res" + num2str(i)
 			Make/O/N=(x) $resName
 			Wave res = $resName
-			
+
 			String fitName = StringFromList(i,fitNXFS)
 			Wave fitW  = $fitName
 			AppendToGraph/W=ModelvsExpPlot fitW vs enWave
 			ModifyGraph lstyle($fitName)=3
-			res =(( nxfs - fitW)/nxfs)*100	
+			res =(( nxfs - fitW)/nxfs)*100
 			//pDiff = calcPercentDiff(nxfs,fitW)
 			ModifyGraph rgb($expName)=(r,g,b),rgb($fitName)=(r,g,b),lsize($expName)=3,lsize($fitName)=3
-			
+
 			AppendToGraph/W=ModelvsExpPlot/L=residuals res vs enWave
 			ModifyGraph rgb($resName)=(r,g,b)
 			//percentDiff[i] = pDiff
 		endfor
-				
+
 		//Append the DFT step edge onto graph
 		AppendToGraph/W=ModelvsExpPlot step vs enWave
 		ModifyGraph lsize($StringFromList(0,steps))=2,rgb($StringFromList(0,steps))=(0,0,0)
-		
-		for(i=0;i<npks;i+=1) 	
+
+		for(i=0;i<npks;i+=1)
 			String pkName = StringFromList(i,pks)
 			Wave pk  = $pkName
 			AppendToGraph/W=ModelvsExpPlot/L=peaks pk
 			ModifyGraph rgb($pkName)=(0,0,0),lsize($pkName)=1.5
 		endfor
-		
+
 		ModifyGraph grid=2,mirror=1,minor=1,fStyle=1,fSize=12,axisEnab(left)={0.2,0.8}
 		ModifyGraph lblPosMode(residuals)=1,axisEnab(residuals)={0.82,1},freePos(residuals)=0
 		ModifyGraph lblPosMode(peaks)=1,axisEnab(peaks)={0,0.18},freePos(peaks)=0,lblPosMode(left)=1
@@ -2775,7 +2778,7 @@ Function plotDFTBBvsEXP(thetaList,osVal,ovpVal,alpha,mol)
 			if(i != (n-1))
 				legendPortion += theta + "° \\s('"+ expSpec +"') \\s('" + dftSpec +"')\r\n"// + num2str(percentDiff[i]) +"\r\n"
 			else
-				legendPortion += theta + "° \\s('"+ expSpec +"') \\s('" + dftSpec +"')"// + num2str(percentDiff[i]) 
+				legendPortion += theta + "° \\s('"+ expSpec +"') \\s('" + dftSpec +"')"// + num2str(percentDiff[i])
 			endif
 		endfor
 		Legend/C/A=RC/N=text0/J/X=1.00/Y=10.00/W=ModelvsExpPlot totalLegend + legendPortion	 + "\r\\JC# of Peaks = "+num2str(npks)+"\rΧ\\S2\\M="+num2str(rcsVal)+"\rα="+num2str(alphaVal)+"°"
@@ -2788,48 +2791,48 @@ Function plotDFTBBvsEXP(thetaList,osVal,ovpVal,alpha,mol)
 			String cTrace = StringFromList(i,tlist)
 			RemoveFromGraph/W=ModelvsExpPlot $cTrace
 		endfor
-		
+
 		for(i=0;i<n;i+=1)
 			r = str2num(StringFromList(i,Rlist))
 			g = str2num(StringFromList(i,Glist))
-			b = str2num(StringFromList(i,Blist))		
+			b = str2num(StringFromList(i,Blist))
 			SetDataFolder $fitFolder
 			expName = StringFromList(i,expNXFS)
 			Wave nxfs = $expName
 			AppendToGraph/W=ModelvsExpPlot nxfs vs enWave
-			
+
 			x = numpnts(nxfs)
 			resName = "res" + num2str(i)
 			Make/O/N=(x) $resName
 			Wave res = $resName
-			
+
 			fitName = StringFromList(i,fitNXFS)
 			Wave fitW  = $fitName
-			res =(( nxfs - fitW)/nxfs)*100	
+			res =(( nxfs - fitW)/nxfs)*100
 			//pDiff = calcPercentDiff(nxfs,fitW)
 			//percentDiff[i] = pDiff
 			AppendToGraph/W=ModelvsExpPlot fitW vs enWave
 			ModifyGraph lstyle($fitName)=3
-			res =(( nxfs - fitW)/nxfs)*100	
+			res =(( nxfs - fitW)/nxfs)*100
 			//pDiff = calcPercentDiff(nxfs,fitW)
 			ModifyGraph rgb($expName)=(r,g,b),rgb($fitName)=(r,g,b),lsize($expName)=3,lsize($fitName)=3
-			
+
 			AppendToGraph/W=ModelvsExpPlot/L=residuals res vs enWave
 			ModifyGraph rgb($resName)=(r,g,b)
 			//percentDiff[i] = pDiff
 		endfor
-		
+
 		//Append the DFT step edge onto graph
 		AppendToGraph/W=ModelvsExpPlot step vs enWave
 		ModifyGraph lsize($StringFromList(0,steps))=2,rgb($StringFromList(0,steps))=(0,0,0)
-		
-		for(i=0;i<npks;i+=1) 	
+
+		for(i=0;i<npks;i+=1)
 			pkName = StringFromList(i,pks)
 			Wave pk  = $pkName
 			AppendToGraph/W=ModelvsExpPlot/L=peaks pk
 			ModifyGraph rgb($pkName)=(0,0,0),lsize($pkName)=1.5
 		endfor
-		
+
 		ModifyGraph grid=2,mirror=1,minor=1,fStyle=1,fSize=12,axisEnab(left)={0.2,0.8}
 		ModifyGraph lblPosMode(residuals)=1,axisEnab(residuals)={0.82,1},freePos(residuals)=0
 		ModifyGraph lblPosMode(peaks)=1,axisEnab(peaks)={0,0.18},freePos(peaks)=0,lblPosMode(left)=1
@@ -2840,7 +2843,7 @@ Function plotDFTBBvsEXP(thetaList,osVal,ovpVal,alpha,mol)
 		SetAxis bottom 283,320
 		SetAxis residuals -20,20
 		SetAxis peaks *,100000
-		
+
 		totalLegend = "θ[°]  EXP  DFT\r"
 		legendPortion = ""
 		whichList = fitNXFS
@@ -2851,7 +2854,7 @@ Function plotDFTBBvsEXP(thetaList,osVal,ovpVal,alpha,mol)
 			if(i != (n-1))
 				legendPortion += theta + "° \\s('"+ expSpec +"') \\s('" + dftSpec +"')\r\n"// + num2str(percentDiff[i]) +"\r\n"
 			else
-				legendPortion += theta + "° \\s('"+ expSpec +"') \\s('" + dftSpec +"')"// + num2str(percentDiff[i]) 
+				legendPortion += theta + "° \\s('"+ expSpec +"') \\s('" + dftSpec +"')"// + num2str(percentDiff[i])
 			endif
 		endfor
 		Legend/C/A=RC/N=text0/J/X=1.00/Y=10.00/W=ModelvsExpPlot totalLegend + legendPortion	 + "\r\\JC# of Peaks = "+num2str(npks)+"\rΧ\\S2\\M="+num2str(rcsVal)+"\rα="+num2str(alphaVal)+"°"
@@ -2865,7 +2868,7 @@ Function overlapVisualizerPanel()
 	SetVariable pk2 vert=0,side=2,limits={0,10000,1},pos={60,50},size={100,18},value=_NUM:0,proc=ovpVisualizerSV
 	TitleBox pk1Name title="Pk1",pos={20,20}
 	TitleBox pk2Name title="Pk2",pos={20,50}
-	
+
 	//Select pWave
 	Button selpWave                                                  ,pos={215,50} ,size={150,20}
 	MakeButtonIntoWSPopupButton("overlapVisualizer", "selpWave", "notifypWaveSelection", options=PopupWS_OptionFloat)
@@ -2886,7 +2889,7 @@ Function notifypWaveSelection(event, wavepath, windowName, ctrlName)
 end
 
 function/S GetpWavePath()
-   
+
    SVAR pathtopWave = root:pathtopWave
    if(SVAR_Exists(pathtopWave))
 	   	return pathtopWave
@@ -2904,12 +2907,12 @@ Function ovpVisualizerSV(sva) : SetVariableControl
 		case 3: // Live update
 			Variable dval = sva.dval
 			String sval = sva.sval
-						
+
 			ControlInfo/W=overlapVisualizer pk1
 			Variable pk1 = V_Value
 			ControlInfo/W=overlapVisualizer pk2
 			Variable pk2 = V_Value
-			
+
 			Wave pWave = $GetpWavePath()
 			Variable mu1  = pWave[pk1][0]  , mu2  = pWave[pk2][0]
 			Variable sd1  = pWave[pk1][2]  , sd2  = pWave[pk2][2]
@@ -2942,10 +2945,10 @@ Function AlphaFitBAScale_Slider(sa) : SliderControl
 			Wave sigFitWave = root:sigFitResults2D
 			Wave piPw       = root:piPW2D
 			Wave sigPw      = root:sigPW2D
-			Wave tw         = root:thetas 
+			Wave tw         = root:thetas
 			Wave etaNEXAFS  = root:ScaledEtaNEXAFS
 			Wave stepWave   = root:STEPWAVE_1
-			
+
 			ControlInfo/W=alphaETAPanel slider0
 			Variable colPi  = V_Value
 			ControlInfo/W=alphaETAPanel slider1
@@ -2963,9 +2966,9 @@ End
 
 Function AlphaETAPlottingPanel(pwPi,pwSigma)
 	Wave pwPi,pwSigma
-	
+
 	Variable nx = DimSize(pwPi,1),ny=DimSize(pwSigma,1),nz=DimSize(pwPi,2),i
-	
+
 	NewPanel/N=alphaETAPanel/K=1/W=(0,0,850,250)
 	//This slider wil cycle through the different energies for the Pi range Alpha Fits
 	Slider slider0 vert=0,side=2,limits={0,nx-1,1},pos={301,35},size={235,57},proc=AlphaFitBAScale_Slider
@@ -2973,19 +2976,19 @@ Function AlphaETAPlottingPanel(pwPi,pwSigma)
 	Slider slider1 vert=0,side=2,limits={0,ny-1,1},pos={25,112},size={803,57},proc=AlphaFitBAScale_Slider
 	//This slider wil cycle through the etas which correspond to a layer on the 3D waves
 	Slider slider2 vert=0,side=2,limits={0,nz-1,1},pos={25,183},size={803,57},proc=AlphaFitBAScale_Slider
-	
+
 	SetVariable etaChange title="etaDel",pos={173,18},size={100,19},value=_NUM:0.001
-	
+
 	TitleBox Slider0Name title="Pi Energy",pos={384,12}
 	TitleBox Slider1Name title="Sigma Energy",pos={376,91}
 	TitleBox Slider2Name title="eta",pos={408,165}
 End
 
 Function dispAlphaETA(piIntWave,piFitWave,piPw,sigIntWave,sigFitWave,sigPw,tw,colPi,colSig,layer,etaNEXAFS,stepWave,etaDel)
-	
+
 	Wave piIntWave,piFitWave,piPw,sigIntWave,sigFitWave,sigPw,tw,etaNEXAFS,stepWave
 	Variable colPi,colSig,layer,etaDel
-	
+
 	Variable currentETA = 1 - layer*etaDel
 	WaveStats/Q/RMD=[0,0][][layer] piPw
 	Variable piAlphaAVG = V_avg
@@ -2994,30 +2997,30 @@ Function dispAlphaETA(piIntWave,piFitWave,piPw,sigIntWave,sigFitWave,sigPw,tw,co
 	Variable avgAlphaDif = abs( sigAlphaAVG - piAlphaAVG)
 	Variable piAlpha = piPw[0][colPi][layer]
 	Variable sigAlpha = sigPw[0][colSig][layer]
-	
-	String name1 = NameOfWave(piIntWave)	
+
+	String name1 = NameOfWave(piIntWave)
 	if(colPi >= DimSize(piIntWave,1))
 		Abort "No further data."
 	endif
-	
-	String name2 = NameOfWave(sigIntWave)	
+
+	String name2 = NameOfWave(sigIntWave)
 	if(colSig >= DimSize(sigIntWave,1))
 		Abort "No further data."
 	endif
-	
+
 	String name3 = NameOfWave(piFitWave)
 	String name4 = NameOfWave(sigFitWave)
 	String name5 = NameOfWave(piPw)
 	String name6 = NameOfWave(sigPw)
-	
+
 	WaveStats/Q/RMD=[][colPi,colPi][layer,layer] piIntWave
 	Variable maxPi = V_max,minPi = V_min
-	
+
 	WaveStats/Q/RMD=[][colSig,colSig][layer,layer] sigIntWave
 	Variable maxSig = V_max,minSig = V_min
 	Variable maxVal = 170E3
 	Variable i,nSpec = numpnts(tw)
-	
+
 	//Make label for eta plots
 	String labelETA = ""
 	for(i=0;i<nSpec;i+=1)
@@ -3028,11 +3031,11 @@ Function dispAlphaETA(piIntWave,piFitWave,piPw,sigIntWave,sigFitWave,sigPw,tw,co
 			labelETA += "\\s(ScaledEtaNEXAFS#" + num2str(i) + ") " + cTheta + "°\r"
 		endif
 	endfor
-	
+
 	//Plot the alpha fits in the Pi Range
 	DoWindow/F PiAlphaETAPlot
 	if(!V_Flag)
-		Display/W=(0,0,400,300)/N=PiAlphaETAPlot/K=1 
+		Display/W=(0,0,400,300)/N=PiAlphaETAPlot/K=1
 		AppendToGraph/W=PiAlphaETAPlot piIntWave[*][colPi][layer],piFitWave[*][colPi][layer] VS tw
 		ModifyGraph mode=4,marker=19,rgb($name1)=(0,0,0),mirror=1,minor(bottom)=1,fStyle=1,mode=4,marker=19
 		SetAxis left 0,maxVal
@@ -3054,11 +3057,11 @@ Function dispAlphaETA(piIntWave,piFitWave,piPw,sigIntWave,sigFitWave,sigPw,tw,co
 		Label/W=PiAlphaETAPlot left "Mass Absorbance [cm\S2\M/g]\U"
 		Legend/C/N=text0/J/S=1/A=MC/W=PiAlphaETAPlot "\\JCπ\r\\JL\\s("+name1+") Exp\r\\s("+name3+") Fit\r\\JCα="+num2str(piAlpha)+"°"
 	endif
-	
+
 	//Plot the alpha fits in the Sigma Range
 	DoWindow/F SigmaAlphaETAPlot
 	if(!V_Flag)
-		Display/W=(0,0,400,300)/N=SigmaAlphaETAPlot/K=1 
+		Display/W=(0,0,400,300)/N=SigmaAlphaETAPlot/K=1
 		AppendToGraph/W=SigmaAlphaETAPlot sigIntWave[*][colSig][layer],sigFitWave[*][colSig][layer] VS tw
 		ModifyGraph mode=4,marker=19,rgb($name2)=(0,0,0),mirror=1,minor(bottom)=1,fStyle=1,mode=4,marker=19
 		SetAxis left 0,maxVal
@@ -3080,14 +3083,14 @@ Function dispAlphaETA(piIntWave,piFitWave,piPw,sigIntWave,sigFitWave,sigPw,tw,co
 		Label/W=SigmaAlphaETAPlot left "Mass Absorbance [cm\S2\M/g]\U"
 		Legend/C/N=text0/J/S=1/A=MC/W=SigmaAlphaETAPlot "\\JCσ\r\\JL\\s("+name2+") Exp\r\\s("+name4+") Fit\r\\JCα="+num2str(sigAlpha)+"°"
 	endif
-	
+
 	//Need a way to plot the AR NEXAFS as a function of eta...
 	DoWindow/F ETA_nexafsPlot
 	String Rlist = "0;1;39321;65535",Glist = "3204;34817;1;43690",Blist = "13107;52428;1;0",wname
 	String eList = WaveList("E_*",";","")
-	Variable nw = ItemsInList(eList) 
+	Variable nw = ItemsInList(eList)
 	if(!V_Flag)
-		Display/W=(0,0,400,300)/N=ETA_nexafsPlot/K=1 
+		Display/W=(0,0,400,300)/N=ETA_nexafsPlot/K=1
 		for(i=0;i<nw;i+=1)
 			Variable r = str2num(StringFromList(i,Rlist))	,g = str2num(StringFromList(i,Glist)),b = str2num(StringFromList(i,Blist))
 			String cEn = StringFromList(i,eList)
