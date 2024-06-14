@@ -33,7 +33,7 @@ $igorProcsFolder = "$folder\Igor Pro $igorVersion User Files\Igor Procedures"
 $userProcsFolder = "$folder\Igor Pro $igorVersion User Files\User Procedures"
 $currentDirectory = Get-Location
 # Link the clusteringPanel to the Igor Procs Folder
-New-Item -ItemType SymbolicLink -Path "$igorProcsFolder\clusteringPanel.ipf" -Value "$currentDirectory\clusteringPanel v1.ipf" -Force
+New-Item -ItemType SymbolicLink -Path "$igorProcsFolder\clusteringPanel v1.ipf" -Value "$currentDirectory\clusteringPanel v1.ipf" -Force
 # Link the clusteringAlgorithm to the Igor Procs Folder
 New-Item -ItemType SymbolicLink -Path "$userProcsFolder\DFT_Clustering" -Value "$currentDirectory\DFT_Clustering" -Force
 # Link the Element Library to the User Procs Folder
