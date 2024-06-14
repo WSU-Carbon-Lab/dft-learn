@@ -790,9 +790,9 @@ Function makeTensor1D(pw)
 		tensorName =  "resonance_" + num2str(j)
 		Wave w = $tensorName
 		w = 0
-		w[0][0] = pw[i+3]; w[0][1] = pw[i+4]; w[0][2] = pw[i+5]
-		w[1][0] = pw[i+4]; w[1][1] = pw[i+6]; w[1][2] = pw[i+7]
-		w[2][0] = pw[i+5]; w[2][1] = pw[i+7]; w[2][2] = pw[i+8] 
+		w[0][0] = pw[i+3]; w[0][1] = pw[i+4]; w[0][2] = pw[i+5]				// xx	xy	xz
+		w[1][0] = pw[i+4]; w[1][1] = pw[i+6]; w[1][2] = pw[i+7]				//	yx	yy	yz
+		w[2][0] = pw[i+5]; w[2][1] = pw[i+7]; w[2][2] = pw[i+8] 			//	zx	zy	zz
 		w = abs(w)
 		j+=1
 	endfor
@@ -885,13 +885,8 @@ Function simDFTfit2(pw,yw,ew,thw,sw) :FitFunc
 		localalpha = pw[i + 9]
 		amp2       = pw[i + 10]
 		
-	//	if(count == 14)
-	//		Debugger
-	//	endif
-	//	count +=1
 		
 		currentTensor = tensor3D[p][q][j]// norm3D[p][q][j]
-		//print atan(currentTensor[2][2]/currentTensor[0][0]) * (180/pi)
 		vector[0] = currentTensor[0][0]
 		vector[1] = currentTensor[2][2]
 		Wave rv = vecOpsWrap(vector,amp2,"Z")
@@ -908,8 +903,9 @@ Function simDFTfit2(pw,yw,ew,thw,sw) :FitFunc
 			pwMolAdj[i+8] = currentTensor[2][2]
 		endif
 		
-		Variable ang2 = atan(0.5*(tensor3D[2][2][j]/tensor3D[0][0][j])) * (180/pi)//atan(0.5*(rv[1]/rv[0])) * (180/pi)
+		Variable ang2 = atan(0.5*(tensor3D[2][2][j]/tensor3D[0][0][j])) * (180/pi)
 		Variable ang3 = atan((0.5*rv[1])/rv[0]) * (180/pi)
+		
 		vecAngle[j] = ang2
 		vecAngle2[j] = ang3
 		currentTensor *= i0 * amp// * currentTensor
@@ -967,9 +963,8 @@ Function simDFTfit2(pw,yw,ew,thw,sw) :FitFunc
 		
 		if(numtype(tempMA[0]) !=0)
 			print "Transition " + num2str(j) + " with a theta value of " + num2str(thetaVal) + " has a problem"
-			//MA[j] = 0
 		else
-			MA[j] = tempMA[0] //abs(tempMA[0])
+			MA[j] = tempMA[0]
 		endif
 		//Make the BB peaks for display
 		String pkName = "pk" + num2str(j) + "_spec" + num2str(cSpec)
@@ -5030,11 +5025,11 @@ Function makeTensorSpecsOCs(pw,yw,ew,thw,sw)
 			pwMolAdj[i+8] = currentTensor[2][2] // zz - symmetric!
 		endif
 		
-		Variable ang2 = atan(0.5*(tensor3D[2][2][j]/tensor3D[0][0][j])) * (180/pi)//atan(0.5*(rv[1]/rv[0])) * (180/pi)
+		Variable ang2 = atan(0.5*(tensor3D[2][2][j]/tensor3D[0][0][j])) * (180/pi)
 		Variable ang3 = atan((0.5*rv[1])/rv[0]) * (180/pi)
 		vecAngle[j] = ang2
 		vecAngle2[j] = ang3
-		currentTensor *= i0 * amp// * currentTensor
+		currentTensor *= i0 * amp
 		Make/O/D/N=(3,3) rotMatAlignX = {{1,0,0},{0,cos(alpha),sin(alpha)},{0,-sin(alpha),cos(alpha)}}
 			
 		//Tilt the tensor by angle alpha
