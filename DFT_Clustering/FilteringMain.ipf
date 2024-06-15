@@ -11,10 +11,10 @@
 #include "makeBareAtomAbsorption"
 #include "alphaModeling"
 
-//Developed by:
-//Victor Manuel Murcia Ruiz, PhD
-//Washington State University 
-//2018
+//Developed by:											Edited/Maintained by:
+//Victor Manuel Murcia Ruiz, PhD						Harlan Heilman 
+//Washington State University 						Washington State University
+//2018														2024
 //**********************************************************************************************************************
 ///Routines used to carry out the filtering and subsequent clustering of NEXAFS transitions calculated via Density Functional Theory calculations
 //using the StoBe software package as well as fitting these transitions to experimental NEXAFS.
@@ -39,6 +39,7 @@
 //of angle resolved NEXAFS. The equation for the electric field is  E = ( sin(theta)*cos(phi), sin(theta)*sin(phi), cos(theta) )
 //
 //The amplitude fitted DFT spectrum then has a step edge superimposed that is made from the bare atom absorption profile made for the molecule being studied 
+
 
 Function filterDFT(atomName,fnum,tval,ovpmax,maxRot,LUMOwave,[broadShift,erange,broad1,broad2,Eini,Efin,d,gRes,buildSym,corrWave,dClusters,realign,thx,thy,thz,rotOrder,modelAlpha,IPwave,expSpecName,expEnergyName,expFolderPath,mol,alpha,i0,phi,fit,rigidShift,stepShift,thetaList,NEXAFStype,startPre,startPost,endPre,endPost,justModel,justFit,anchorStep1,anchorStep2,anchorExp1,anchorExp2,stepWid1,stepWid2,stepE1,stepE2,holdPos,holdWidths,holdAmps,refinement,maskEnergy1,maskEnergy2,pkToRefine,refitPWave,holdTensorElems])
 	

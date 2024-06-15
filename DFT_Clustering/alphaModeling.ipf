@@ -1,8 +1,7 @@
 ﻿#pragma TextEncoding = "UTF-8"
 #pragma rtGlobals=3		// Use modern global access method and strict wave access.
 
-//To Do: Add capability to model/fit a second orientation based on results of initial tensor fit
-Function simDFT(tval,ovpVal,IPwave,mol,alpha,i0,phi,expSpecName,expEnergyName,expFolderPath,fit,rigidShift,thetaList,anchorStep1,anchorStep2,anchorExp1,anchorExp2,stepWid1,stepWid2,stepE1,stepE2,[d,holdAmps,holdWidths,holdPos,NEXAFStype,stepShift,startPre,endPre,startPost,endPost,refine,maskEnergy1,maskEnergy2,pkToRefine,refpw,holdmodTheta, holdAlpha])
+Function simDFT(tval,ovpVal,IPwave,mol,alpha,i0,phi,expSpecName,expEnergyName,expFolderPath,fit,rigidShift,thetaList,anchorStep1,anchorStep2,anchorExp1,anchorExp2,stepWid1,stepWid2,stepE1,stepE2,[d,holdAmps,holdWidths,holdPos,NEXAFStype,stepShift,startPre,endPre,startPost,endPost,refine,maskEnergy1,maskEnergy2,pkToRefine,refpw,holdmodTheta])
 	
 	Variable tval
 	Variable ovpVal
@@ -36,77 +35,77 @@ Function simDFT(tval,ovpVal,IPwave,mol,alpha,i0,phi,expSpecName,expEnergyName,ex
 	Variable pkToRefine
 	Wave refpw
 	Variable holdmodTheta
-	variable holdAlpha;
 	
 	if(ParamIsDefault(holdAmps))
 		holdAmps = 0
 	endif
+	
 	if(ParamIsDefault(holdWidths))
 		holdWidths = 1
 	endif
+	
 	if(ParamIsDefault(holdPos))
 		holdPos = 1
 	endif
+	
 	if(ParamIsDefault(NEXAFStype))
 		NEXAFStype = ""
 	endif
+	
 	if(ParamIsDefault(refine))
 		refine = 0
 	endif
+	
 	if(ParamIsDefault(holdmodTheta))
 		holdmodTheta = 1
-	endif
-	if (ParamIsDefault(holdAlpha))
-		holdAlpha = 1
 	endif
 	
 	Variable openParams = 4 - holdAmps - holdWidths - holdPos - holdmodTheta
 	Variable timerStart = startMSTimer
 	
-	Wave pWave1D, paramNames, allExpSpec, allExpEnergy, allDFTSteps
-	
 	if(!refine)	
-		// 2D Wave constructors
-		//	----------------------------------------------------------
-		Wave pw2d = getParams(tval,ovpVal)		
+		Wave pw2d = getParams(tval,ovpVal)
 		makeTensor(pw2d)	
-		normalizeTensor()		
-		prepSimDFTfit(expSpecName, expEnergyName, mol, IPwave, expFolderPath, anchorStep1, anchorStep2, stepWid1, stepWid2, stepE1, stepE2, stepShift = rigidShift)
+		normalizeTensor()
+		prepSimDFTfit(expSpecName,expEnergyName,mol,IPwave,expFolderPath,anchorStep1,anchorStep2,stepWid1,stepWid2,stepE1,stepE2,stepShift = rigidShift)	
 		make1DparamWave(IPwave,pw2d,alpha,i0,phi,rigidShift = rigidShift)
-		
-		// Result Wave constructors
-		Duplicate/O pWave1D, pwCopy
-		Duplicate/O allExpSpec, res, results1, results2, results3, results4, results5, results6, results, weightWave
-		results = 0
-		res = 0 
-	else
-		Duplicate/O refpw,refitpWave2
 	endif	
 	
-	Variable n = numpnts(allExpSpec), nSpec = ItemsInList(thetaList)
-	Wave valuesPolar = makePolarWave2(thetaList, n)
+	Wave pWave1D,paramNames,allExpSpec,allExpEnergy,allDFTSteps
+	Variable n = numpnts(allExpSpec),nSpec = ItemsInList(thetaList),i
 	
-	Wave pwAlpha = fitAlpha2(maskEnergy1, maskEnergy2, pWave1D, allExpEnergy, allExpSpec, nSpec, thetaList, alpha, i0, tval, ovpval, allDFTSteps)
+	if(!refine)
+		Duplicate/O pWave1D,pwCopy
+	else
+		Duplicate/O refpw,refitpWave2
+	endif
+	
+	Wave valuesPolar = makePolarWave2(thetaList,n)	//Make wave containing theta values
+	Wave pwAlpha = fitAlpha2(maskEnergy1,maskEnergy2,pWave1D,allExpEnergy,allExpSpec,nSpec,thetaList,alpha,i0,tval,ovpval,allDFTSteps)
 	pwAlpha[2] = alpha
-	Wave pwI0 = fitI0(maskEnergy1, maskEnergy2, pwAlpha, allExpEnergy, allExpSpec, valuesPolar, allDFTSteps, nSpec, tval, ovpval)
+	Wave pwI0    = fitI0(maskEnergy1,maskEnergy2,pwAlpha,allExpEnergy,allExpSpec,valuesPolar,allDFTSteps,nSpec,tval,ovpval)//Fit i0
 	
-	Variable nPeaks = (numpnts(pWave1D) - 4 - pWave1D[0])/11, npnts = numpnts(allExpSpec)
+	if(!refine)
+		Duplicate/O allExpSpec,res,results1,results2,results3,results4,results5,results6,results,weightWave
+		results = 0;res = 0 
+	endif
+
+	Variable nPeaks = (numpnts(pWave1D) - 4 - pWave1D[0])/11
 	
+	Variable pks2Fit = nPeaks
 	String H1 = makeHoldString(holdAmps,holdWidths,holdPos,pWave1D,holdModTheta,1,1)
 	Wave eps1 = makeEpsiltonWave(pWave1D,holdAmps,holdWidths,holdPos,holdModTheta,1,1)
 	Wave/T constraint1 = makeConstraintWave(holdAmps,holdWidths,holdPos,nPeaks,pWave1D,holdmodTheta,1,1)
 	
-	variable i
-	for(i = n - 1; i >= 0; i --)
+	//Trim the waves to be fit. Lower energies can be wonky
+	for(i=n-1;i>=0;i-=1)
 		Variable cEn = allExpEnergy[i]
 		if(cEn < 279.9)
 			DeletePoints i,1,allExpEnergy,allExpSpec,allDFTSteps,res,results1,results2,results3,results4,results5,results6,results,weightWave,valuesPolar
 		endif
 	endfor
-	
 	Wave allExpEnergy,allExpSpec,allDFTSteps,res,results1,results2,results3,results4,results,weightWave,valuesPolar
-	
-	//Do the fit or model the data using a set of DFT-BB peaks
+	Variable npnts = numpnts(allExpSpec)
 	
 	print "               ╠═════════════ Refining To NEXAFS ══════════════╣                    "
 	print "               ╟───────────────────┬───────────┬───────────────╢                    "
@@ -114,20 +113,19 @@ Function simDFT(tval,ovpVal,IPwave,mol,alpha,i0,phi,expSpecName,expEnergyName,ex
 	print "               ╟───────────────────┼───────────┼───────────────╢                    "
 	
 	if(StringMatch(fit,"yes"))
-	
+
 		weightWave = 0.0622831*allExpSpec
 		Variable V_FitTol = 0.00001,V_FitError = 0
-		
 		if(refine)
-			fitSinglePeak(refpw,pkToRefine,holdPos,holdWidths,holdAmps,holdmodTheta,tval,ovpVal,alpha,mol)//adjust hold alpha
+			fitSinglePeak(refpw,pkToRefine,holdPos,holdWidths,holdAmps,holdmodTheta,tval,ovpVal,alpha,mol)
 			String newpwName = "refine_pwCopy_pk" + num2str(pkToRefine)
 			Wave refitpWave = $newpwName
 			Abort
-		else
-			Make/O/N=6 rcs2, alphaFit, idFit, gf2, cs2
-			idFit[0] = 0; idFit[1] = 1; idFit[2] = 2; idFit[3] = 3;idFit[4] = 4;idFit[5] = 5
 			
-			//Fit1 --> Open amp 
+		else
+			// Refine Amp
+			// -----------------------------------------------------------------------
+			
 			Duplicate/O pwI0, pwFit1
 			Make/O/N=6 rcs2,alphaFit,idFit,gf2,cs2
 			idFit[0] = 0;idFit[1] = 1;idFit[2] = 2;idFit[3] = 3;idFit[4] = 4;idFit[5] = 5
@@ -149,21 +147,23 @@ Function simDFT(tval,ovpVal,IPwave,mol,alpha,i0,phi,expSpecName,expEnergyName,ex
 			cs2[0] = V_chisq
 			Wave M_Covar,W_Sigma,pwMolAdj
 			
-			//Fit2 --> Open amp and modTheta
+			// Refine Amp & Theta 
+			// -----------------------------------------------------------------------
+
 			Duplicate/O pwFit1, pwFit2
 			H1 = makeHoldString(0,1,1,pwFit2,0,1,2)
 			Wave eps2 = makeEpsiltonWave(pwFit2,0,1,1,0,1,2)
 			Wave/T constraint2 = makeConstraintWave(0,1,1,nPeaks,pwFit2,0,1,2)
-			V_FitTol = 0.00001;V_FitError = 0
+			V_FitTol = 0.00001;V_FitError = 0//;V_FitMaxIters=100
 			FuncFit/Q/H=H1/M=2 simDFTfit2,pwFit2, allExpSpec /X={allExpEnergy,valuesPolar,allDFTSteps} /R=res /E=eps2  /D=results2 /I=1 /W=weightWave
-			if(V_FitError)
+			if(V_FitError)//If something in the fit fails, set V_chiSq to NaN for error handling
 				V_chiSq = NaN
 			endif
 			NVAR redchiSqExpCl = root:redchiSqExpCl
 			NVAR chiSqExpCl = root:chiSqExpCl
 			chiSqExpCl = V_chisq
 			redchiSqExpCl = calcRedChiSq(allExpSpec,V_Chisq,nPeaks,3,0)
-			
+						
 			printf "               ║      AMP/θ        │  %07.1f  │     %05.3f     ║                    \r", V_chisq, redchiSqExpCl
 			print "               ╟───────────────────┼───────────┼───────────────╢                    "
 			
@@ -171,21 +171,23 @@ Function simDFT(tval,ovpVal,IPwave,mol,alpha,i0,phi,expSpecName,expEnergyName,ex
 			alphaFit[1] = pwFit2[2]
 			cs2[1] = V_chisq
 			
-			//Fit3 --> Open amp,position and modTheta
+			// Refine Amp, Theta & Energy
+			// -----------------------------------------------------------------------
+			
 			Duplicate/O pwFit2, pwFit3
 			H1 = makeHoldString(0,1,0,pwFit3,0,1,3)
 			Wave eps3 = makeEpsiltonWave(pwFit3,0,1,0,0,1,3)
 			Wave/T constraint3 = makeConstraintWave(0,1,0,nPeaks,pwFit3,0,1,3)
-			V_FitTol = 0.00001;V_FitError = 0
+			V_FitTol = 0.00001;V_FitError = 0//;V_FitMaxIters=100
 			FuncFit/Q/H=H1/M=2 simDFTfit2,pwFit3, allExpSpec /X={allExpEnergy,valuesPolar,allDFTSteps} /R=res /E=eps3  /D=results3 /I=1 /W=weightWave
-			if(V_FitError)
+			if(V_FitError)//If something in the fit fails, set V_chiSq to NaN for error handling
 				V_chiSq = NaN
 			endif
 			NVAR redchiSqExpCl = root:redchiSqExpCl
 			NVAR chiSqExpCl = root:chiSqExpCl
 			chiSqExpCl = V_chisq
 			redchiSqExpCl = calcRedChiSq(allExpSpec,V_Chisq,nPeaks,3,0)
-			
+						
 			printf "               ║     AMP/θ/POS     │  %07.1f  │     %05.3f     ║                    \r", V_chisq, redchiSqExpCl
 			print "               ╟───────────────────┼───────────┼───────────────╢                    "
 			
@@ -193,21 +195,23 @@ Function simDFT(tval,ovpVal,IPwave,mol,alpha,i0,phi,expSpecName,expEnergyName,ex
 			alphaFit[2] = pwFit3[2]
 			cs2[2] = V_chisq
 			
-			//Fit4 --> Open position,width, amp and modTheta
+			// Refine All 
+			// -----------------------------------------------------------------------
+			
 			Duplicate/O pwFit3, pwFit4
 			H1 = makeHoldString(0,0,0,pwFit4,0,1,4)
 			Wave eps4 = makeEpsiltonWave(pwFit4,0,0,0,0,1,4)
 			Wave/T constraint4 = makeConstraintWave(0,0,0,nPeaks,pwFit4,0,1,4)
-			V_FitTol = 0.00001;V_FitError = 0
+			V_FitTol = 0.00001;V_FitError = 0//;V_FitMaxIters=100
 			FuncFit/Q/H=H1/M=2 simDFTfit2,pwFit4, allExpSpec /X={allExpEnergy,valuesPolar,allDFTSteps} /R=res /E=eps4 /D=results4 /I=1 /W=weightWave
-			if(V_FitError)
+			if(V_FitError)//If something in the fit fails, set V_chiSq to NaN for error handling
 				V_chiSq = NaN
 			endif
 			NVAR redchiSqExpCl = root:redchiSqExpCl
 			NVAR chiSqExpCl = root:chiSqExpCl
 			chiSqExpCl = V_chisq
 			redchiSqExpCl = calcRedChiSq(allExpSpec,V_Chisq,nPeaks,4,0)
-			
+						
 			printf "               ║       ALL         │  %07.1f  │     %05.3f     ║                    \r", V_chisq, redchiSqExpCl
 			print "               ╟───────────────────┼───────────┼───────────────╢                    "
 			
@@ -215,21 +219,23 @@ Function simDFT(tval,ovpVal,IPwave,mol,alpha,i0,phi,expSpecName,expEnergyName,ex
 			alphaFit[3] = pwFit4[2]
 			cs2[3] = V_chisq
 			
-			//Fit 5 --> Open everything
+			// Refine All 
+			// -----------------------------------------------------------------------
+			
 			Duplicate/O pwFit4, pwFit5
 			H1 = makeHoldString(0,0,0,pwFit5,0,0,5)
 			Wave eps5 = makeEpsiltonWave(pwFit5,0,0,0,0,0,5)
 			Wave/T constraint5 = makeConstraintWave(0,0,0,nPeaks,pwFit5,0,0,5)
-			V_FitTol = 0.00001;V_FitError = 0
+			V_FitTol = 0.00001;V_FitError = 0//;V_FitMaxIters=100
 			FuncFit/Q/H=H1/M=2 simDFTfit2,pwFit5, allExpSpec /X={allExpEnergy,valuesPolar,allDFTSteps} /R=res /E=eps5  /D=results5 /I=1 /W=weightWave
-			if(V_FitError)
+			if(V_FitError)//If something in the fit fails, set V_chiSq to NaN for error handling
 				V_chiSq = NaN
 			endif
 			NVAR redchiSqExpCl = root:redchiSqExpCl
 			NVAR chiSqExpCl = root:chiSqExpCl
 			chiSqExpCl = V_chisq
 			redchiSqExpCl = calcRedChiSq(allExpSpec,V_Chisq,nPeaks,5,1)
-			
+						
 			printf "               ║       ALL         │  %07.1f  │     %05.3f     ║                    \r", V_chisq, redchiSqExpCl
 			print "               ╟───────────────────┼───────────┼───────────────╢                    "
 			
@@ -237,7 +243,9 @@ Function simDFT(tval,ovpVal,IPwave,mol,alpha,i0,phi,expSpecName,expEnergyName,ex
 			alphaFit[4] = pwFit5[2]
 			cs2[4] = V_chisq
 			
-			//Fit 6 --> Refit everything with all stuff open using results from last fit. The results from Fit 5 should theoretically be the best. Final refinement.
+			// Refine All 
+			// -----------------------------------------------------------------------
+			
 			WaveStats/R=[0,4]/Q rcs2
 			if(V_minloc == 0)
 				Duplicate/O pwFit1,pwFit6
@@ -314,7 +322,6 @@ Function simDFT(tval,ovpVal,IPwave,mol,alpha,i0,phi,expSpecName,expEnergyName,ex
 				redchiSqExpCl = rcs2[5]
 				chiSqExpCl = cs2[5]		
 			endif
-			
 			//Calculate Goodness of Fit (GF) parameter for subsequent BIC analysis
 			NVAR GFExpCl = root:GFExpCl
 			GFExpCl = 0
@@ -324,8 +331,7 @@ Function simDFT(tval,ovpVal,IPwave,mol,alpha,i0,phi,expSpecName,expEnergyName,ex
 				den = allExpSpec[i]^2
 				GFExpCl += num/den
 			endfor
-
-			//End of fitting
+			
 			Wave M_Covar,W_Sigma,pwMolAdj
 		endif
 		Variable V_FitQuitReason
@@ -364,57 +370,17 @@ Function simDFT(tval,ovpVal,IPwave,mol,alpha,i0,phi,expSpecName,expEnergyName,ex
 		organizeTensorWaves(refitpWave[2],fit)
 	endif
 	Variable stopTimer = stopMSTimer(timerStart)/1000000
+		
 End
 
-Function/WAVE scaleExptoDFTStep(allExpEnergy,stepSum,anchorStep1,anchorStep2,mol,expSpecName,method)
+Function stepWrapper(allExpEnergy,anchorStep1,anchorStep2,mol,expSpecName,expEnergyName,IPcorr,stepWid1,stepWid2,stepE1,stepE2,nSpec)
+
+	Wave allExpEnergy,IPcorr
+	Variable anchorStep1,anchorStep2,stepWid1,stepWid2,stepE1,stepE2,nSpec
+	String mol,expSpecName,expEnergyName
 	
-	Wave allExpEnergy,stepSum
-	Variable anchorStep1,anchorStep2,method
-	String mol,expSpecName
-	
-	Variable tol = 1e-3,expScale
-	//Make the concatenated NEXAFS wave
-	Wave allExpSpec = makeLongSpecWave(expSpecName)
-	
-	//Find the bare atom waves
-	Wave mu_energy = findBAenergy()
-	Wave mu = findBAMA(mol)
-	WaveStats/Q stepSum
-	
-	Duplicate/O allExpSpec,allExpSpec2
-	//Find the experimental energies used for scaling   
-	Variable expLo = findWaveValAtEergy(allExpEnergy,allExpSpec,anchorStep1)
-	Variable expHi = findWaveValAtEergy(allExpEnergy,allExpSpec,anchorStep2)
-	
-	//Find the bare atom energies used for scaling   
-	Variable bareStepLo = findWaveValAtEergy(mu_energy,mu,anchorStep1)
-	Variable bareStepHi = findWaveValAtEergy(mu_energy,mu,anchorStep2)
-	
-	//Choose 1-Point vs 2-Point Scaling
-	if(method == 1)
-		expScale = expLo/bareStepLo //Try anchoring at just preedge
-		print expLo,bareStepLo,expScale
-	elseif(method == 2)
-		expScale = (expHi-expLo) / (bareStepHi-bareStepLo)//Anchor at post and preedge	
-	endif
-	Variable eta = 1
-	allExpSpec2 = allExpSpec / (expScale*eta)
-	Variable expLo_2 = findWaveValAtEergy(allExpEnergy,allExpSpec2,anchorStep1)
-	Variable dif = expLo_2 - bareStepLo
-	if(abs(dif) <= tol) 
-		print dif//This  should be zero!
-	else
-		print "Difference between experiment and step is larger than tolerance. Check."
-		if(expLo_2 > bareStepLo)
-			allExpSpec2 -= abs(dif)
-		elseif(expLo_2 < bareStepLo)
-			allExpSpec2 += abs(dif)
-		endif
-		expLo_2 = findWaveValAtEergy(allExpEnergy,allExpSpec2,anchorStep1)
-		dif = expLo_2 - bareStepLo
-		print dif
-	endif
-	return allExpSpec2
+	Variable pntsPerSpec = numpnts(allExpEnergy)/nSpec
+	WAVE allDFTSteps = makeStep(IPcorr,pntsPerSpec,stepWid1,stepWid2,stepE1,stepE2,mol,expSpecName,expEnergyName)
 End
 
 Function/WAVE scaleDFTStepToBareAtom(allExpEnergy,stepSum,anchorStep1,anchorStep2,mol,method)
@@ -422,7 +388,7 @@ Function/WAVE scaleDFTStepToBareAtom(allExpEnergy,stepSum,anchorStep1,anchorStep
 	Variable anchorStep1,anchorStep2,method
 	String mol
 	
-	Variable tol = 1e-3,scaleDFTstepToBAMA
+	Variable tol = 1e-3, scaleDFTstepToBAMA
 	
 	//Find the bare atom waves
 	Wave mu_energy = findBAenergy()
@@ -434,8 +400,8 @@ Function/WAVE scaleDFTStepToBareAtom(allExpEnergy,stepSum,anchorStep1,anchorStep
 	Variable bareStepLo = findWaveValAtEergy(mu_energy,mu,anchorStep1)
 	Variable bareStepHi = findWaveValAtEergy(mu_energy,mu,anchorStep2)
 	//Find the dft energies used for scaling 
-	Variable dftStepLo = findWaveValAtEergy(allExpEnergy,stepSum,anchorStep1)//stepSum[0]
-	Variable dftStepHi = findWaveValAtEergy(allExpEnergy,stepSum,anchorStep2)//stepSum[pntsPerSpec-1] 
+	Variable dftStepLo = findWaveValAtEergy(allExpEnergy,stepSum,anchorStep1)
+	Variable dftStepHi = findWaveValAtEergy(allExpEnergy,stepSum,anchorStep2)
 	
 	if(method == 1)
 		scaleDFTstepToBAMA = bareStepLo / dftStepLo
@@ -447,7 +413,6 @@ Function/WAVE scaleDFTStepToBareAtom(allExpEnergy,stepSum,anchorStep1,anchorStep
 	Variable dftStepLo_2 = findWaveValAtEergy(allExpEnergy,stepSum2,anchorStep1)
 	Variable dif = dftStepLo_2 - bareStepLo
 	if(abs(dif) > tol) 
-		print "Difference between dft step and bare atom step is larger than tolerance. Check."
 		if(dif > 0)
 			stepSum2 -= dif
 		elseif(dif < 0)
@@ -667,12 +632,10 @@ Function prepSimDFTfit(expSpecName,expEnergyName,mol,IPwave,expFolderPath,anchor
 	Variable method = 2
 	Variable alpha1 = 24,alpha2=16,i0=65000,eta=1,etaDel=0.001,etaFin=0.5
 	String tl = "40;55;70;90"
+	
 	Wave stepSum2 = scaleDFTStepToBareAtom(allExpEnergy,allDFTSteps,anchorStep1,anchorStep2,mol,method)
-	//Normalize the experimental NEXAFS to bare atom absorption
-	//Wave allExpSpec = scaleExptoDFTStep(allExpEnergy,stepSum2,anchorStep1,anchorStep2,mol,expSpecName,method) //**Use this one***
 	Wave allExpSpec = scaleExptoDFTStep2(stepSum2,anchorStep1,anchorStep2,284.4,286.4,293.9,308,mol,method,nSpec,tl,alpha1,alpha2,i0,expSpecName,expEnergyName,eta,etadel,etaFin)
-	//Wave allExpSpec = scaleExpToDFTStep2(allExpEnergy,allDFTSteps2,anchorStep1,anchorStep2,mol,expSpecName,nSpec,pntsPerSpec)
-	//Get ready to make the bare atom absorption waves set in appropriate energy range and then concatenate
+	
 	String newNameallExpSpec = currentFolder + "allExpSpec"
 	String newNameallExpEnergy = currentFolder + "allExpEnergy"
 	String newNameallDFTSteps = currentFolder + "allDFTSteps"
@@ -5144,18 +5107,6 @@ Function makeTensorSpecsOCs(pw,yw,ew,thw,sw)
 	MAtoF2(NXFS_ZZ2,en2,1.6,"ZnPc")
 	MAtoF2(NXFS_ZZ3,en3,1.6,"ZnPc")
 	MAtoF2(NXFS_ZZ4,en4,1.6,"ZnPc")
-//	MAtoF2(NXFS_XY1,en2,1.6,"ZnPc")
-//	MAtoF2(NXFS_XY2,en2,1.6,"ZnPc")
-//	MAtoF2(NXFS_XY3,en3,1.6,"ZnPc")
-//	MAtoF2(NXFS_XY4,en4,1.6,"ZnPc")
-//	MAtoF2(NXFS_XZ1,en2,1.6,"ZnPc")
-//	MAtoF2(NXFS_XZ2,en2,1.6,"ZnPc")
-//	MAtoF2(NXFS_XZ3,en3,1.6,"ZnPc")
-//	MAtoF2(NXFS_XZ4,en4,1.6,"ZnPc")
-//	MAtoF2(NXFS_YZ1,en2,1.6,"ZnPc")
-//	MAtoF2(NXFS_YZ2,en2,1.6,"ZnPc")
-//	MAtoF2(NXFS_YZ3,en3,1.6,"ZnPc")
-//	MAtoF2(NXFS_YZ4,en4,1.6,"ZnPc")
 End
 
 Function i0CostFunction()
@@ -5205,21 +5156,21 @@ End
 
 Function/WAVE scaleExptoDFTStep2(stepSum,anchor1,anchor2,pi1,pi2,sig1,sig2,mol,method,nSpec,tl,alpha1,alpha2,i0,expSpecName,expEnName,eta,etadel,etaFin)
 	
-	Wave stepSum	//Concatenated wave containing the step edge built from DFT
-	Variable anchor1,anchor2//Energies for experimental data used for scaling
-	Variable pi1,pi2//Energies that define pi range
-	Variable sig1,sig2//Energies that define sigma range
-	Variable method//Use 1 point or 2 point scaling for spectra
-	Variable nSpec//How many different experimental spectra are we fitting (i.e. how many different sample alignments) 
-	Variable alpha1,alpha2//Initial alpha guess for pi and sigma range respectively
-	Variable i0//Scale factor for alpha fits
-	Variable eta//This parameter controls how the scaling factor will be adjusted for experiment to step will be changed. Smaller value wil increase exp intensity, larger value will decrease exp intensity. Set to 1 for default.
-	Variable etadel//By how much should eta be decreased each iteration?
-	Variable etaFin//What should be the stopping value for eta? Should be greater than 0.
-	String mol//Name of the molecule. Used to look up bare atom absorption wave in NXA folder
-	String tl//Semi colon separated list containing the theta values for each spectrum
-	String expSpecName//Base name of experimental spectra waves (i.e. if spectra set are named SP1,SP2,SP3 --> expSpecName is "SP"
-	String expEnName//Base name for experimental energy waves. Same instruction as expSpecName
+	Wave stepSum					//Concatenated wave containing the step edge built from DFT
+	Variable anchor1,anchor2	//Energies for experimental data used for scaling
+	Variable pi1,pi2				//Energies that define pi range
+	Variable sig1,sig2			//Energies that define sigma range
+	Variable method				//Use 1 point or 2 point scaling for spectra
+	Variable nSpec				//How many different experimental spectra are we fitting (i.e. how many different sample alignments) 
+	Variable alpha1,alpha2		//Initial alpha guess for pi and sigma range respectively
+	Variable i0					//Scale factor for alpha fits
+	Variable eta					//This parameter controls how the scaling factor will be adjusted for experiment to step will be changed. Smaller value wil increase exp intensity, larger value will decrease exp intensity. Set to 1 for default.
+	Variable etadel				//By how much should eta be decreased each iteration?
+	Variable etaFin				//What should be the stopping value for eta? Should be greater than 0.
+	String mol					//Name of the molecule. Used to look up bare atom absorption wave in NXA folder
+	String tl						//Semi colon separated list containing the theta values for each spectrum
+	String expSpecName			//Base name of experimental spectra waves (i.e. if spectra set are named SP1,SP2,SP3 --> expSpecName is "SP"
+	String expEnName				//Base name for experimental energy waves. Same instruction as expSpecName
 	
 	//Ensure that there is at least one layer for the 3D waves
 	Variable etaDim = abs((eta - etaFin)/etaDel)
@@ -5289,17 +5240,21 @@ Function/WAVE scaleExptoDFTStep2(stepSum,anchor1,anchor2,pi1,pi2,sig1,sig2,mol,m
 		allExpSpec2 = allExpSpec / (eta *expScale)
 		Variable expLo_2 = findWaveValAtEergy(allExpEnergy,allExpSpec2,anchor1)
 		Variable dif = expLo_2 - bareStepLo
-		if(abs(dif) >tol) 
+		
+		if(abs(dif) > tol) 
 			//print "Difference between experiment and step is larger than tolerance. Check."
-			if(expLo_2 > bareStepLo)
+			if(dif > 0)
 				allExpSpec2 -= dif
-			elseif(expLo_2 < bareStepLo)
+			elseif(dif < 0)
 				allExpSpec2 += dif
 			endif
 			expLo_2 = findWaveValAtEergy(allExpEnergy,allExpSpec2,anchor1)
-			dif = expLo_2 - bareStepLo
+			if ((expLo_2 - bareStepLo) > tol)
+				Debugger
+			endif
 			//print dif
 		endif
+		
 		//-----------------------------------------------------------------------------------------
 		if(eta==1)
 			break
