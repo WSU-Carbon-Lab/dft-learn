@@ -691,7 +691,7 @@ def makeXASrun(mname,aname,nAtoms,title):
 		f = open(str(aname)+str(i)+"xas.run","w+",newline="\n")
 
 		f.write("#!/bin/csh -f\n")
-		f.write("ln -s ${STOBE}" + mname + "/" + aname +str(i) + "/" + aname +str(i) + ".xas fort.1\n")
+		f.write("ln -s ${PWD}" + f"/{aname}{i}.xas fort.1\n")
 		f.write("cat >" + aname + str(i)+"xas.inp<</.\n")
 		f.write("title\n")
 		f.write(title + " XAS \n")
