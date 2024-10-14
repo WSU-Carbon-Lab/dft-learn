@@ -5,6 +5,21 @@ This program takes the output of DFT calculations carried out in the the computa
   <img src="images/ovps.png" />
 </p>
 
+# Build Requirements
+> [!NOTE]  
+> This software is developed to be used by the [STOBE](https://www.fhi.mpg.de/1022673/StoBe) dft calculation platform. Calculations must be compleated using STOBE. 
+
+The python helper functions used to require a STOBE to be installed in a particular method. This has been changed. Now the python helpers look for the following environment variable.
+```bash
+STOBE='\path\to\stobe\root\`
+```
+And they require the followign binaries to be in a bin accessable by the current user. 
+```bash
+StoBe.x
+xrayspec.x
+```
+These must be set, or StoBe will fail to instantiate the calculator. 
+
 # Install Instructions
 On Windows, download the latest release from the releases tab. Unzip the file and run the installer. The installer will install the necessary files in the appropriate directories.
 
