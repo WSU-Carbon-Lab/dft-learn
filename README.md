@@ -6,19 +6,19 @@ This program takes the output of DFT calculations carried out in the the computa
 </p>
 
 # Build Requirements
-> [!NOTE]  
-> This software is developed to be used by the [STOBE](https://www.fhi.mpg.de/1022673/StoBe) dft calculation platform. Calculations must be compleated using STOBE. 
+> [!NOTE]
+> This software is developed to be used by the [STOBE](https://www.fhi.mpg.de/1022673/StoBe) dft calculation platform. Calculations must be compleated using STOBE.
 
 The python helper functions used to require a STOBE to be installed in a particular method. This has been changed. Now the python helpers look for the following environment variable.
 ```bash
 STOBE='\path\to\stobe\root\`
 ```
-And they require the followign binaries to be in a bin accessable by the current user. 
+And they require the followign binaries to be in a bin accessable by the current user.
 ```bash
 StoBe.x
 xrayspec.x
 ```
-These must be set, or StoBe will fail to instantiate the calculator. 
+These must be set, or StoBe will fail to instantiate the calculator.
 
 # Install Instructions
 On Windows, download the latest release from the releases tab. Unzip the file and run the installer. The installer will install the necessary files in the appropriate directories.
@@ -33,19 +33,19 @@ The algorithm works by defining the following parameters:
 These peak overlaps can then be subsequently used to generate a more compact set of peaks (i.e. transition clusters) that are representative of all the transitions initially calculated by the TP-DFT. The transition clusters are then combined with angle-resolved NEXAFS measurements in order to generate a quantitatively accurate optical model derived from first principle calculations.
 
 <p align="center">
-  <img src="images/znpc bb fits for xrr both.png" width="300" height="500">
+  <img src="docs/images/znpc bb fits for xrr both.png" width="300" height="500">
 </p>
 
 Finally, the transition clusters that comprise the optical model can be used to identify the chemical, energetic and orientational character of the various NEXAFS features in addition to allow these NEXAFS features to be associated with specific MOs calculated from the TP-DFT.
 
 <p align="center">
-  <img src="images/dft bb to mo cl8.png"  width="500" height="500">
+  <img src="docs/images/dft bb to mo cl8.png"  width="500" height="500">
 </p>
 
 The code runs on IGOR 8, however a Python implementation may be developed in the future. Also, the code takes StoBe output files as input, however, as long as the computational platform provides transition energies, transition intensities and the components of the transition dipole moment, then the loading function can be modified to accomodate other platforms.
 
 <p align="center">
-  <img src="images/gui.png" />
+  <img src="docs/images/gui.png" />
 </p>
 
 The accompanying python files are there to:
