@@ -1,202 +1,27 @@
-"""
-StoBe Output File IO
-"""
-
 import re
+from datetime import datetime
 from pathlib import Path
+from typing import Any
+
 import polars as pl
-import os
-import numpy as np
-from typing import Any, Dict, List, Optional, Tuple, Union
+import xarray as xr
 
-# Conversion from Hartree to eV
-HARTREE_TO_EV = 27.2114
-
-def atomic_coords(line: str) -> (None | dict[str, Any]):
-    """
-    Parses a line containing atomic coordinates.
-
-    Args:
-        line (str): A line from the geometry section.
-
-    Returns:
-        tuple[str, float, float, float]: Tuple containing atom type and coordinates (x, y, z).
-    """
-    if "Atom" in line and "x" in line:
-        return None
-    if "---" in line:
-        return None
-    # Check for the end of the geometry section
-    if line.strip() == "":
-        return None
-    parts = line.strip().split()
-    if len(parts) >= 11:
-        # Extract the fields based on position
-        atom_data = {
-            "atom": parts[1],
-            "x": float(parts[2]),
-            "y": float(parts[3]),
-            "z": float(parts[4]),
-            "q": float(parts[5]),
-            "nuc": int(parts[6]),
-            "mass": float(parts[7]),
-            # Handle neq which might contain a slash and space (e.g. "1/ 1")
-            "neq": "".join(parts[8:10]),
-            "grid": int(parts[10]),
-            "grp": int(parts[11])
-        }
-        return atom_data
-    return None
-
-def parse_stobe_output(file_path: str) -> Dict[str, Any]:
-    """
-    Parse a StoBe output file to extract geometry and basis set information.
-
-    Args:
-        file_path (str): Path to the StoBe .out file
-
-    Returns:
-        dict: Dictionary containing parsed data including geometry and basis sets
-    """
-    with open(file_path, 'r') as file:
-        content = file.readlines()
-
-    # Check if this is a ground state calculation
-    is_ground_state = "GND" in Path(file_path).name.upper()
-
-    result = {
-        "is_ground_state": is_ground_state,
-        "geometry": [],
-        "auxiliary_basis": {},
-        "orbital_basis": {},
-        "model_potentials": {}
-    }
-
-    # Parse geometry section - first try with main GEOMETRY section
-    geometry_section = extract_section(
-        content,
-        start_pattern=r"^\s*GEOMETRY\s*$",
-        end_pattern=r"Smallest atom distance"  # Stop at smallest atom distance marker
-    )
-
-    # If not found, try the alternate format
-    if not geometry_section:
-        geometry_section = extract_section(
-            content,
-            start_pattern="Single image calculation (Angstrom):",
-            end_pattern=r"Smallest atom distance"  # Stop at smallest atom distance marker
-        )
-
-    if geometry_section:
-        # Find the header line that contains "Atom"
-        header_index = -1
-        for i, line in enumerate(geometry_section):
-            if "Atom" in line and "x" in line and "y" in line and "z" in line:
-                header_index = i
-                break
-
-        # Get the line after the dashes
-        if header_index >= 0:
-            # Skip header and dash line, process data lines
-            data_lines = [line for line in geometry_section[header_index+2:]
-                         if line.strip() and not "---" in line and not "===" in line
-                         and not "Smallest atom distance" in line  # Exclude the boundary line
-                         and re.match(r'^\s*\d+\)', line)]  # Only include lines that start with a number followed by )
-
-            for line in data_lines:
-                atom_data = parse_geometry_line(line)
-                if atom_data:
-                    result["geometry"].append(atom_data)
-
-    # Only parse basis sets if this is a ground state calculation
-    if is_ground_state:
-        # Parse auxiliary basis sets
-        aux_basis_section = extract_section(
-            content,
-            start_pattern=r"I\)  AUXILIARY BASIS SETS",
-            end_pattern=r"II\)  ORBITAL BASIS SETS"
-        )
-
-        if aux_basis_section:
-            for line in aux_basis_section[1:]:  # Skip header
-                if line.strip() and line.startswith(" Atom"):
-                    atom_id, basis = parse_basis_line(line)
-                    if atom_id:
-                        result["auxiliary_basis"][atom_id] = basis
-
-        # Parse orbital basis sets
-        orb_basis_section = extract_section(
-            content,
-            start_pattern=r"II\)  ORBITAL BASIS SETS",
-            end_pattern=r"III\)  MODEL POTENTIALS" if "III)  MODEL POTENTIALS" in "".join(content) else "BASIS DIMENSIONS"
-        )
-
-        if orb_basis_section:
-            for line in orb_basis_section[1:]:  # Skip header
-                if line.strip() and line.startswith(" Atom"):
-                    atom_id, basis = parse_basis_line(line)
-                    if atom_id:
-                        result["orbital_basis"][atom_id] = basis
-
-        # Parse model potentials - improved to better handle the model potentials section
-        model_pot_section = extract_section(
-            content,
-            start_pattern=r"III\)  MODEL POTENTIALS",
-            end_pattern=r"(BASIS DIMENSIONS|HAMILTONIAN DEFINITION|Input settings)"  # Use multiple potential end patterns
-        )
-
-        if model_pot_section:
-            for line in model_pot_section[1:]:  # Skip header
-                if line.strip() and line.startswith(" Atom"):
-                    atom_id, basis = parse_basis_line(line)
-                    if atom_id:
-                        result["model_potentials"][atom_id] = basis
-
-    return result
-
-def extract_section(content: List[str], start_pattern: str, end_pattern: str) -> List[str]:
-    """
-    Extract a section from the file content between start and end patterns.
-
-    Args:
-        content (list): List of lines from the file
-        start_pattern (str): Regex pattern to match the start of the section
-        end_pattern (str): Regex pattern to match the end of the section
-
-    Returns:
-        list: Lines of the extracted section
-    """
-    section = []
-    in_section = False
-
-    for line in content:
-        if not in_section and re.search(start_pattern, line):
-            in_section = True
-            section.append(line)
-        elif in_section:
-            section.append(line)
-            if re.search(end_pattern, line) and len(section) > 1:
-                # Don't break immediately after start pattern to avoid empty sections
-                if len(section) > 2 or start_pattern != end_pattern:
-                    break
-
-    return section
-
-def parse_geometry_line(line: str) -> Optional[Dict[str, Any]]:
+def parse_geometry_line(line: str) -> dict[str, Any] | None:
     """
     Parse a single line from the geometry section.
 
     Args:
         line (str): Line containing atom geometry data
 
-    Returns:
+    Returns
+    -------
         dict or None: Dictionary with atom information or None if parsing failed
     """
     # Don't try to parse header or separator lines
-    if "----" in line or "Atom" in line and "x" in line:
+    if "----" in line or ("Atom" in line and "x" in line):
         return None
 
-    # Simple but robust pattern matching - split by whitespace and extract values by position
+    # Simple but robust pattern matching - split by whitespace
     parts = line.strip().split()
 
     # Check if we have enough parts to make a valid atom entry
@@ -208,18 +33,14 @@ def parse_geometry_line(line: str) -> Optional[Dict[str, Any]]:
 
             # If the first part has a trailing ")", it contains the index
             if idx_str.endswith(")"):
-                idx = idx_str.rstrip(")")
+                _ = idx_str.rstrip(")")
             else:
                 # Handle case where index and atom are merged like "1)C01"
                 match = re.match(r"(\d+)\)(.*)", idx_str)
                 if match:
-                    idx = match.group(1)
                     atom_str = match.group(2)
-                else:
-                    idx = None
 
             return {
-                "index": idx,
                 "atom": atom_str,
                 "x": float(parts[2]) if len(parts) > 2 else 0.0,
                 "y": float(parts[3]) if len(parts) > 3 else 0.0,
@@ -230,9 +51,6 @@ def parse_geometry_line(line: str) -> Optional[Dict[str, Any]]:
                 "neq": parts[8] if len(parts) > 8 else "",
                 "grid": int(parts[9]) if len(parts) > 9 else 0,
                 "grp": int(parts[10]) if len(parts) > 10 else 0,
-                "auxiliary_basis": "",
-                "orbital_basis": "",
-                "model_potential": ""
             }
         except (ValueError, IndexError):
             # Log diagnostic info if needed
@@ -241,812 +59,776 @@ def parse_geometry_line(line: str) -> Optional[Dict[str, Any]]:
 
     return None
 
-def parse_basis_line(line: str) -> Tuple[Optional[str], Optional[str]]:
+
+def extract_section(
+    content: list[str], start_pattern: str, end_pattern: str
+) -> list[str]:
     """
-    Parse a line from the basis set sections.
+    Extract a section from the file content between start and end patterns.
 
     Args:
-        line (str): Line containing basis set information
+        content (list): List of lines from the file
+        start_pattern (str): Regex pattern to match the start of the section
+        end_pattern (str): Regex pattern to match the end of the section
 
-    Returns:
-        tuple: (atom_id, basis_description) or (None, None) if parsing failed
+    Returns
+    -------
+        list: Lines of the extracted section
     """
-    match = re.match(r"\s*Atom\s+([A-Za-z0-9]+)\s*:\s*(.+)$", line)
-    if match:
-        return match.group(1), match.group(2).strip()
-    return None, None
+    section = []
+    in_section = False
+    for line in content:
+        # Check if we're at the start of the section
+        if not in_section and re.search(start_pattern, line):
+            in_section = True
+            section.append(line)
+        # If we're already in the section
+        elif in_section:
+            section.append(line)
+            # Check if we've reached the end of the section
+            if re.search(end_pattern, line):
+                break
 
-def merge_basis_with_geometry(data: Dict[str, Any]) -> List[Dict[str, Any]]:
+    return section
+
+def extract_geometry(lines: list[str]) -> pl.DataFrame:
     """
-    Merge basis set information with geometry data.
-
-    Args:
-        data (dict): Parsed data from StoBe output file
-
-    Returns:
-        list: Geometry data with added basis set information
+    Extract the geometry section from the GND file.
     """
-    geometry = data.get("geometry", [])
-
-    for atom_data in geometry:
-        atom_id = atom_data["atom"]
-
-        # Add auxiliary basis set
-        if atom_id in data.get("auxiliary_basis", {}):
-            atom_data["auxiliary_basis"] = data["auxiliary_basis"][atom_id]
-
-        # Add orbital basis set
-        if atom_id in data.get("orbital_basis", {}):
-            atom_data["orbital_basis"] = data["orbital_basis"][atom_id]
-
-        # Add model potential
-        if atom_id in data.get("model_potentials", {}):
-            atom_data["model_potential"] = data["model_potentials"][atom_id]
-
+    geometry_section = extract_section(
+        lines,
+        start_pattern=r"INPUT GEOMETRY \(input file\)",
+        end_pattern=r"Smallest atom distance.*?=.*?\d+\.\d+",
+    )
+    geometry = pl.DataFrame(
+        [
+            parse_geometry_line(line)
+            for line in geometry_section
+            if line.strip() and parse_geometry_line(line) is not None
+        ]
+    )
     return geometry
 
-def read_output(file_path: str) -> Dict[str, Any]:
+def extract_basis_set(line):
     """
-    Read a StoBe output file and extract all relevant information.
+    Extract the basis set information from a line.
 
-    Args:
-        file_path (str): Path to the StoBe .out file.
+    Parameters
+    ----------
+    line : str
+        A line from the basis set section of the GND file.
 
-    Returns:
-        dict: Dictionary containing all parsed data from the file
+    Returns
+    -------
+    dict or None
+        A dictionary with the basis set information or None if parsing failed.
     """
-    data = parse_stobe_output(file_path)
-    return data
+    # ensure the line is not the header or separator line
+    if "I" in line or "II" in line or "III" in line:
+        return None
+    # parse the line by atom, and basis set
+    parts = line.split()
+    if len(parts) < 2:
+        return None
+    return {
+        "atom": parts[1],
+        "basis": " ".join(parts[3:]),
+    }
 
-def parse_geometry(file_path: str) -> List[Dict[str, Any]]:
+
+def extract_basis_sets(lines: list[str]) -> pl.DataFrame:
     """
-    Parses the geometry section of a StoBe .out file.
+    Extract the basis sets from the GND file.
 
-    Args:
-        file_path (str): Path to the StoBe .out file.
+    Parameters
+    ----------
+    lines : list[str]
+        The lines from the GND file.
 
-    Returns:
-        list[dict]: A list of dictionaries containing atom information.
+    Returns
+    -------
+    pl.DataFrame
+        A DataFrame containing the basis set information.
     """
-    data = parse_stobe_output(file_path)
-    return data["geometry"]
-
-def parse_geometry_with_basis(file_path: str) -> List[Dict[str, Any]]:
-    """
-    Parses the geometry section of a StoBe .out file and adds basis set information.
-
-    Args:
-        file_path (str): Path to the StoBe .out file.
-
-    Returns:
-        list[dict]: A list of dictionaries containing atom information with basis sets.
-    """
-    data = parse_stobe_output(file_path)
-    return merge_basis_with_geometry(data)
-
-def to_dataframe(geometry_data: List[Dict[str, Any]]) -> pl.DataFrame:
-    """
-    Convert geometry data to a Polars DataFrame.
-
-    Args:
-        geometry_data (list): List of dictionaries containing atom information
-
-    Returns:
-        pl.DataFrame: DataFrame representation of the geometry data
-    """
-    if not geometry_data:
-        return pl.DataFrame()
-    return pl.DataFrame(geometry_data)
-
-def classify_stobe_file(file_path: str) -> str:
-    """
-    Classify a StoBe output file based on its name.
-
-    Args:
-        file_path (str): Path to the StoBe output file
-
-    Returns:
-        str: Classification of the file ('gnd', 'tp', 'exc', 'xas', or 'unknown')
-    """
-    filename = Path(file_path).name.lower()
-
-    if 'gnd' in filename:
-        return 'gnd'
-    elif 'tp' in filename:
-        return 'tp'
-    elif 'exc' in filename:
-        return 'exc'
-    elif 'xas' in filename:
-        return 'xas'
-    else:
-        return 'unknown'
-
-def extract_total_energy(file_path: str) -> Optional[float]:
-    """
-    Extract the total energy from a StoBe output file in Hartree.
-
-    Args:
-        file_path (str): Path to the StoBe output file
-
-    Returns:
-        float or None: Total energy in Hartree, or None if not found
-    """
-    with open(file_path, 'r') as file:
-        content = file.read()
-
-    # Regex pattern to find the total energy
-    pattern = r"Total energy\s+\(H\)\s*=\s*([-\d.]+)"
-    match = re.search(pattern, content)
-
-    if match:
-        return float(match.group(1))
-    return None
-
-def extract_ionization_potential(file_path: str) -> Optional[float]:
-    """
-    Extract the ionization potential from a TP StoBe output file.
-
-    Args:
-        file_path (str): Path to the StoBe TP output file
-
-    Returns:
-        float or None: Ionization potential in eV, or None if not found
-    """
-    with open(file_path, 'r') as file:
-        content = file.read()
-
-    # Regex pattern to find the ionization potential
-    pattern = r"Ionization potential\s*=\s*([-\d.]+)"
-    match = re.search(pattern, content)
-
-    if match:
-        return float(match.group(1))
-    return None
-
-def extract_lumo_energy(file_path: str) -> Optional[float]:
-    """
-    Extract the LUMO energy from a StoBe output file.
-
-    Args:
-        file_path (str): Path to the StoBe output file
-
-    Returns:
-        float or None: LUMO energy in eV, or None if not found
-    """
-    with open(file_path, 'r') as file:
-        content = file.read()
-
-    # Try to find LUMO energy in a more direct way
-    # First check for a specific "LUMO" or "Lowest Unoccupied" mention
-    lumo_patterns = [
-        r"LUMO[\s:=]+([0-9.-]+)[\s]*(?:eV|hartree)",
-        r"Lowest Unoccupied[\s:=]+([0-9.-]+)[\s]*(?:eV|hartree)",
-        r"Transition energy[\s:=]+([0-9.-]+)[\s]*(?:eV|hartree)"
+    # Extract different basis set sections
+    section_configs = [
+        {
+            "name": "aux",
+            "start": r"I\)  AUXILIARY BASIS SETS",
+            "end": r"II\)  ORBITAL BASIS SETS",
+            "suffix": "",
+        },
+        {
+            "name": "orbital",
+            "start": r"II\)  ORBITAL BASIS SETS",
+            "end": r" BASIS DIMENSIONS",
+            "suffix": "_orbital",
+        },
+        {
+            "name": "model_core",
+            "start": r"III\)  MODEL POTENTIALS",
+            "end": r" \(NEW\) SYMMETRIZATION INFORMATION",
+            "suffix": "_model_core",
+        },
     ]
 
-    for pattern in lumo_patterns:
-        match = re.search(pattern, content, re.IGNORECASE)
-        if match:
-            return float(match.group(1))
-
-    # If we can't find a direct LUMO reference, look for the orbital energies section
-    # and find the first unoccupied orbital (occupancy close to 0)
-    orb_section_match = re.search(r"Occup\.[\s]+Energy\(eV\).*?(\n.*?)+?(?:={10}|-{10})", content, re.DOTALL | re.MULTILINE)
-
-    if orb_section_match:
-        orb_section = orb_section_match.group(0)
-        lines = orb_section.strip().split('\n')
-
-        # Skip header line(s)
-        for line in lines[1:]:
-            if not line.strip() or line.startswith(('=', '-')):
-                continue
-
-            parts = line.strip().split()
-            if len(parts) >= 2:
-                try:
-                    occupancy = float(parts[0])
-                    energy = float(parts[1])
-
-                    # First orbital with occupancy near 0 is the LUMO
-                    if abs(occupancy) < 0.1:
-                        return energy
-                except (ValueError, IndexError):
-                    pass
-
-    # As a fallback, look for the transition energy directly in the file
-    # This is often around 290 eV for carbon K-edge
-    match = re.search(r"(\d+\.\d+)\s+eV", content)
-    if match:
-        energy = float(match.group(1))
-        # Only return if it's in a reasonable range for NEXAFS (e.g., carbon K-edge)
-        if 280 <= energy <= 310:
-            return energy
-
-    # If all else fails, use a reasonable default for carbon K-edge
-    return 290.0  # Default value for carbon K-edge
-
-def extract_oscillator_strengths(file_path: str) -> Dict[str, List[float]]:
-    """
-    Extract oscillator strengths and transition energies from a StoBe TP output file.
-
-    Args:
-        file_path (str): Path to the StoBe TP output file
-
-    Returns:
-        dict: Dictionary with 'energies' and 'strengths' lists
-    """
-    with open(file_path, 'r') as file:
-        content = file.readlines()
-
-    energies = []
-    strengths = []
-    tdm_x = []
-    tdm_y = []
-    tdm_z = []
-
-    in_oscillator_section = False
-
-    for i, line in enumerate(content):
-        # Look for different markers that indicate the TD calculation summary
-        if any(marker in line for marker in ["Summary of TD calculation", "Transition dipole moments"]):
-            in_oscillator_section = True
-            continue
-
-        if in_oscillator_section and line.strip():
-            # Look for lines starting with "#" or containing transition data
-            if line.strip().startswith("#") or "Energy(eV)" in line:
-                # Skip header lines
-                continue
-
-            if any(marker in line for marker in ["===", "---", "End of calculation"]):
-                # End of section
-                break
-
-            # Parse the line containing transition data
-            parts = line.strip().split()
-            if len(parts) >= 5:  # Ensure enough data points
-                try:
-                    # Format varies between StoBe versions, try to be flexible
-                    # Try to identify which columns contain the data we need
-
-                    # First, look for values that could be energy (typically in eV range for NEXAFS)
-                    energy_candidates = []
-                    for j, part in enumerate(parts):
-                        try:
-                            val = float(part)
-                            if 270 <= val <= 350:  # Typical C-K edge energy range
-                                energy_candidates.append((j, val))
-                        except ValueError:
-                            pass
-
-                    if energy_candidates:
-                        # Found potential energy value
-                        energy_idx, energy = energy_candidates[0]
-
-                        # Strength is typically the next value after energy
-                        strength_idx = energy_idx + 1
-                        if strength_idx < len(parts):
-                            try:
-                                strength = float(parts[strength_idx])
-
-                                # TDM components typically follow
-                                x = float(parts[strength_idx + 1]) if strength_idx + 1 < len(parts) else 0.0
-                                y = float(parts[strength_idx + 2]) if strength_idx + 2 < len(parts) else 0.0
-                                z = float(parts[strength_idx + 3]) if strength_idx + 3 < len(parts) else 0.0
-
-                                energies.append(energy)
-                                strengths.append(strength)
-                                tdm_x.append(x)
-                                tdm_y.append(y)
-                                tdm_z.append(z)
-                            except (ValueError, IndexError):
-                                pass
-                except (ValueError, IndexError):
-                    pass
-
-    # If we didn't find any data using the above method, try a more general approach
-    if not energies:
-        # Restart the search
-        with open(file_path, 'r') as file:
-            content = file.read()
-
-        # Find a section that might contain oscillator strengths
-        td_sections = re.findall(r'(Energy\(eV\).*?Osc\.Str\..*?)(?:={10}|-{10}|End of calculation)',
-                              content, re.DOTALL | re.MULTILINE)
-
-        if td_sections:
-            # Process the first found section
-            for line in td_sections[0].split('\n'):
-                if line.strip() and not line.strip().startswith(('#', 'Energy')):
-                    parts = line.strip().split()
-                    if len(parts) >= 2:
-                        try:
-                            energy = float(parts[0])
-                            strength = float(parts[1])
-
-                            # Get TDM components if available
-                            x = float(parts[2]) if len(parts) > 2 else 0.0
-                            y = float(parts[3]) if len(parts) > 3 else 0.0
-                            z = float(parts[4]) if len(parts) > 4 else 0.0
-
-                            energies.append(energy)
-                            strengths.append(strength)
-                            tdm_x.append(x)
-                            tdm_y.append(y)
-                            tdm_z.append(z)
-                        except (ValueError, IndexError):
-                            pass
-
-    return {
-        'energies': energies,
-        'strengths': strengths,
-        'tdm_x': tdm_x,
-        'tdm_y': tdm_y,
-        'tdm_z': tdm_z
-    }
-
-def extract_xas_spectrum(file_path: str) -> Dict[str, List[float]]:
-    """
-    Extract XAS spectrum data from a StoBe XAS output file.
-
-    Args:
-        file_path (str): Path to the StoBe XAS output file
-
-    Returns:
-        dict: Dictionary with 'energies' and 'intensities' lists
-    """
-    with open(file_path, 'r') as file:
-        content = file.readlines()
-
-    energies = []
-    intensities = []
-
-    # Detect when we're in the XAS spectrum data
-    in_xas_section = False
-
-    for line in content:
-        # Different files might have different formats, look for common indicators
-        if any(marker in line for marker in ["Total spectrum", "Absorption", "Energy(ev)"]):
-            in_xas_section = True
-            continue
-
-        if in_xas_section and line.strip():
-            # Check if we've exited the section
-            if line.startswith("----") or line.startswith("===="):
-                break
-
-            parts = line.strip().split()
-            if len(parts) >= 2:
-                try:
-                    energy = float(parts[0])
-                    intensity = float(parts[1])
-                    energies.append(energy)
-                    intensities.append(intensity)
-                except (ValueError, IndexError):
-                    pass
-
-    return {
-        'energies': energies,
-        'intensities': intensities
-    }
-
-def extract_nexafs_params(directory: str, prefix: str = "C1") -> Dict[str, Any]:
-    """
-    Extract all NEXAFS parameters from StoBe files in a directory for a specific excitation center.
-
-    Args:
-        directory (str): Directory containing StoBe output files
-        prefix (str): Prefix for the excitation center (e.g., "C1")
-
-    Returns:
-        dict: Dictionary with all NEXAFS parameters
-    """
-    result: Dict[str, Optional[Any]] = {
-        'ground_state_energy': None,  # Hartree
-        'excited_state_energy': None, # Hartree
-        'tp_energy': None,           # Hartree
-        'lumo_energy': None,         # eV
-        'ip': None,                  # eV
-        'energy_correction': None,   # eV
-        'oscillator_strengths': None,
-        'xas_spectrum': None,
-        'geometry': None             # Add geometry field
-    }
-
-    # Find all StoBe output files in the directory
-    path = Path(directory)
-    file_mapping = {}
-
-    for file in path.glob(f"{prefix}*.out"):
-        file_type = classify_stobe_file(str(file))
-        file_mapping[file_type] = str(file)
-
-    # Extract data from ground state file
-    if 'gnd' in file_mapping:
-        result['ground_state_energy'] = extract_total_energy(file_mapping['gnd'])
-
-        # Get geometry data from the ground state file
-        gnd_data = read_output(file_mapping['gnd'])
-        if 'geometry' in gnd_data and gnd_data['geometry']:
-            result['geometry'] = gnd_data['geometry']
-
-    # Extract data from excited state file
-    if 'exc' in file_mapping:
-        result['excited_state_energy'] = extract_total_energy(file_mapping['exc'])
-
-    # Extract data from transition potential file
-    if 'tp' in file_mapping:
-        result['tp_energy'] = extract_total_energy(file_mapping['tp'])
-        result['lumo_energy'] = extract_lumo_energy(file_mapping['tp'])
-        result['ip'] = extract_ionization_potential(file_mapping['tp'])
-        result['oscillator_strengths'] = extract_oscillator_strengths(file_mapping['tp'])
-
-    # Extract data from XAS file
-    if 'xas' in file_mapping:
-        result['xas_spectrum'] = extract_xas_spectrum(file_mapping['xas'])
-
-    # Calculate energy correction
-    if all(v is not None for v in [result['ground_state_energy'],
-                                  result['excited_state_energy'],
-                                  result['lumo_energy']]):
-        # Convert Hartree to eV and calculate correction
-        gnd_ev = result['ground_state_energy'] * HARTREE_TO_EV  # type: ignore
-        exc_ev = result['excited_state_energy'] * HARTREE_TO_EV # type: ignore
-        lumo_ev = result['lumo_energy']
-
-        # Ensure all values are valid floats before calculation
-        if isinstance(gnd_ev, float) and isinstance(exc_ev, float) and isinstance(lumo_ev, float):
-            result['energy_correction'] = (exc_ev - gnd_ev) - lumo_ev
-        else:
-            result['energy_correction'] = None
-    else:
-        result['energy_correction'] = None
-
-    return result
-
-def apply_energy_correction(
-    transition_energies: List[float],
-    oscillator_strengths: List[float],
-    energy_correction: float,
-    energy_range: Tuple[float, float] = (270, 320),
-    num_points: int = 2000
-) -> Dict[str, Union[np.ndarray, List[float]]]:
-    """
-    Apply energy correction to transition energies and interpolate to create a continuous spectrum.
-
-    Args:
-        transition_energies: List of transition energies in eV
-        oscillator_strengths: List of oscillator strengths
-        energy_correction: Energy correction to apply in eV
-        energy_range: Tuple with (min, max) energy range for interpolation
-        num_points: Number of points for interpolation
-
-    Returns:
-        dict: Dictionary with interpolation results
-    """
-    import numpy as np
-    from scipy.interpolate import interp1d
-
-    # Apply energy correction
-    corrected_energies = [e + energy_correction for e in transition_energies]
-
-    # Create a continuous energy range for interpolation
-    continuous_energy = np.linspace(energy_range[0], energy_range[1], num_points)
-
-    # Create arrays for interpolation
-    energy_array = np.array(corrected_energies)
-    strength_array = np.array(oscillator_strengths)
-
-    # Sort by energy (important for interpolation)
-    sort_idx = np.argsort(energy_array)
-    energy_array = energy_array[sort_idx]
-    strength_array = strength_array[sort_idx]
-
-    # Create interpolation function (use zero for energies outside the range)
-    if len(energy_array) > 1:
-        interp_func = interp1d(
-            energy_array,
-            strength_array,
-            kind='linear',
-            bounds_error=False,
-            fill_value=0
+    # Extract and process each section
+    dfs = {}
+    for config in section_configs:
+        section = extract_section(
+            lines,
+            start_pattern=config["start"],
+            end_pattern=config["end"],
         )
-        interpolated_spectrum = interp_func(continuous_energy)
-    else:
-        # If there's only one point, we can't interpolate
-        interpolated_spectrum = np.zeros_like(continuous_energy)
 
-    return {
-        'energy': continuous_energy,
-        'intensity': interpolated_spectrum,
-        'corrected_transition_energies': corrected_energies,
-        'oscillator_strengths': oscillator_strengths
-    }
+        # Filter and parse data
+        data = [
+            entry
+            for line in section
+            if line.strip() and (entry := extract_basis_set(line)) is not None
+        ]
 
-def process_excitation_center(directory: str, prefix: str = "C1") -> Dict[str, Any]:
-    """
-    Process an excitation center from StoBe output files.
+        # Create DataFrame or empty placeholder
+        dfs[config["name"]] = (
+            pl.DataFrame(data) if data else pl.DataFrame({"atom": [], "basis": []})
+        )
 
-    This function extracts all relevant data from the StoBe files for a specific
-    excitation center, applies energy corrections, and creates interpolated spectra.
-
-    Args:
-        directory (str): Directory containing StoBe output files
-        prefix (str): Prefix for the excitation center (e.g., "C1")
-
-    Returns:
-        dict: Dictionary with all processed data
-    """
-    # Extract parameters from files
-    params = extract_nexafs_params(directory, prefix)
-
-    # Process oscillator strengths if they exist
-    if params['oscillator_strengths'] and params['energy_correction'] is not None:
-        # Check if we have transitions
-        energies = params['oscillator_strengths']['energies']
-        strengths = params['oscillator_strengths']['strengths']
-
-        if energies and strengths:
-            # Apply energy correction and create interpolated spectrum
-            interpolated_results = apply_energy_correction(
-                energies,
-                strengths,
-                params['energy_correction']
-            )
-
-            # Add interpolated results to the output
-            params['interpolated_spectrum'] = {
-                'energy': interpolated_results['energy'],
-                'intensity': interpolated_results['intensity']
-            }
-
-            # Update the oscillator strengths with corrected energies
-            params['oscillator_strengths']['corrected_energies'] = interpolated_results['corrected_transition_energies']
-
-    return params
-
-def process_multiple_centers(directory: str, center_prefixes: List[str]) -> Dict[str, Dict[str, Any]]:
-    """
-    Process multiple excitation centers from StoBe output files.
-
-    Args:
-        directory (str): Directory containing StoBe output files
-        center_prefixes (list): List of excitation center prefixes
-
-    Returns:
-        dict: Dictionary mapping each center prefix to its processed data
-    """
-    results = {}
-
-    for prefix in center_prefixes:
-        results[prefix] = process_excitation_center(directory, prefix)
-
-    return results
-
-def combine_spectra(centers_data: Dict[str, Dict[str, Any]]) -> Dict[str, np.ndarray]:
-    """
-    Combine interpolated spectra from multiple excitation centers.
-
-    Args:
-        centers_data (dict): Dictionary mapping center prefixes to processed data
-
-    Returns:
-        dict: Dictionary with combined energy and intensity arrays
-    """
-    # Initialize with the first center's energy array
-    if not centers_data:
-        return {'energy': np.array([]), 'intensity': np.array([])}
-
-    first_center = next(iter(centers_data.values()))
-    if 'interpolated_spectrum' not in first_center:
-        return {'energy': np.array([]), 'intensity': np.array([])}
-
-    energy = first_center['interpolated_spectrum']['energy']
-    combined_intensity = np.zeros_like(energy)
-
-    # Add the intensity from each center
-    for center_data in centers_data.values():
-        if 'interpolated_spectrum' in center_data:
-            combined_intensity += center_data['interpolated_spectrum']['intensity']
-
-    return {
-        'energy': energy,
-        'intensity': combined_intensity
-    }
-
-def save_to_csv(data: Dict[str, Any], output_file: str) -> None:
-    """
-    Save extracted data to CSV file.
-
-    Args:
-        data (dict): Data to save
-        output_file (str): Path to output CSV file
-    """
-    # Convert to dataframe
-    if 'interpolated_spectrum' in data:
-        df = pl.DataFrame({
-            'energy': data['interpolated_spectrum']['energy'],
-            'intensity': data['interpolated_spectrum']['intensity']
-        })
-        df.write_csv(output_file)
-    else:
-        print(f"No interpolated spectrum data to save to {output_file}")
-
-def to_xarray_datatree(data: Dict[str, Any], prefix: str = "C1") -> Any:
-    """
-    Convert processed StoBe data to an xarray DataTree.
-
-    Args:
-        data: Dictionary with processed StoBe data
-        prefix: Prefix for the excitation center
-
-    Returns:
-        xarray.DataTree: DataTree containing organized StoBe data
-    """
-    try:
-        import xarray as xr
-    except ImportError:
-        print("xarray not installed. Install it with: pip install xarray")
-        return None
-
-    # Create the DataTree
-    tree = xr.DataTree()
-
-    # Create ground state dataset
-    gnd_data_vars = {}
-    gnd_coords = {}
-
-    # Add energy data
-    if data['ground_state_energy'] is not None:
-        gnd_data_vars['energy'] = data['ground_state_energy']
-        gnd_data_vars['energy_ev'] = data['ground_state_energy'] * HARTREE_TO_EV
-
-    # Add geometry data if available
-    if data['geometry']:
-        atoms = []
-        x, y, z = [], [], []
-        elements = []
-        charges = []
-
-        for atom in data['geometry']:
-            atoms.append(atom['atom'])
-            x.append(atom['x'])
-            y.append(atom['y'])
-            z.append(atom['z'])
-            elements.append(atom['atom'][0])  # First character is usually element symbol
-            charges.append(atom['q'])
-
-        gnd_coords['atom'] = atoms
-        gnd_data_vars['x'] = ('atom', x)
-        gnd_data_vars['y'] = ('atom', y)
-        gnd_data_vars['z'] = ('atom', z)
-        gnd_data_vars['element'] = ('atom', elements)
-        gnd_data_vars['charge'] = ('atom', charges)
-
-    # Create ground state dataset
-    ds_ground = xr.Dataset(
-        data_vars=gnd_data_vars,
-        coords=gnd_coords,
-        attrs={'type': 'ground_state', 'prefix': prefix}
+    # Combine DataFrames using left joins to preserve all rows from orbital basis
+    basis_sets = (
+        dfs["orbital"]
+        .join(dfs["aux"], on="atom", how="left", suffix=" auxiliary")
+        .join(
+            dfs["model_core"],
+            on="atom",
+            how="left",
+            suffix=" model core potential",
+        )
     )
-    tree['ground_state'] = ds_ground
 
-    # Create excited state dataset
-    if data['excited_state_energy'] is not None:
-        ds_excited = xr.Dataset(
-            data_vars={
-                'energy': data['excited_state_energy'],
-                'energy_ev': data['excited_state_energy'] * HARTREE_TO_EV
-            },
-            attrs={'type': 'excited_state', 'prefix': prefix}
-        )
-        tree['excited_state'] = ds_excited
+    return basis_sets
 
-    # Create TP dataset
-    if data['tp_energy'] is not None:
-        tp_data_vars = {
-            'energy': data['tp_energy'],
-            'energy_ev': data['tp_energy'] * HARTREE_TO_EV
+def extract_energy(line: str) -> dict[str, Any] | None:
+    """
+    Extract energy information from a line.
+
+    Args:
+        line (str): Line containing energy data
+        pattern (str): Regex pattern to match the energy data
+
+    Returns
+    -------
+        dict or None: Dictionary with energy information or None if parsing failed
+    """
+    if "<Rho/" in line:
+        return None
+    # Energies have the pattern
+    # \sKind of energy (H) = value
+    pattern = r"([\w\s-]+?)\s*\((\w+)\)\s*=\s*([+-]?\d+\.\d+)"
+    match = re.search(pattern, line)
+    if match:
+        energy_type = match.group(1).strip()  # Strip whitespace from the type
+        energy_value = float(match.group(3)) * 27.2114  # convert from Hartree to eV
+        return {
+            "type": energy_type,
+            "value": energy_value,
         }
+    return None
 
-        if data['lumo_energy'] is not None:
-            tp_data_vars['lumo_energy'] = data['lumo_energy']
 
-        if data['ip'] is not None:
-            tp_data_vars['ionization_potential'] = data['ip']
+def extract_energy_section(lines: list[str]) -> list[dict[str, Any]]:
+    """
+    Extract energy information from the energy section.
 
-        # Add oscillator strengths if available
-        if data['oscillator_strengths'] and data['oscillator_strengths']['energies']:
-            os_data = data['oscillator_strengths']
+    Args:
+        lines (list): Lines from the energy section
 
-            # Create coordinates for transitions
-            n_transitions = len(os_data['energies'])
-            transition_coords = {'transition': range(n_transitions)}
+    Returns
+    -------
+        list: List of dictionaries with energy information
+    """
+    energy_section = extract_section(
+        lines,
+        start_pattern=r" FINAL ENERGY",
+        end_pattern=r" Decomposition of",
+    )
+    return [
+        entry
+        for line in energy_section
+        if line.strip() and (entry := extract_energy(line)) is not None
+    ]
 
-            tp_data_vars['transition_energy'] = ('transition', os_data['energies'])
-            tp_data_vars['oscillator_strength'] = ('transition', os_data['strengths'])
-            tp_data_vars['tdm_x'] = ('transition', os_data['tdm_x'])
-            tp_data_vars['tdm_y'] = ('transition', os_data['tdm_y'])
-            tp_data_vars['tdm_z'] = ('transition', os_data['tdm_z'])
+def extract_orbital_energies(lines: list[str]) -> pl.DataFrame:
+    """
+    Extract orbital energy information from the GND file.
 
-            if 'corrected_energies' in os_data:
-                tp_data_vars['corrected_energy'] = ('transition', os_data['corrected_energies'])
+    Parameters
+    ----------
+    lines : list[str]
+        The lines from the GND file.
 
-            ds_tp = xr.Dataset(
-                data_vars=tp_data_vars,
-                coords=transition_coords,
-                attrs={'type': 'transition_potential', 'prefix': prefix}
-            )
-        else:
-            ds_tp = xr.Dataset(
-                data_vars=tp_data_vars,
-                attrs={'type': 'transition_potential', 'prefix': prefix}
-            )
+    Returns
+    -------
+    dict
+        A dictionary containing the orbital energy information for alpha and beta spins.
+    """
+    orbital_section = extract_section(
+        lines,
+        start_pattern=r"ORBITAL ENERGIES \(ALL VIRTUALS INCLUDED\)",
+        end_pattern=r" LISTING OF SPIN ALPHA ORBITALS ONLY",
+    )
 
-        tree['transition_potential'] = ds_tp
+    # Skip header lines (2 lines for header, 1 for column names)
+    data_lines = orbital_section[3:]
 
-    # Create spectrum dataset
-    if 'interpolated_spectrum' in data and data['interpolated_spectrum']:
-        spectrum = data['interpolated_spectrum']
+    # Initialize lists to store the parsed data
+    orbitals = []
+    alpha_occupations = []
+    alpha_energies = []
+    alpha_symmetries = []
+    alpha_positions = []
+    beta_occupations = []
+    beta_energies = []
+    beta_symmetries = []
+    beta_positions = []
 
-        # Create dataset for the spectrum
-        ds_spectrum = xr.Dataset(
-            data_vars={
-                'intensity': ('energy', spectrum['intensity'])
-            },
-            coords={
-                'energy': spectrum['energy']
-            },
-            attrs={
-                'type': 'spectrum',
-                'prefix': prefix,
-                'energy_correction': data['energy_correction']
-            }
+    # Parse each data line
+    for line in data_lines:
+        if not line.strip():  # Skip empty lines
+            continue
+
+        parts = line.split()
+        if len(parts) >= 11:  # Check if we have enough parts for a complete line
+            try:
+                orbital_num = int(parts[0])
+                orbitals.append(orbital_num)
+
+                # Alpha spin data
+                alpha_occupations.append(float(parts[1]))
+                alpha_energies.append(float(parts[2]))
+                alpha_symmetries.append(parts[3])
+                alpha_positions.append(int(parts[5].strip("()")))
+
+                # Beta spin data
+                beta_occupations.append(float(parts[6]))
+                beta_energies.append(float(parts[7]))
+                beta_symmetries.append(parts[8])
+                beta_positions.append(int(parts[10].strip("()")))
+            except (ValueError, IndexError):
+                # Skip lines that don't match the expected format
+                continue
+
+    return pl.DataFrame(
+        {
+            "orbital": orbitals,
+            "alpha_occupation": alpha_occupations,
+            "alpha_energy": alpha_energies,
+            "alpha_symmetry": alpha_symmetries,
+            "alpha_position": alpha_positions,
+            "beta_occupation": beta_occupations,
+            "beta_energy": beta_energies,
+            "beta_symmetry": beta_symmetries,
+            "beta_position": beta_positions,
+        }
+    )
+
+def read_stobe_ground(
+    file: str | Path,
+    author: str | None = None,
+    comment: str | None = None,
+    save_checkpoint=True,
+) -> xr.DataTree:
+    """
+    Read the GND file and extract relevant data into an xarray DataTree.
+
+    This function extracts geometry, basis sets, energy, and spin information
+    from the GND file and organizes it into a structured xarray DataTree.
+
+
+    Parameters
+    ----------
+    file : str or Path
+        The path to the GND file.
+
+    author : str
+        The name of the author.
+
+    comment : str
+        A comment regarding the data extraction.
+
+    save_checkpoint : bool, optional
+        Whether to save a checkpoint of the extraction process (default is True).
+
+    Returns
+    -------
+    xr.Dataset
+        A dataset containing the extracted data.
+
+    Details
+    -------
+    This loads the GND file, extracts the geometry, basis sets, energy, and occupation.
+    This creates three groups of data in the DataTree:
+    - GEOMETRY: Contains the geometry information of the atoms.
+    - BASIS: Contains the basis set information for the atoms.
+    - GND: Contains the ground state energy and spin information.
+        - energy: Contains the ground state energy information.
+        - spin: Contains the spin occupation information.
+
+    Example
+    -------
+    >>> dt = read_stobe_ground(
+    ...     "path/to/gnd/file.gnd", author="John Doe", comment="Test extraction"
+    ... )
+    >>> print(dt)
+    <xarray.DataTree>
+    <GEOMETRY>: ...
+    <BASIS>: ...
+    <GND>: <energy>: ... <spin>: ...
+    """
+    file = Path(file)
+    with file.open("r") as f:
+        lines = f.readlines()
+    geometry_section = extract_geometry(lines)
+    basis_section = extract_basis_sets(lines)
+    ground_energy_section = extract_energy_section(lines)
+    gnd_spin_section = extract_orbital_energies(lines)
+    #  create a dataset with each energy type as a separate variable
+    geometry_ds = xr.Dataset(
+        {
+            "x": (("atom"), geometry_section["x"].to_numpy()),
+            "y": (("atom"), geometry_section["y"].to_numpy()),
+            "z": (("atom"), geometry_section["z"].to_numpy()),
+            "q": (("atom"), geometry_section["q"].to_numpy()),
+            "nuc": (("atom"), geometry_section["nuc"].to_numpy()),
+            "mass": (("atom"), geometry_section["mass"].to_numpy()),
+            "neq": (("atom"), geometry_section["neq"].to_numpy()),
+            "grid": (("atom"), geometry_section["grid"].to_numpy()),
+            "grp": (("atom"), geometry_section["grp"].to_numpy()),
+        },
+        coords={
+            "atom": geometry_section["atom"].to_numpy(),
+        },
+    )
+    basis_ds = xr.Dataset(
+        {
+            "orbital_basis": (("atom"), basis_section["basis"].to_numpy()),
+            "auxiliary_basis": (("atom"), basis_section["basis auxiliary"].to_numpy()),
+            "model_core_basis": (
+                ("atom"),
+                basis_section["basis model core potential"].to_numpy(),
+            ),
+        },
+        coords={
+            "atom": basis_section["atom"].to_numpy(),
+        },
+    )
+    energy_ds = xr.Dataset(
+        {
+            entry["type"].replace(" ", "_").lower(): ([], entry["value"])
+            for entry in ground_energy_section
+        },
+    )
+    # extract molecular orbitals
+    orbital_section = extract_section(
+        lines,
+        start_pattern=r" Alpha occupation:",
+        end_pattern=r" Beta occupation:",
+    )
+    # get the alpha occupation numbers for the HOMO
+
+    homo_orbital = int(orbital_section[0].split(":")[1].strip())
+    lumo_orbital = homo_orbital + 1
+    homo_energy = (
+        gnd_spin_section["alpha_energy"].to_numpy()[homo_orbital]
+        if homo_orbital is not None
+        else None
+    )
+    lumo_energy = (
+        gnd_spin_section["alpha_energy"].to_numpy()[lumo_orbital]
+        if lumo_orbital is not None
+        else None
+    )
+    energy_ds["lumo-energy"] = lumo_energy
+    energy_ds["homo-energy"] = homo_energy
+    # search for a core hole with .5 occupation, if it dow not exit then don't add it
+    # do the dextract_basis_set
+    core_hole_orbital = gnd_spin_section.filter(pl.col("alpha_occupation").eq(0.5))[
+        "orbital"
+    ]
+
+    spin_ds = xr.Dataset(
+        {
+            "homo": homo_orbital,
+            "lumo": lumo_orbital,
+            "alpha_occupation": (
+                ("orbital"),
+                gnd_spin_section["alpha_occupation"].to_numpy(),
+            ),
+            "alpha_energy": (("orbital"), gnd_spin_section["alpha_energy"].to_numpy()),
+            "alpha_symmetry": (
+                ("orbital"),
+                gnd_spin_section["alpha_symmetry"].to_numpy(),
+            ),
+            "alpha_position": (
+                ("orbital"),
+                gnd_spin_section["alpha_position"].to_numpy(),
+            ),
+            "beta_occupation": (
+                ("orbital"),
+                gnd_spin_section["beta_occupation"].to_numpy(),
+            ),
+            "beta_energy": (("orbital"), gnd_spin_section["beta_energy"].to_numpy()),
+            "beta_symmetry": (
+                ("orbital"),
+                gnd_spin_section["beta_symmetry"].to_numpy(),
+            ),
+            "beta_position": (
+                ("orbital"),
+                gnd_spin_section["beta_position"].to_numpy(),
+            ),
+        },
+        coords={
+            "orbital": gnd_spin_section["orbital"].to_numpy(),
+        },
+    )
+    if not core_hole_orbital.is_empty():
+        spin_ds["core-hole"] = core_hole_orbital.to_numpy()[0]
+        energy_ds["core-hole-energy"] = gnd_spin_section["alpha_energy"].to_numpy()[
+            core_hole_orbital.to_numpy()[0]
+        ]
+    # combine to a single datatree
+    # combine to a single datatree
+    dt = xr.DataTree()
+    gnd = xr.DataTree()
+    dt["GEOMETRY"] = geometry_ds
+    dt["BASIS"] = basis_ds
+    gnd["energy"] = energy_ds
+    gnd["spin"] = spin_ds
+    dt["GND"] = gnd
+
+    # add metadata
+    dt.attrs["date"] = datetime.now().strftime("%Y-%m-%d")
+    dt.attrs["source"] = str(file)
+    dt.attrs["description"] = "GND file extracted data"
+    dt.attrs["version"] = "1.0"
+    dt.attrs["additional_info"] = "This dataset contains extracted data from GND files."
+
+    if comment:
+        dt.attrs["comment"] = comment
+    if author:
+        dt.attrs["author"] = author
+
+    if save_checkpoint:
+        dt.to_netcdf(
+            Path(file).parent / "gnd.nc",
+            mode="w",
+            engine="h5netcdf",
         )
-        tree['spectrum'] = ds_spectrum
+    return dt
 
-    # Create XAS dataset
-    if data['xas_spectrum'] and data['xas_spectrum']['energies']:
-        xas = data['xas_spectrum']
+def read_stobe_excited(
+    file: str | Path,
+    author: str | None = None,
+    comment: str | None = None,
+    *,
+    save_checkpoint: bool = True,
+) -> xr.DataTree:
+    """
+    Read the EXC file and extract relevant data into an xarray DataTree.
 
-        # Create dataset for XAS
-        ds_xas = xr.Dataset(
-            data_vars={
-                'intensity': ('energy', xas['intensities'])
-            },
-            coords={
-                'energy': xas['energies']
-            },
-            attrs={'type': 'xas', 'prefix': prefix}
+    This function extracts geometry, basis sets, energy, and spin information
+    from the EXC file and organizes it into a structured xarray DataTree.
+
+
+    Parameters
+    ----------
+    file : str or Path
+        The path to the EXC file.
+
+    author : str
+        The name of the author.
+
+    comment : str
+        A comment regarding the data extraction.
+
+    save_checkpoint : bool, optional
+        Whether to save a checkpoint of the extraction process (default is True).
+
+    Returns
+    -------
+    xr.Dataset
+        A dataset containing the extracted data.
+
+    Details
+    -------
+    This loads the EXC file, extracts the geometry, basis sets, energy, and occupation.
+    This creates three groups of data in the DataTree:
+    - GEOMETRY: Contains the geometry information of the atoms.
+    - BASIS: Contains the basis set information for the atoms.
+    - GND: Contains the ground state energy and spin information.
+        - energy: Contains the ground state energy information.
+        - spin: Contains the spin occupation information.
+
+    Example
+    -------
+    >>> dt = read_stobe_ground(
+    ...     "path/to/gnd/file.gnd", author="John Doe", comment="Test extraction"
+    ... )
+    >>> print(dt)
+    <xarray.DataTree>
+    <GEOMETRY>: ...
+    <BASIS>: ...
+    <EXC>: <energy>: ... <spin>: ...
+    """
+    bad_name_data_tree = read_stobe_ground(file, author, comment, save_checkpoint=False)
+    # rename for excited state
+    exc = bad_name_data_tree["GND"].copy()
+    exc.name = "EXC"
+    del bad_name_data_tree["GND"]
+    bad_name_data_tree["EXC"] = exc
+
+    # up
+
+    bad_name_data_tree.attrs["description"] = "EXC file extracted data"
+
+    if save_checkpoint:
+        bad_name_data_tree.to_netcdf(
+            Path(file).parent / "exc.nc",
+            mode="w",
+            engine="h5netcdf",
         )
-        tree['xas'] = ds_xas
+    return bad_name_data_tree
 
-    return tree
+def process_transition_line(line):
+    """
+    Process a line from the transition section of the EXC file.
+    """
+    parts = line.split()
+    if len(parts) < 9:
+        return None
+    return {
+        "energy": float(parts[2]),
+        "oscillator_strength": float(parts[3]),
+        "oslx": float(parts[4]),
+        "osly": float(parts[5]),
+        "oslz": float(parts[6]),
+        "osc_r2": float(parts[7]),
+        "<r2>": float(parts[8]),
+    }
 
-if __name__ == "__main__":
-    # Example usage
-    directory = "/home/hduva/projects/dft-learn/output"
-    center_prefix = "C1"
 
-    # Process a single excitation center
-    center_data = process_excitation_center(directory, center_prefix)
+def extract_transitions(lines: list[str]) -> pl.DataFrame:
+    """
+    Extract the transitions from the EXC file.
 
-    # Print the results
-    print(f"Ground state energy: {center_data['ground_state_energy']} Hartree")
-    print(f"Excited state energy: {center_data['excited_state_energy']} Hartree")
-    print(f"Transition potential energy: {center_data['tp_energy']} Hartree")
-    print(f"LUMO energy: {center_data['lumo_energy']} eV")
-    print(f"Ionization potential: {center_data['ip']} eV")
-    print(f"Energy correction: {center_data['energy_correction']} eV")
+    Parameters
+    ----------
+    lines : list[str]
+        The lines from the EXC file.
 
-    if 'oscillator_strengths' in center_data and center_data['oscillator_strengths']:
-        print(f"Found {len(center_data['oscillator_strengths']['energies'])} transitions")
+    Returns
+    -------
+    pl.DataFrame
+        A DataFrame containing the transition information.
+    """
+    transition_section = extract_section(
+        lines,
+        start_pattern=r"\s+E \(eV\)\s+OSCL\s+oslx\s+osly\s+oslz\s+osc\(r2\)\s+<r2> ",
+        end_pattern=r"\s+SUM\s+[\d.]+\s+[\d.]+",
+    )
+    transitions = [
+        process_transition_line(line)
+        for line in transition_section
+        if line.strip() and process_transition_line(line) is not None
+    ]
+    return pl.DataFrame(transitions)
 
-    if 'interpolated_spectrum' in center_data:
-        print(f"Generated interpolated spectrum with {len(center_data['interpolated_spectrum']['energy'])} points")
 
-        # Save to CSV
-        output_file = os.path.join(directory, f"{center_prefix}_spectrum.csv")
-        save_to_csv(center_data, output_file)
-        print(f"Saved spectrum to {output_file}")
+def read_stobe_tp(
+    file: str | Path,
+    author: str | None = None,
+    comment: str | None = None,
+    *,
+    save_checkpoint: bool = True,
+) -> xr.DataTree:
+    """
+    Read the EXC file and extract relevant data into an xarray DataTree.
+
+    This function extracts geometry, basis sets, energy, and spin information
+    from the EXC file and organizes it into a structured xarray DataTree.
+
+
+    Parameters
+    ----------
+    file : str or Path
+        The path to the EXC file.
+
+    author : str
+        The name of the author.
+
+    comment : str
+        A comment regarding the data extraction.
+
+    save_checkpoint : bool, optional
+        Whether to save a checkpoint of the extraction process (default is True).
+
+    Returns
+    -------
+    xr.Dataset
+        A dataset containing the extracted data.
+
+    Details
+    -------
+    This loads the EXC file, extracts the geometry, basis sets, energy, and occupation.
+    This creates three groups of data in the DataTree:
+    - GEOMETRY: Contains the geometry information of the atoms.
+    - BASIS: Contains the basis set information for the atoms.
+    - GND: Contains the ground state energy and spin information.
+        - energy: Contains the ground state energy information.
+        - spin: Contains the spin occupation information.
+        -
+
+    Example
+    -------
+    >>> dt = read_stobe_tp(
+    ...     "path/to/tp/file.tp", author="John Doe", comment="Test extraction"
+    ... )
+    >>> print(dt)
+    <xarray.DataTree>
+    <GEOMETRY>: ...
+    <BASIS>: ...
+    <TP>: <energy>: ... <spin>: ...<transitions>: ...
+    """
+    bad_name_data_tree = read_stobe_excited(
+        file, author, comment, save_checkpoint=False
+    )
+    # rename for excited state
+    tp = bad_name_data_tree["EXC"].copy()
+    tp.name = "TP"
+    del bad_name_data_tree["EXC"]
+    # add transitions
+    # First, read the file content
+    with Path(file).open("r") as f:
+        lines = f.readlines()
+
+    # extract the core hole information
+    core_hole_section = extract_section(
+        lines,
+        start_pattern=r"Orbital energy core hole",
+        end_pattern=r"Ionization potential",
+    )
+    core_hole_energy = (
+        core_hole_section[0].split("=")[1].split("(")[1].split("e")[0].strip()
+    )
+    ridgid_shift = core_hole_section[1].split("=")[1].split("e")[0].strip()
+    ionization_potential = core_hole_section[2].split("=")[1].split("e")[0].strip()
+    tp["energy"]["core_hole_energy"] = float(core_hole_energy)
+    tp["energy"]["ridgid_shift"] = float(ridgid_shift)
+    tp["energy"]["ionization_potential"] = float(ionization_potential)
+    bad_name_data_tree["TP"] = tp
+
+    transitions = extract_transitions(lines)
+    # add a section to the data tree for the transition_section
+    transition_ds = xr.Dataset(
+        {
+            "energy": (("transition"), transitions["energy"].to_numpy()),
+            "oscillator_strength": (
+                ("transition"),
+                transitions["oscillator_strength"].to_numpy(),
+            ),
+            "oslx": (("transition"), transitions["oslx"].to_numpy()),
+            "osly": (("transition"), transitions["osly"].to_numpy()),
+            "oslz": (("transition"), transitions["oslz"].to_numpy()),
+            "osc_r2": (("transition"), transitions["osc_r2"].to_numpy()),
+            "<r2>": (("transition"), transitions["<r2>"].to_numpy()),
+        },
+        coords={
+            "transition": transitions["energy"].to_numpy(),
+        },
+    )
+
+    # add the transition section to the tp data tree
+    transition_ds = extract_transitions(lines)
+    tp["transitions"] = transition_ds
+    if save_checkpoint:
+        bad_name_data_tree.to_netcdf(
+            Path(file).parent / "tp.nc",
+            mode="w",
+            engine="h5netcdf",
+        )
+    return bad_name_data_tree
+
+def read_stobe(
+    output_directory: str | Path,
+    author: str | None = None,
+    comment: str | None = None,
+    *,
+    save_checkpoint: bool = True,
+) -> xr.DataTree:
+    """
+    Read primary output files and extract relevant data into an xarray DataTree.
+
+    This function extracts geometry, basis sets, energy, and spin information
+    from the GND file and organizes it into a structured xarray DataTree.
+
+    Parameters
+    ----------
+    output_directory : str or Path
+        The path to the output directory containing the GND and EXC files.
+
+    author : str
+        The name of the author.
+
+    comment : str
+        A comment regarding the data extraction.
+
+    save_checkpoint : bool, optional
+        Whether to save a checkpoint of the extraction process (default is True).
+
+    Returns
+    -------
+    xr.Dataset
+        A dataset containing the extracted data.
+    """
+    output_directory = Path(output_directory)
+    gnd_path = output_directory / "C1gnd.out"
+    exc_path = output_directory / "C1exc.out"
+    tp_path = output_directory / "C1tp.out"
+
+    # Read the GND file
+    gnd_section = read_stobe_ground(
+        gnd_path, author=author, comment=comment, save_checkpoint=save_checkpoint
+    )
+    # Read the EXC file
+    exc_section = read_stobe_excited(
+        exc_path, author=author, comment=comment, save_checkpoint=save_checkpoint
+    )
+    # Read the TP file
+    tp_section = read_stobe_tp(
+        tp_path, author=author, comment=comment, save_checkpoint=save_checkpoint
+    )
+
+    # Combine the sections into a single DataTree
+    combined_data_tree = xr.DataTree()
+    combined_data_tree["GEOMETRY"] = gnd_section["GEOMETRY"]
+    combined_data_tree["BASIS"] = gnd_section["BASIS"]
+    combined_data_tree["GND"] = gnd_section["GND"]
+    combined_data_tree["EXC"] = exc_section["EXC"]
+    combined_data_tree["TP"] = tp_section["TP"]
+
+    # Add metadata to the DataTree
+    combined_data_tree.attrs["date"] = datetime.now().strftime("%Y-%m-%d")
+    combined_data_tree.attrs["description"] = (
+        "Combined data from GND and EXC files extracted data"
+    )
+    if comment:
+        combined_data_tree.attrs["comment"] = comment
+    if author:
+        combined_data_tree.attrs["author"] = author
+
+    if save_checkpoint:
+        combined_data_tree.to_netcdf(
+            output_directory / "out.nc",
+            mode="w",
+            engine="h5netcdf",
+        )
+    return combined_data_tree
