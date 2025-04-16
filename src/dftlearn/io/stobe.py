@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any
 
 import polars as pl
+import pandas as pd
 import xarray as xr
 
 def parse_geometry_line(line: str) -> dict[str, Any] | None:
@@ -651,16 +652,15 @@ def read_stobe_tp(
     save_checkpoint: bool = True,
 ) -> xr.DataTree:
     """
-    Read the EXC file and extract relevant data into an xarray DataTree.
+    Read the TP file and extract relevant data into an xarray DataTree.
 
-    This function extracts geometry, basis sets, energy, and spin information
-    from the EXC file and organizes it into a structured xarray DataTree.
-
+    This function extracts geometry, basis sets, energy, spin information,
+    and transitions from the TP file and organizes it into a structured xarray DataTree.
 
     Parameters
     ----------
     file : str or Path
-        The path to the EXC file.
+        The path to the TP file.
 
     author : str
         The name of the author.
@@ -678,14 +678,14 @@ def read_stobe_tp(
 
     Details
     -------
-    This loads the EXC file, extracts the geometry, basis sets, energy, and occupation.
+    This loads the TP file, extracts the geometry, basis sets, energy, and occupation.
     This creates three groups of data in the DataTree:
     - GEOMETRY: Contains the geometry information of the atoms.
     - BASIS: Contains the basis set information for the atoms.
-    - GND: Contains the ground state energy and spin information.
-        - energy: Contains the ground state energy information.
+    - TP: Contains the excited state energy and spin information.
+        - energy: Contains the excited state energy information.
         - spin: Contains the spin occupation information.
-        -
+        - transitions: Contains the transition information.
 
     Example
     -------
@@ -696,7 +696,7 @@ def read_stobe_tp(
     <xarray.DataTree>
     <GEOMETRY>: ...
     <BASIS>: ...
-    <TP>: <energy>: ... <spin>: ...<transitions>: ...
+    <TP>: <energy>: ... <spin>: ... <transitions>: ...
     """
     bad_name_data_tree = read_stobe_excited(
         file, author, comment, save_checkpoint=False
@@ -724,31 +724,35 @@ def read_stobe_tp(
     tp["energy"]["core_hole_energy"] = float(core_hole_energy)
     tp["energy"]["ridgid_shift"] = float(ridgid_shift)
     tp["energy"]["ionization_potential"] = float(ionization_potential)
-    bad_name_data_tree["TP"] = tp
 
-    transitions = extract_transitions(lines)
-    # add a section to the data tree for the transition_section
-    transition_ds = xr.Dataset(
+    # Extract transitions data
+    transitions_df = extract_transitions(lines)
+
+    # Create a proper xarray Dataset for transitions
+    transitions_ds = xr.Dataset(
         {
-            "energy": (("transition"), transitions["energy"].to_numpy()),
             "oscillator_strength": (
-                ("transition"),
-                transitions["oscillator_strength"].to_numpy(),
+                ("energy"),
+                transitions_df["oscillator_strength"].to_numpy(),
             ),
-            "oslx": (("transition"), transitions["oslx"].to_numpy()),
-            "osly": (("transition"), transitions["osly"].to_numpy()),
-            "oslz": (("transition"), transitions["oslz"].to_numpy()),
-            "osc_r2": (("transition"), transitions["osc_r2"].to_numpy()),
-            "<r2>": (("transition"), transitions["<r2>"].to_numpy()),
+            "oslx": (("energy"), transitions_df["oslx"].to_numpy()),
+            "osly": (("energy"), transitions_df["osly"].to_numpy()),
+            "oslz": (("energy"), transitions_df["oslz"].to_numpy()),
+            "osc_r2": (("energy"), transitions_df["osc_r2"].to_numpy()),
+            "r2": (("energy"), transitions_df["<r2>"].to_numpy()),
         },
         coords={
-            "transition": transitions["energy"].to_numpy(),
+            "energy": transitions_df["energy"].to_numpy(),
         },
     )
 
-    # add the transition section to the tp data tree
-    transition_ds = extract_transitions(lines)
-    tp["transitions"] = transition_ds
+    # Add the transitions as a separate group in the TP DataTree
+    tp["transitions"] = transitions_ds
+    bad_name_data_tree["TP"] = tp
+
+    # Update description
+    bad_name_data_tree.attrs["description"] = "TP file extracted data"
+
     if save_checkpoint:
         bad_name_data_tree.to_netcdf(
             Path(file).parent / "tp.nc",
@@ -790,21 +794,21 @@ def read_stobe(
         A dataset containing the extracted data.
     """
     output_directory = Path(output_directory)
-    gnd_path = output_directory / "C1gnd.out"
-    exc_path = output_directory / "C1exc.out"
-    tp_path = output_directory / "C1tp.out"
+    gnd_path = output_directory / f"{output_directory.name}gnd.out"
+    exc_path = output_directory / f"{output_directory.name}exc.out"
+    tp_path = output_directory / f"{output_directory.name}tp.out"
 
     # Read the GND file
     gnd_section = read_stobe_ground(
-        gnd_path, author=author, comment=comment, save_checkpoint=save_checkpoint
+        gnd_path, author=author, comment=comment, save_checkpoint=False
     )
     # Read the EXC file
     exc_section = read_stobe_excited(
-        exc_path, author=author, comment=comment, save_checkpoint=save_checkpoint
+        exc_path, author=author, comment=comment, save_checkpoint=False
     )
     # Read the TP file
     tp_section = read_stobe_tp(
-        tp_path, author=author, comment=comment, save_checkpoint=save_checkpoint
+        tp_path, author=author, comment=comment, save_checkpoint=False
     )
 
     # Combine the sections into a single DataTree
@@ -832,3 +836,125 @@ def read_stobe(
             engine="h5netcdf",
         )
     return combined_data_tree
+
+
+def read_calculations(
+    directory: str | Path,
+    calculation_backend="stobe",
+    author: str | None = None,
+    comment: str | None = None,
+    *,
+    save_checkpoint: bool = True,
+) -> xr.DataTree:
+    """
+    Extract all the data from several calculations and combine them into a single DataTree.
+
+    Data from different calculations (identified by subdirectories) are concatenated
+    along a new 'excitation_atom' dimension.
+
+    Parameters
+    ----------
+    directory : str or Path
+        The parent directory containing subdirectories for each calculation (e.g., C1, C2).
+    calculation_backend : str, optional
+        The backend used for the calculations (default is "stobe").
+    author : str, optional
+        The name of the author.
+    comment : str, optional
+        A comment regarding the data extraction.
+    save_checkpoint : bool, optional
+        Whether to save intermediate checkpoints for each calculation (default is True).
+
+    Returns
+    -------
+    xr.DataTree
+        A DataTree containing the combined data from all calculations.
+    """
+    directory = Path(directory)
+    excitation_atoms = [e.name for e in directory.iterdir() if e.is_dir()]
+    try:
+        excitation_atoms.sort(key=lambda x: int(re.split(r"([A-Za-z]+)(\d+)", x)[2]))
+    except (IndexError, ValueError):
+        excitation_atoms.sort()
+
+    if not excitation_atoms:
+        error_message = f"No calculation subdirectories found in {directory}"
+        raise FileNotFoundError(error_message)
+
+    # Lists to store datasets from each calculation
+    geometry_list, basis_list = [], []
+    gnd_energy_list, gnd_spin_list = [], []
+    exc_energy_list, exc_spin_list = [], []
+    tp_energy_list, tp_spin_list, tp_transitions_list = [], [], []
+
+    for excitation_atom in excitation_atoms:
+        atom_directory = directory / excitation_atom
+        # check if the directory contains the files
+        match calculation_backend:
+            case "stobe":
+                # Pass save_checkpoint to read_stobe for individual file saving
+                data_tree = read_stobe(
+                    atom_directory,
+                    author=author,
+                    comment=comment,
+                    save_checkpoint=save_checkpoint,  # Control individual saving here
+                )
+            case _:
+                error_message = f"Unknown calculation backend: {calculation_backend}"
+                raise ValueError(error_message)
+
+        # Append datasets to lists
+        geometry_list.append(data_tree["GEOMETRY"].ds)
+        basis_list.append(data_tree["BASIS"].ds)
+        gnd_energy_list.append(data_tree["GND/energy"].ds)
+        gnd_spin_list.append(data_tree["GND/spin"].ds)
+        exc_energy_list.append(data_tree["EXC/energy"].ds)
+        exc_spin_list.append(data_tree["EXC/spin"].ds)
+        tp_energy_list.append(data_tree["TP/energy"].ds)
+        tp_spin_list.append(data_tree["TP/spin"].ds)
+        # Handle case where TP/transitions might be missing
+        if "transitions" in data_tree["TP"]:
+            tp_transitions_list.append(data_tree["TP/transitions"].ds)
+        else:
+            pass
+
+    # Create the coordinate for the new dimension
+    excitation_coord = pd.Index(excitation_atoms, name="excitation_atom")
+
+    # Concatenate datasets along the new 'excitation_atom' dimension
+    # Use DataTree.from_dict for cleaner construction
+    combined_data = {
+        "GEOMETRY": xr.concat(geometry_list, dim=excitation_coord),
+        "BASIS": xr.concat(basis_list, dim=excitation_coord),
+        "GND/energy": xr.concat(gnd_energy_list, dim=excitation_coord),
+        "GND/spin": xr.concat(gnd_spin_list, dim=excitation_coord),
+        "EXC/energy": xr.concat(exc_energy_list, dim=excitation_coord),
+        "EXC/spin": xr.concat(exc_spin_list, dim=excitation_coord),
+        "TP/energy": xr.concat(tp_energy_list, dim=excitation_coord),
+        "TP/spin": xr.concat(tp_spin_list, dim=excitation_coord),
+    }
+    if tp_transitions_list:  # Only add transitions if they were found
+        combined_data["TP/transitions"] = xr.concat(
+            tp_transitions_list, dim=excitation_coord
+        )
+
+    combined_dt = xr.DataTree.from_dict(combined_data)
+
+    # Add metadata
+    combined_dt.attrs["date"] = datetime.now().strftime("%Y-%m-%d")
+    combined_dt.attrs["description"] = (
+        "Combined data from several calculations extracted data"
+    )
+    combined_dt.attrs["source_directory"] = str(directory)
+    combined_dt.attrs["version"] = "1.1"  # Increment version due to structure change
+    if comment:
+        combined_dt.attrs["comment"] = comment
+    if author:
+        combined_dt.attrs["author"] = author
+
+    if save_checkpoint:
+        final_save_path = directory / "combined_calculations.nc"
+        combined_dt.to_netcdf(final_save_path, mode="w", engine="h5netcdf")
+        print(f"Saved combined DataTree to {final_save_path}")
+
+    return combined_dt
