@@ -114,8 +114,8 @@ def makeRunFile(fname, mname, aname, nAtoms, alphaGND, betaGND,element1a,element
         f = open(str(aname) + str(i) + ftype + ".run", "w+",newline="\n")
             
         f.write("#!/bin/csh -f\n")
-        f.write("ln -s ${STOBE}Basis/baslib.new7 fort.3\n")
-        f.write("ln -s ${STOBE}Basis/symbasis.new fort.4\n")
+        f.write("ln -s ~/STOBE/Basis/baslib.new7 fort.3\n")
+        f.write("ln -s ~/STOBE/Basis/symbasis.new fort.4\n")
         
         f.write("cat >" + aname + str(i) + ftype + ".inp<</.\n")
             
@@ -661,7 +661,7 @@ def makeRunFile(fname, mname, aname, nAtoms, alphaGND, betaGND,element1a,element
         f = open(str(aname) + str(i) + ftype + ".run", "a",newline="\n")
         f.write("END\n")
         f.write("/.\n")
-        f.write("StoBe.x <" + str(aname) + str(i) + ftype + ".inp>& " + str(aname) + str(i) + ftype + ".out\n")
+        f.write("~/STOBE/Source/StoBe.x <" + str(aname) + str(i) + ftype + ".inp>& " + str(aname) + str(i) + ftype + ".out\n")
         f.write("mv Molden.molf " + str(aname) + str(i) + ftype + ".molden\n")
         if ftype == "tp":
             f.write("mv fort.11 " + str(aname) + str(i) + ".xas\n")
@@ -703,7 +703,7 @@ def makeXASrun(mname,aname,nAtoms,title):
 		f.write("TOTAL 1\n")
 		f.write("END\n")
 		f.write("/.\n")
-		f.write("${STOBE}Source/xrayspec.x <" + aname + str(i) + "xas.inp>& " +aname + str(i) +"xas.out\n")
+		f.write("~/STOBE/Source/xrayspec.x <" + aname + str(i) + "xas.inp>& " +aname + str(i) +"xas.out\n")
 		f.write("cp XrayT001.out " + aname + str(i) + ".out\n")
 		f.write("rm fort.*\n")
 		i+=1
