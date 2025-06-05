@@ -10,32 +10,32 @@ Function DFT_Init()
 
 	print "------------------------------------------------- Analysis of NEXAFS via DFT calculations ---------------------------------------------------"
 	print "Victor Manuel Murcia Ruiz ----------------------------- Washington State University-------------------------------------victor.murcia@wsu.edu"
-	
+
 	//Setup Folders
 	String CurrentFolder=GetDataFolder(1)
 	print "Initiallizing NEXAFS processing..."
 	NewDataFolder/O/S root:Packages
 	NewDataFolder/O/S root:Packages:NXA
 	NewDataFolder/O/S root:Packages:NXA:ElementLibrary
-	
+
 	//Add new elements here (also, change create molecule panel and mol structure)
 	NewPath/Z/Q/O ElementPath SpecialDirPath("Igor Pro User files",0,0,0)+"User Procedures:Element Library:"
 	LoadWave/a/J/o/b="N=Elements,F=-2;N=AtomicWeight,F=-1;"/p=ElementPath "AtomicWeight.txt"
 	WAVE/T Elements
 	WAVE AtomicWeight
 	SetDataFolder root:Packages:NXA
-	
+
 	String/G molName="", wList //list of molecules for the popupMenu
 	Make/o/n=(1,2) ChemFormSelWave
 	Make/o/t/n=(1,2) ChemFormTxtWave
-	
+
 	//Load Elemental Data data
 	Variable/G Errors=0
 	PathInfo ElementPath
 	If( V_Flag==0 || !WaveExists(:ElementLibrary:H_f1) )
 		DFT_LoadBareAtomData()//Load the Element Scattering Factor Data
 	endif
-	
+
 	SetDataFolder $CurrentFolder
 	If( Errors==0 )
 		Print "DFT Analysis code successfully initialized."
@@ -146,10 +146,10 @@ End
 
 //Makes a panel for constructing a molecule from constituent atoms to tabulate the mass abs coef
 Function DFT_atomsPanel() : Panel
-	
+
 	ControlInfo/W=ClusteringAlgorithm mol
 	String molName = S_Value
-	
+
 	NewPanel /W=(557,66,940,267)/N=atomsPanel as "Chemical Fomula"
 	Button H ,pos={12,41}  ,size={25,20},proc=DFT_Button,title="H",fSize=12
 	Button He,pos={210,41} ,size={25,20},proc=DFT_Button,title="He",fSize=12
@@ -220,11 +220,11 @@ Function DFT_Button(ba) : ButtonControl
 			DFT_fill_dStruct(d)
 			DoWindow/k atomsPanel
 		elseIf( cmpstr( ba.ctrlname, "atomsCancel")==0 )
-			DoWindow/k atomsPanel		
+			DoWindow/k atomsPanel
 		else
 			DFT_AddElement(ba.ctrlname)
 		endif
-	
+
 	endif
 End
 
@@ -269,9 +269,9 @@ Function DFT_calcMu(m)//, [molN])
 			zStar+=z-((z)/82.5)^2.37 //relativistic correction to Z (See X-ray Dat Booklet by Thompson et al.)
 		endfor
 	EndFor
-	
+
 	m.mu=2*re*lambda*Na*fSum/wSum  //Actual calculation of mu [cm^2/g]
-	
+
 	Note/NOCR m.mu, ("Mol:"+m.molName+";Mw:"+num2str(wSum)+";Zstar:"+num2str(zStar)+";")
 	Duplicate/d/o m.mu $(m.MolName+"_mu")
 	DoWindow/F MuWindow //display results
@@ -316,7 +316,7 @@ Function DFT_Fill_dStruct(d,[dn]) //dn is the base name of the data set (strippe
 	SVAR/Z d.mol=MolName
 	SVAR/Z d.SLmol, d.SCmol
 	WAVE/Z d.muE=mu_energy
-	
+
 	SetDataFolder $CurrentFolder
 End
 
@@ -326,7 +326,7 @@ Structure DFT_dStruct
 	SVAR SLmol, SCmol
 	Variable Dwell
 	WAVE ma, maE, maU
-	WAVE muE 
+	WAVE muE
 	//not filled by "Fill_dStruct"
 	WAVE OD, uOD, mu, muU
 	Variable bkg, corrDetSat

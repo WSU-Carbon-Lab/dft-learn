@@ -2,7 +2,7 @@
 #pragma rtGlobals=3		// Use modern global access method and strict wave access.
 
 Function simDFT(tval,ovpVal,IPwave,mol,alpha,i0,phi,expSpecName,expEnergyName,expFolderPath,fit,rigidShift,thetaList,anchorStep1,anchorStep2,anchorExp1,anchorExp2,stepWid1,stepWid2,stepE1,stepE2,[d,holdAmps,holdWidths,holdPos,NEXAFStype,stepShift,startPre,endPre,startPost,endPost,refine,maskEnergy1,maskEnergy2,pkToRefine,refpw,holdmodTheta])
-	
+
 	Variable tval
 	Variable ovpVal
 	Wave IPwave
@@ -35,68 +35,63 @@ Function simDFT(tval,ovpVal,IPwave,mol,alpha,i0,phi,expSpecName,expEnergyName,ex
 	Variable pkToRefine
 	Wave refpw
 	Variable holdmodTheta
-	
+	// ======================/ Define defaults/=================================
 	if(ParamIsDefault(holdAmps))
 		holdAmps = 0
 	endif
-	
 	if(ParamIsDefault(holdWidths))
 		holdWidths = 1
 	endif
-	
 	if(ParamIsDefault(holdPos))
 		holdPos = 1
 	endif
-	
 	if(ParamIsDefault(NEXAFStype))
 		NEXAFStype = ""
 	endif
-	
 	if(ParamIsDefault(refine))
 		refine = 0
 	endif
-	
 	if(ParamIsDefault(holdmodTheta))
 		holdmodTheta = 1
 	endif
-	
+
 	Variable openParams = 4 - holdAmps - holdWidths - holdPos - holdmodTheta
 	Variable timerStart = startMSTimer
-	
-	if(!refine)	
+
+	if(!refine)
 		Wave pw2d = getParams(tval,ovpVal)
-		makeTensor(pw2d)	
+		makeTensor(pw2d)
 		normalizeTensor()
-		prepSimDFTfit(expSpecName,expEnergyName,mol,IPwave,expFolderPath,anchorStep1,anchorStep2,stepWid1,stepWid2,stepE1,stepE2,stepShift = rigidShift)	
+		prepSimDFTfit(expSpecName,expEnergyName,mol,IPwave,expFolderPath,anchorStep1,anchorStep2,stepWid1,stepWid2,stepE1,stepE2,stepShift = rigidShift)
 		make1DparamWave(IPwave,pw2d,alpha,i0,phi,rigidShift = rigidShift)
-	endif	
-	
+	endif
+
 	Wave pWave1D,paramNames,allExpSpec,allExpEnergy,allDFTSteps
 	Variable n = numpnts(allExpSpec),nSpec = ItemsInList(thetaList),i
-	
+
 	if(!refine)
 		Duplicate/O pWave1D,pwCopy
 	else
 		Duplicate/O refpw,refitpWave2
 	endif
-	
+
 	Wave valuesPolar = makePolarWave2(thetaList,n)	//Make wave containing theta values
 	Wave pwAlpha = fitAlpha2(maskEnergy1,maskEnergy2,pWave1D,allExpEnergy,allExpSpec,nSpec,thetaList,alpha,i0,tval,ovpval,allDFTSteps)
 	pwAlpha[2] = alpha
 	Wave pwI0    = fitI0(maskEnergy1,maskEnergy2,pwAlpha,allExpEnergy,allExpSpec,valuesPolar,allDFTSteps,nSpec,tval,ovpval)//Fit i0
-	
+
 	if(!refine)
 		Duplicate/O allExpSpec,res,results1,results2,results3,results4,results5,results6,results,weightWave
-		results = 0;res = 0 
+		results = 0;res = 0
 	endif
 
 	Variable nPeaks = (numpnts(pWave1D) - 4 - pWave1D[0])/11
-	
+
 	Variable pks2Fit = nPeaks
 	String H1 = makeHoldString(holdAmps,holdWidths,holdPos,pWave1D,holdModTheta,1,1)
 	Wave eps1 = makeEpsiltonWave(pWave1D,holdAmps,holdWidths,holdPos,holdModTheta,1,1)
 	Wave/T constraint1 = makeConstraintWave(holdAmps,holdWidths,holdPos,nPeaks,pWave1D,holdmodTheta,1,1)
-	
+
 	//Trim the waves to be fit. Lower energies can be wonky
 	for(i=n-1;i>=0;i-=1)
 		Variable cEn = allExpEnergy[i]
@@ -106,12 +101,12 @@ Function simDFT(tval,ovpVal,IPwave,mol,alpha,i0,phi,expSpecName,expEnergyName,ex
 	endfor
 	Wave allExpEnergy,allExpSpec,allDFTSteps,res,results1,results2,results3,results4,results,weightWave,valuesPolar
 	Variable npnts = numpnts(allExpSpec)
-	
+
 	print "               ╠═════════════ Refining To NEXAFS ══════════════╣                    "
 	print "               ╟───────────────────┬───────────┬───────────────╢                    "
 	print "               ║      PARAMS       │  CHI SQR  │  RED CHI SQR  ║                    "
 	print "               ╟───────────────────┼───────────┼───────────────╢                    "
-	
+
 	if(StringMatch(fit,"yes"))
 
 		weightWave = 0.0622831*allExpSpec
@@ -121,11 +116,11 @@ Function simDFT(tval,ovpVal,IPwave,mol,alpha,i0,phi,expSpecName,expEnergyName,ex
 			String newpwName = "refine_pwCopy_pk" + num2str(pkToRefine)
 			Wave refitpWave = $newpwName
 			Abort
-			
+
 		else
 			// Refine Amp
 			// -----------------------------------------------------------------------
-			
+
 			Duplicate/O pwI0, pwFit1
 			Make/O/N=6 rcs2,alphaFit,idFit,gf2,cs2
 			idFit[0] = 0;idFit[1] = 1;idFit[2] = 2;idFit[3] = 3;idFit[4] = 4;idFit[5] = 5
@@ -138,16 +133,16 @@ Function simDFT(tval,ovpVal,IPwave,mol,alpha,i0,phi,expSpecName,expEnergyName,ex
 			NVAR chiSqExpCl = root:chiSqExpCl
 			chiSqExpCl = V_chisq
 			redchiSqExpCl = calcRedChiSq(allExpSpec,V_Chisq,nPeaks,1,0)
-			
+
 			printf "               ║       AMP         │  %07.1f  │     %05.3f     ║                    \r", V_chisq, redchiSqExpCl
 			print "               ╟───────────────────┼───────────┼───────────────╢                    "
-			
+
 			rcs2[0] = redchiSqExpCl
 			alphaFit[0] = pwFit1[2]
 			cs2[0] = V_chisq
 			Wave M_Covar,W_Sigma,pwMolAdj
-			
-			// Refine Amp & Theta 
+
+			// Refine Amp & Theta
 			// -----------------------------------------------------------------------
 
 			Duplicate/O pwFit1, pwFit2
@@ -163,17 +158,17 @@ Function simDFT(tval,ovpVal,IPwave,mol,alpha,i0,phi,expSpecName,expEnergyName,ex
 			NVAR chiSqExpCl = root:chiSqExpCl
 			chiSqExpCl = V_chisq
 			redchiSqExpCl = calcRedChiSq(allExpSpec,V_Chisq,nPeaks,3,0)
-						
+
 			printf "               ║      AMP/θ        │  %07.1f  │     %05.3f     ║                    \r", V_chisq, redchiSqExpCl
 			print "               ╟───────────────────┼───────────┼───────────────╢                    "
-			
+
 			rcs2[1] = redchiSqExpCl
 			alphaFit[1] = pwFit2[2]
 			cs2[1] = V_chisq
-			
+
 			// Refine Amp, Theta & Energy
 			// -----------------------------------------------------------------------
-			
+
 			Duplicate/O pwFit2, pwFit3
 			H1 = makeHoldString(0,1,0,pwFit3,0,1,3)
 			Wave eps3 = makeEpsiltonWave(pwFit3,0,1,0,0,1,3)
@@ -187,17 +182,17 @@ Function simDFT(tval,ovpVal,IPwave,mol,alpha,i0,phi,expSpecName,expEnergyName,ex
 			NVAR chiSqExpCl = root:chiSqExpCl
 			chiSqExpCl = V_chisq
 			redchiSqExpCl = calcRedChiSq(allExpSpec,V_Chisq,nPeaks,3,0)
-						
+
 			printf "               ║     AMP/θ/POS     │  %07.1f  │     %05.3f     ║                    \r", V_chisq, redchiSqExpCl
 			print "               ╟───────────────────┼───────────┼───────────────╢                    "
-			
+
 			rcs2[2] = redchiSqExpCl
 			alphaFit[2] = pwFit3[2]
 			cs2[2] = V_chisq
-			
-			// Refine All 
+
+			// Refine All
 			// -----------------------------------------------------------------------
-			
+
 			Duplicate/O pwFit3, pwFit4
 			H1 = makeHoldString(0,0,0,pwFit4,0,1,4)
 			Wave eps4 = makeEpsiltonWave(pwFit4,0,0,0,0,1,4)
@@ -211,17 +206,17 @@ Function simDFT(tval,ovpVal,IPwave,mol,alpha,i0,phi,expSpecName,expEnergyName,ex
 			NVAR chiSqExpCl = root:chiSqExpCl
 			chiSqExpCl = V_chisq
 			redchiSqExpCl = calcRedChiSq(allExpSpec,V_Chisq,nPeaks,4,0)
-						
+
 			printf "               ║       ALL         │  %07.1f  │     %05.3f     ║                    \r", V_chisq, redchiSqExpCl
 			print "               ╟───────────────────┼───────────┼───────────────╢                    "
-			
+
 			rcs2[3] = redchiSqExpCl
 			alphaFit[3] = pwFit4[2]
 			cs2[3] = V_chisq
-			
-			// Refine All 
+
+			// Refine All
 			// -----------------------------------------------------------------------
-			
+
 			Duplicate/O pwFit4, pwFit5
 			H1 = makeHoldString(0,0,0,pwFit5,0,0,5)
 			Wave eps5 = makeEpsiltonWave(pwFit5,0,0,0,0,0,5)
@@ -235,17 +230,17 @@ Function simDFT(tval,ovpVal,IPwave,mol,alpha,i0,phi,expSpecName,expEnergyName,ex
 			NVAR chiSqExpCl = root:chiSqExpCl
 			chiSqExpCl = V_chisq
 			redchiSqExpCl = calcRedChiSq(allExpSpec,V_Chisq,nPeaks,5,1)
-						
+
 			printf "               ║       ALL         │  %07.1f  │     %05.3f     ║                    \r", V_chisq, redchiSqExpCl
 			print "               ╟───────────────────┼───────────┼───────────────╢                    "
-			
+
 			rcs2[4] = redchiSqExpCl
 			alphaFit[4] = pwFit5[2]
 			cs2[4] = V_chisq
-			
-			// Refine All 
+
+			// Refine All
 			// -----------------------------------------------------------------------
-			
+
 			WaveStats/R=[0,4]/Q rcs2
 			if(V_minloc == 0)
 				Duplicate/O pwFit1,pwFit6
@@ -256,7 +251,7 @@ Function simDFT(tval,ovpVal,IPwave,mol,alpha,i0,phi,expSpecName,expEnergyName,ex
 			elseif(V_minloc == 3)
 				Duplicate/O pwFit4,pwFit6
 			elseif(V_minloc == 4)
-				Duplicate/O pwFit5,pwFit6		
+				Duplicate/O pwFit5,pwFit6
 			endif
 			H1 = makeHoldString(0,0,0,pwFit6,0,0,6)
 			Wave eps6 = makeEpsiltonWave(pwFit6,0,0,0,0,0,6)
@@ -270,14 +265,14 @@ Function simDFT(tval,ovpVal,IPwave,mol,alpha,i0,phi,expSpecName,expEnergyName,ex
 			NVAR chiSqExpCl = root:chiSqExpCl
 			chiSqExpCl = V_chisq
 			redchiSqExpCl = calcRedChiSq(allExpSpec,V_Chisq,nPeaks,5,1)
-			
+
 			printf "               ║       ALL         │  %07.1f  │     %05.3f     ║                    \r", V_chisq, redchiSqExpCl
-			print "               ╚═══════════════════╧═══════════╧═══════════════╝                    " 
-			
+			print "               ╚═══════════════════╧═══════════╧═══════════════╝                    "
+
 			rcs2[5] = redchiSqExpCl
 			alphaFit[5] = pwFit6[2]
 			cs2[5] = V_chisq
-			
+
 			WaveStats/Q rcs2
 			if(idFit[V_minloc] == 0)
 				Duplicate/O results1,results
@@ -320,7 +315,7 @@ Function simDFT(tval,ovpVal,IPwave,mol,alpha,i0,phi,expSpecName,expEnergyName,ex
 				NVAR redchiSqExpCl = root:redchiSqExpCl
 				NVAR chiSqExpCl = root:chiSqExpCl
 				redchiSqExpCl = rcs2[5]
-				chiSqExpCl = cs2[5]		
+				chiSqExpCl = cs2[5]
 			endif
 			//Calculate Goodness of Fit (GF) parameter for subsequent BIC analysis
 			NVAR GFExpCl = root:GFExpCl
@@ -331,7 +326,7 @@ Function simDFT(tval,ovpVal,IPwave,mol,alpha,i0,phi,expSpecName,expEnergyName,ex
 				den = allExpSpec[i]^2
 				GFExpCl += num/den
 			endfor
-			
+
 			Wave M_Covar,W_Sigma,pwMolAdj
 		endif
 		Variable V_FitQuitReason
@@ -347,30 +342,30 @@ Function simDFT(tval,ovpVal,IPwave,mol,alpha,i0,phi,expSpecName,expEnergyName,ex
 		endfor
 	endif
 	cleanUpTensorWaves2()
-	
+
 	//Generate the individual waves the concatenated waves
 	Wave totalNEXAFS
-	
+
 	if(StringMatch(fit,"no"))
 		NewDataFolder/O Modeling
 		for(i=0;i<nAlpha;i+=1)
 			Variable alphaVal = alphaWave[i]
 			String tnxfsName = "totalNEXAFS_" + num2str(alphaVal)
 			Wave totalNEXAFS = $tnxfsName
-			alphaModelPlotting(fit,allExpEnergy,allExpSpec,allExpEnergy,allDFTSteps,results,totalNEXAFS,nSpec,nPeaks,pwCopy,tval,ovpVal,thetaList,d,NEXAFStype,alpha=alphaVal)		
+			alphaModelPlotting(fit,allExpEnergy,allExpSpec,allExpEnergy,allDFTSteps,results,totalNEXAFS,nSpec,nPeaks,pwCopy,tval,ovpVal,thetaList,d,NEXAFStype,alpha=alphaVal)
 			organizeTensorWaves(alphaVal,fit)
 		endfor
-	elseif(!refine)	
+	elseif(!refine)
 			getAmpEnFromFit(pwFinal,pwI0,round(pwFinal[2]),tval,ovpVal,pwMolAdj)
-			alphaModelPlotting(fit,allExpEnergy,allExpSpec,allExpEnergy,allDFTSteps,results,totalNEXAFS,nSpec,nPeaks,pwAlpha,tval,ovpVal,thetaList,d,NEXAFStype)	
+			alphaModelPlotting(fit,allExpEnergy,allExpSpec,allExpEnergy,allDFTSteps,results,totalNEXAFS,nSpec,nPeaks,pwAlpha,tval,ovpVal,thetaList,d,NEXAFStype)
 		organizeTensorWaves(round(alpha),fit)
 	else
-		alphaModelPlotting(fit,allExpEnergy,allExpSpec,allExpEnergy,allDFTSteps,results,totalNEXAFS,nAlpha,nPeaks,refitpWave,tval,ovpVal,thetaList,d,NEXAFStype)		
+		alphaModelPlotting(fit,allExpEnergy,allExpSpec,allExpEnergy,allDFTSteps,results,totalNEXAFS,nAlpha,nPeaks,refitpWave,tval,ovpVal,thetaList,d,NEXAFStype)
 		getAmpEnFromFit(refitpWave,pWave1D,refitpWave[2],tval,ovpVal,pwMolAdj)
 		organizeTensorWaves(refitpWave[2],fit)
 	endif
 	Variable stopTimer = stopMSTimer(timerStart)/1000000
-		
+
 End
 
 Function stepWrapper(allExpEnergy,anchorStep1,anchorStep2,mol,expSpecName,expEnergyName,IPcorr,stepWid1,stepWid2,stepE1,stepE2,nSpec)
@@ -378,7 +373,7 @@ Function stepWrapper(allExpEnergy,anchorStep1,anchorStep2,mol,expSpecName,expEne
 	Wave allExpEnergy,IPcorr
 	Variable anchorStep1,anchorStep2,stepWid1,stepWid2,stepE1,stepE2,nSpec
 	String mol,expSpecName,expEnergyName
-	
+
 	Variable pntsPerSpec = numpnts(allExpEnergy)/nSpec
 	WAVE allDFTSteps = makeStep(IPcorr,pntsPerSpec,stepWid1,stepWid2,stepE1,stepE2,mol,expSpecName,expEnergyName)
 End
@@ -387,32 +382,32 @@ Function/WAVE scaleDFTStepToBareAtom(allExpEnergy,stepSum,anchorStep1,anchorStep
 	Wave stepSum,allExpEnergy
 	Variable anchorStep1,anchorStep2,method
 	String mol
-	
+
 	Variable tol = 1e-3, scaleDFTstepToBAMA
-	
+
 	//Find the bare atom waves
 	Wave mu_energy = findBAenergy()
 	Wave mu = findBAMA(mol)
-	
+
 	Duplicate/O stepSum,stepSum2
-	
-	//Find the bare atom energies used for scaling   	
+
+	//Find the bare atom energies used for scaling
 	Variable bareStepLo = findWaveValAtEergy(mu_energy,mu,anchorStep1)
 	Variable bareStepHi = findWaveValAtEergy(mu_energy,mu,anchorStep2)
-	//Find the dft energies used for scaling 
+	//Find the dft energies used for scaling
 	Variable dftStepLo = findWaveValAtEergy(allExpEnergy,stepSum,anchorStep1)
 	Variable dftStepHi = findWaveValAtEergy(allExpEnergy,stepSum,anchorStep2)
-	
+
 	if(method == 1)
 		scaleDFTstepToBAMA = bareStepLo / dftStepLo
 	elseif(method == 2)
 		scaleDFTstepToBAMA = (bareStepHi-bareStepLo) / (dftStepHi-dftStepLo)
 	endif
-	
-	stepSum2 = (stepSum - dftStepLo) * scaleDFTstepToBAMA + bareStepLo 
+
+	stepSum2 = (stepSum - dftStepLo) * scaleDFTstepToBAMA + bareStepLo
 	Variable dftStepLo_2 = findWaveValAtEergy(allExpEnergy,stepSum2,anchorStep1)
 	Variable dif = dftStepLo_2 - bareStepLo
-	if(abs(dif) > tol) 
+	if(abs(dif) > tol)
 		if(dif > 0)
 			stepSum2 -= dif
 		elseif(dif < 0)
@@ -426,63 +421,63 @@ Function/WAVE scaleDFTStepToBareAtom(allExpEnergy,stepSum,anchorStep1,anchorStep
 End
 
 Function findWaveValAtEergy(xw,yw,val)
-	
+
 	Wave xw,yw
 	Variable val
-	
+
 	Variable p1 = round(BinarySearchInterp(xw,val))
 	Variable dftLo = yw[p1]
-	
+
 	return dftLo
 End
 
 Function/WAVE findBAenergy()
-	
+
 	String currentFolder=GetdataFolder(1)
 	SetDataFolder root:Packages:NXA
 	WAVE/Z mu_energy
 	String newNameEn = currentFolder + "mu_energy"
 	Duplicate/O mu_energy,$newNameEn
 	SetDataFolder currentFolder
-	
+
 	return mu_energy
 End
 
 Function/WAVE findBAMA(mol)
 	String mol
-	
+
 	String currentFolder=GetdataFolder(1)
 	SetDataFolder root:Packages:NXA
 	WAVE/Z mu=$(mol+"_mu")
 	String newNameMu = currentFolder + "mu"
 	Duplicate/O mu,$newNameMu
-	
+
 	If( !WaveExists(mu) )
 		Abort "Couldn't find the indicated mass absorption wave! Aborting!"
 	endif
-	
+
 	SetDataFolder currentFolder
-	
+
 	return mu
 End
 
 Function/WAVE makeLongSpecWave(expSpecName)
-	
+
 	String expSpecName
 	String listOfExpSpec   = SortList(WaveList(expSpecName   + "*",";",""),";",24)
 	Make/O/D/N=0 allExpSpec = 0
 	Concatenate/O/NP listOfExpSpec,allExpSpec
-	
+
 	return allExpSpec
 End
 
 Function/WAVE makeLongEnWave(expEnName)
-	
+
 	String expEnName
 	String listOfExpEn   = SortList(WaveList(expEnName   + "*",";",""),";",24)
 	Make/O/D/N=0 allExpEn = 0
 	Concatenate/O/NP listOfExpEn,allExpEn
-	
+
 	return allExpEn
 End
 
@@ -494,21 +489,21 @@ Function/WAVE makeStep(IPcorr,pntsPerSpec,stepWid1,stepWid2,stepE1,stepE2,mol,ex
 	String mol
 	String expSpecName		//Base name of spectra
 	String expEnergyName	//Base name of experimental energy waves
-	
+
 	String listOfExpSpec   = SortList(WaveList(expSpecName   + "*",";",""),";",24)
 	String listOfExpEnergy = SortList(WaveList(expEnergyName + "*",";",""),";",24)
 	Variable nSpec = ItemsInList(listOfExpSpec)
 	String dummyName = StringFromList(0,listOfExpEnergy)
-	Wave dummyEnergy = $dummyName 
-	
+	Wave dummyEnergy = $dummyName
+
 	Variable startPre= 240 		//At what energy should the preedge start to be defined?
 	Variable endPre 	= 284.1		//At what energy should the preedge stop to be defined?
 	Variable startPost = 284.3 		//At what energy should the postedge start to be defined?
 	Variable endPost	 = 360		//At what energy should the postedge stop to be defined?
-	
+
 	//Determine min and max values for StepEdge
 	WaveStats/Q IPcorr
-		
+
 	Variable stepWid, stepDecay = 0
 
 	//Determine pre and post edges of bare atom absoprtion using a polynomial fit
@@ -520,24 +515,24 @@ Function/WAVE makeStep(IPcorr,pntsPerSpec,stepWid1,stepWid2,stepE1,stepE2,mol,ex
 	Duplicate/d/o W_Coef, PreEdge_Coef
 	FitPoly3(mu,mu_energy,startPost,endPost)
 	Duplicate/d/o W_Coef, PostEdge_Coef
-	
+
 	Variable StitchLow =poly(PreEdge_Coef,endPre)
 	Variable StitchHigh=poly(PostEdge_Coef,startPost)
 	//Make step edges for each atom
 	Variable nAtoms = numpnts(IPcorr),i
-	
+
 	Variable dftPreEn2 = round(BinarySearchInterp(dummyEnergy,IPcorr[V_minloc]))
 	Variable dftPosEn2 = round(BinarySearchInterp(dummyEnergy,IPcorr[V_maxloc]))
-			
-	Make/O/N=(pntsPerSpec) stepSum=0 
+
+	Make/O/N=(pntsPerSpec) stepSum=0
 	for(i=0;i<nAtoms;i+=1)
 		//Determine width for average value of IP
 		Variable E0 = IPcorr[i]
-			
+
 		//stepWid =(stepWid1) +((stepWid2-stepWid1)/(stepE2-stepE1))*(E0-IPcorr[V_minloc])
 		stepWid =(stepWid1) +((stepWid2-stepWid1)/(IPcorr[V_maxloc]-IPcorr[V_minloc]))*(E0-IPcorr[V_minloc])
 		String stepName = "step_" + num2str(i)
-		Make/o/n=(pntsPerSpec) $stepName	
+		Make/o/n=(pntsPerSpec) $stepName
 		Wave w = $stepName
 		w=0
 		w[0,dftPreEn2-1]=poly(PreEdge_Coef,dummyEnergy)
@@ -546,85 +541,114 @@ Function/WAVE makeStep(IPcorr,pntsPerSpec,stepWid1,stepWid2,stepE1,stepE2,mol,ex
 		Smooth 10,w
 		stepSum += w
 	endfor
-	
+
 	//Get ready to make the bare atom absorption waves set in appropriate energy range and then concatenate
 	String dftStepList = ""
 	for(i=0;i<nSpec;i+=1)
 		dftStepList = AddListItem(NameOfWave(stepSum),dftStepList)
 	endfor
-	
+
 	//Make the generated DFT Step into a concatenated wave for simultaneous fitting
 	Concatenate/O/NP dftStepList, allDFTSteps
-	
-	return allDFTSteps
-End	
 
+	return allDFTSteps
+End
+
+// Prepare the DFT calculation for simulating nexafs.
+//
+// Parameters:
+// -----------
+// expSpecName: string
+// 		Name pattern of experimental spectra to be found in the data browser
+// expEnergyName: string
+//		Name pattern of experimental energy waves found in the data browser
+// mol: string
+// 		Name of the molecule calculated from DFT
+// IPwave: string
+// 		Wave containing the Ionization potentials calculated from DFT
+// expFolderPath: string
+// 		Path in Igor to find the experiment data
+// startPre: variable
+//		Starting energy used in pre-edge normalization
+// endPre: variable
+//		Ending energy used in pre-edge normalization
+// startPost: variable
+// 		Starting energy used in post-edge normalization
+// endPost: variable
+// 		Ending energy used in post-edge normalization
+// stepShift: variable
+//		Energy shift applied to the step edge
+// anchorStep1: variable
+// 		Energy to anchor the start of the step to the bare atom
+// anchorStep2: variable
+// 		Energy to anchor the start of the end of the bare atom
+//
+// Returns:
+// --------
+// None
 Function prepSimDFTfit(expSpecName,expEnergyName,mol,IPwave,expFolderPath,anchorStep1,anchorStep2,stepWid1,stepWid2,stepE1,stepE2,[startPre,endPre,startPost,endPost,stepShift])
 
-	String expSpecName		//Base name of spectra
-	String expEnergyName	//Base name of experimental energy waves
-	String mol				//Name of molecule used to build the bare atom absorption
-	Wave IPwave				//Wave containing the Ionization Potentials from DFT
-	String expFolderPath	//Igor path to experimental data to fit to.
-	Variable startPre 		//At what energy should the preedge start to be defined?
-	Variable endPre 			//At what energy should the preedge stop to be defined?
-	Variable startPost 		//At what energy should the postedge start to be defined?
-	Variable endPost			//At what energy should the postedge stop to be defined?
-	Variable stepShift		//What shift to apply to IP energies?
+	String expSpecName
+	String expEnergyName
+	String mol
+	Wave IPwave
+	String expFolderPath
+	Variable startPre
+	Variable endPre
+	Variable startPost
+	Variable endPost
+	Variable stepShift
 	Variable anchorStep1
 	Variable anchorStep2
 	Variable stepWid1,stepWid2,stepE1,stepE2
-	
+
+	//========================/ Setup default parameters /===============
 	if(ParamIsDefault(startPre))
 		startPre = 283
 	endif
-	
 	if(ParamIsDefault(endPre))
 		endPre = 284.1
 	endif
-	
 	if(ParamIsDefault(startPost))
 		startPost = 284.7
 	endif
-	
 	if(ParamIsDefault(endPost))
 		endPost = 360
 	endif
-	
 	if(ParamIsDefault(stepShift))
 		stepShift = 0
 	endif
-	
+
+	// Pull experimental data from data browser for some reason. Bad design pattern?
 	String currentFolder=GetdataFolder(1)
-	
-	Duplicate/O IPwave, IPcorr
-	IPcorr = IPwave + stepShift
-	
-	SetDataFolder expFolderPath
-	
 	String listOfExpSpec   = SortList(WaveList(expSpecName   + "*",";",""),";",24)
 	String listOfExpEnergy = SortList(WaveList(expEnergyName + "*",";",""),";",24)
-	
+
+	// Setup Ionization potential and apply the input energy shift
+	Duplicate/O IPwave, IPcorr
+	IPcorr = IPwave + stepShift
+	SetDataFolder expFolderPath
+
 	String dummyName = StringFromList(0,listOfExpEnergy)
-	Wave dummyEnergy = $dummyName 
-	
+	Wave dummyEnergy = $dummyName
+
 	Variable nSpec = ItemsInList(listOfExpSpec),i
-	
+
 	String newNameMu = currentFolder + "mu"
 	String newNameEn = currentFolder + "mu_energy"
-	
+
 	SetDataFolder expFolderPath
-	
+
 	Wave mu = $newNameMu
 	Wave mu_energy = $newNameEn
-	
-	//Concatenate the experimental angle-resolved NEXAFS and corresponding energies		
-	Make/O/D/N=0 allExpSpec = 0 , allExpEnergy = 0 
+
+	//Concatenate the experimental angle-resolved NEXAFS and corresponding energies
+	Make/O/D/N=0 allExpSpec = 0 , allExpEnergy = 0
 	Concatenate/O/NP listOfExpSpec,allExpSpec
 	Concatenate/O/NP listOfExpEnergy,allExpEnergy
-	
+
 	WaveStats/Q allExpEnergy
-	
+
 	Variable pntsPerSpec = numpnts(allExpSpec)/ItemsInList(listOfExpSpec)
 	//Make the step based on the IP from DFT
 	Wave allDFTSteps = makeStep(IPcorr,pntsPerSpec,stepWid1,stepWid2,stepE1,stepE2,mol,expSpecName,expEnergyName)
@@ -632,20 +656,99 @@ Function prepSimDFTfit(expSpecName,expEnergyName,mol,IPwave,expFolderPath,anchor
 	Variable method = 2
 	Variable alpha1 = 24,alpha2=16,i0=65000,eta=1,etaDel=0.001,etaFin=0.5
 	String tl = "40;55;70;90"
-	
+
 	Wave stepSum2 = scaleDFTStepToBareAtom(allExpEnergy,allDFTSteps,anchorStep1,anchorStep2,mol,method)
 	Wave allExpSpec = scaleExptoDFTStep2(stepSum2,anchorStep1,anchorStep2,284.4,286.4,293.9,308,mol,method,nSpec,tl,alpha1,alpha2,i0,expSpecName,expEnergyName,eta,etadel,etaFin)
-	
+
 	String newNameallExpSpec = currentFolder + "allExpSpec"
 	String newNameallExpEnergy = currentFolder + "allExpEnergy"
 	String newNameallDFTSteps = currentFolder + "allDFTSteps"
 	Duplicate/O allExpSpec  ,$newNameallExpSpec
 	Duplicate/O allExpEnergy,$newNameallExpEnergy
 	Duplicate/O stepSum2 ,$newNameallDFTSteps
-	
+
 	SetDataFolder currentFolder
 End
 
+// make1DparamWave
+//
+// Casts the 2D parameter wave `IPwave` into a 1D parameter wave `tensorPWave`
+// suitable for fitting. This process also incorporates additional scalar
+// parameters (`alpha`, `i0`, `phi`) and optional parameters (`atomName`,
+// `rigidShift`) into the output `tensorPWave`.
+//
+// The primary purpose of this function is to linearize and aggregate
+// parameters from various sources into a single 1D wave. This format
+// is commonly required by Igor Pro's multivariate fitting operations,
+// such as FuncFit.
+//
+// Parameters
+// ----------
+// IPwave : wave
+//     The input 2D wave. This wave contains the primary set of parameters
+//     that need to be restructured or "cast" into a 1D format.
+// tensorPWave : wave
+//     The output 1D wave. This wave is populated by the function with
+//     parameters from `IPwave` along with `alpha`, `i0`, `phi`, and any
+//     provided optional parameters. It is modified in-place. The structure
+//     of this wave is tailored for subsequent fitting procedures.
+// alpha : variable
+//     A scalar variable, potentially representing a characteristic angle,
+//     anisotropic factor, or another model-specific coefficient, to be
+//     included in `tensorPWave`.
+// i0 : variable
+//     A scalar variable, often representing an initial intensity, baseline
+//     value, or normalization factor, to be included in `tensorPWave`.
+// phi : variable
+//     A scalar variable, typically representing a phase angle, orientation,
+//     or rotational offset, to be included in `tensorPWave`.
+// atomName : string, optional
+//     An optional string specifying the name of an atom. If provided,
+//     this information may be used to select or adjust specific parameters
+//     related to the named atom during the construction of `tensorPWave`.
+//     If omitted, the function proceeds without atom-specific adjustments
+//     or uses a default behavior.
+// rigidShift : variable or wave, optional
+//     An optional scalar variable or 1D wave representing a rigid shift.
+//     If provided, this shift (e.g., an energy shift, spatial offset)
+//     is incorporated into the parameters within `tensorPWave`. If omitted,
+//     no such shift is applied, or a default shift of zero is assumed.
+//
+// Returns
+// -------
+// variable
+//     Returns 0 on successful completion. A non-zero value typically
+//     indicates an error occurred during the execution of the function
+//     (following standard Igor Pro function return conventions).
+//
+// Notes
+// -----
+// The exact mapping and transformation logic from the input parameters
+// to the `tensorPWave` depends on the specific requirements of the
+// fitting model for which these parameters are being prepared. This
+// function serves as a preparatory step to ensure data is in the correct
+// format for Igor Pro's fitting engine.
+// Cast the 2D parameter wave into a 1D parameter wave for fitting.
+//
+// 1D Parameter wave structure:
+// [0] - Number of atoms
+// [1] - Global intensity scaling factor (i0)
+// [2] - Molecular tilt angle (alpha)
+// [3] - Azimuthal angle of E-field (phi)
+// [4 - 4+nAtoms-1] - Calculated ionization potentials (IP) for each atom
+// ... assume nAtoms = 1 for simplicity
+// [5] - Transition energy for the first transition
+// [6] - Transition width for the first transition
+// [7] - Transition amplitude for the first transition
+// [8] - XX component of the transition tensor for the first transition
+// [9] - XY component of the transition tensor for the first transition
+// [10] - XZ component of the transition tensor for the first transition
+// [11] - YY component of the transition tensor for the first transition
+// [12] - YZ component of the transition tensor for the first transition
+// [13] - ZZ component of the transition tensor for the first transition
+// [14] - Local orientation (alpha) for the first transition
+// [15] - Modified amplitude value for the first transition (initially set to 0)
+// [16 - 16+nTransitions*11-1] - Repeat for each transition, where nTransitions is the number of transitions in tensorPWave
 Function make1DparamWave(IPwave,tensorPWave,alpha,i0,phi,[atomName,rigidShift])
 
 	Wave IPwave			//1D wave containing the ionization potentials from DFT
@@ -655,20 +758,20 @@ Function make1DparamWave(IPwave,tensorPWave,alpha,i0,phi,[atomName,rigidShift])
 	Variable phi			//Azimuthal angle of E-field. Usually 0 for NEXAFS
 	String atomName		//What element are we processing?
 	Variable rigidShift	//Global energy shift to be applied to DFT energies to match experiment
-	
+
 	if(ParamIsDefault(atomName))
 		atomName = "C"
 	endif
-	
+
 	if(ParamIsDefault(rigidShift))
 		rigidShift = 0
 	endif
-	
+
 	Variable nTrans = DimSize(tensorPWave,0)
 	Make/O/D/N=(nTrans,3) pWave2D
-	
+
 	Variable nAtoms = numpnts(IPwave)
-	
+
 	Variable i,j=0
 
 	for(i=0;i<=nTrans-1;i+=1)
@@ -676,12 +779,12 @@ Function make1DparamWave(IPwave,tensorPWave,alpha,i0,phi,[atomName,rigidShift])
 		pWave2D[i][1] = tensorPWave[i][2]	//Peak width
 		pWave2D[i][2] = tensorPWave[i][1]	//Peak amplitude
 	endfor
-	
+
 	Make/O/D/N=(11*nTrans + nAtoms + 4) pWave1D
-	
+
 	//Make text wave with parameter names. Easier to browse parameters.
-	Make/O/T/N=(11*nTrans + nAtoms + 4) paramNames 
-	
+	Make/O/T/N=(11*nTrans + nAtoms + 4) paramNames
+
 	//Convert 2D wave to 1D
 	for(i=nAtoms+4;i<=11*nTrans + nAtoms;i+=11)
 		pWave1D[i+0] = pWave2D[j][0] + rigidShift		//Peak position
@@ -695,7 +798,7 @@ Function make1DparamWave(IPwave,tensorPWave,alpha,i0,phi,[atomName,rigidShift])
 		pWave1D[i+8] = abs(tensorPWave[j][10])			//ZZ
 		pWave1D[i+9] = alpha							//Local orientation
 		pWave1D[i+10] = 0								//Modified amplitude value to be used for peak refinements
-		
+
 		paramNames[i+0]  = "peakEnergy_"     + num2str(j)
 		paramNames[i+1]  = "peakWidth_"      + num2str(j)
 		paramNames[i+2]  = "maxAmplitude_"   + num2str(j)
@@ -709,16 +812,16 @@ Function make1DparamWave(IPwave,tensorPWave,alpha,i0,phi,[atomName,rigidShift])
 		paramNames[i+10] = "MolTensorTheta_" + num2str(j)
 		j+=1
 	endfor
-	
+
 	//Check that there no transitions with zero energy
-	
+
 	//Add the ionization potentials to make the step edge
 	for(i=4;i<nAtoms+4;i+=1)
 		pWave1D[i] = IPwave[i-4]
 		String ipAtom = atomName + num2str(i-3) + "_IP"
 		paramNames[i] = ipAtom
 	endfor
-	
+
 	//Add the number of atoms to the parameter wave
 	pWave1D[0] = nAtoms
 	paramNames[0] = "nAtoms"
@@ -726,11 +829,11 @@ Function make1DparamWave(IPwave,tensorPWave,alpha,i0,phi,[atomName,rigidShift])
 	//Add the i0 to the parameter wave
 	pWave1D[1] = i0
 	paramNames[1] = "i0"
-	
+
 	//Add the alpha value to the parameter wave
-	pWave1D[2] = alpha//*(Pi/180)	
+	pWave1D[2] = alpha//*(Pi/180)
 	paramNames[2] = "alpha"
-	
+
 	//Add the value of phi of the Electric Field to the parameter wave
 	pWave1D[3] = phi
 	paramNames[3] = "phi"
@@ -739,16 +842,16 @@ End
 Function makeTensor1D(pw)
 
 	Wave pw
-	
+
 	Variable nAtoms = pw[0],i,j=0
 	Variable nTransitions = (numpnts(pw) - 4 - nAtoms)/11
 	for(i=0;i<nTransitions;i+=1)
 		String tensorName =  "resonance_" + num2str(i)
 		Make/O/D/N=(3,3) $tensorName
 		Wave w = $tensorName
-		w = 0 
+		w = 0
 	endfor
-	
+
 	for(i=4 + nAtoms;i<11*nTransitions + nAtoms + 4;i+=11)
 		tensorName =  "resonance_" + num2str(j)
 		Wave w = $tensorName
@@ -763,61 +866,61 @@ Function makeTensor1D(pw)
 End
 
 Function/WAVE make3DnormWave()
-		
+
 	String normTensors = WaveList("norm_*",";","")
 	Variable nTrans = ItemsInList(normTensors)
 	Make/O/D/N=(3,3,nTrans) norm3D
-	Concatenate/O/NP=2 normTensors, norm3D	
-	
+	Concatenate/O/NP=2 normTensors, norm3D
+
 	return norm3D
 End
 
 Function/WAVE make3DResonance()
-		
+
 	String tensors = WaveList("resonance_*",";","")
 	Variable nTrans = ItemsInList(tensors)
 	Make/O/D/N=(3,3,nTrans) tensor3D
-	Concatenate/O/NP=2 tensors, tensor3D	
-	
+	Concatenate/O/NP=2 tensors, tensor3D
+
 	return tensor3D
 End
 
 Function simDFTfit2(pw,yw,ew,thw,sw) :FitFunc
 
 	Wave pw	//1D Parameter wave. Has peak positions,widths, and amplitudes. has initial guess for alpha and IPs required to build step edge
-	Wave yw	//Wave containing the different spectra to be fit
+	Wave yw	// Output Function wave. Contains the simulated NEXAFS spectrum
 	Wave ew	//Wave containing the energies of the various spectra to be fit (i.e. the x wave)
 	Wave thw	//Wave containing the various values of theta
 	Wave sw	//Wave containing the concatenated steps from the DFT IPs
-	
+
 	Variable i,j=0,k,m
 	Variable targetDP = 10
 	//Make the absorption tensor for each transition, normalize it, and place each transition into a layer of a 3D wave
 	makeTensor1D(pw)
-	normalizeTensor()	
+	normalizeTensor()
 	Wave norm3D   = make3DnormWave()
 	Wave tensor3D = make3DResonance()
-	
+
 	//Add the step edge
 	yw = sw
-	
+
 	//Reference hold Wave. To be used to determine how the peak amplitudes will be defined
 	Wave holdWave
-	
-	Variable nTransitions = DimSize(norm3D,2)	
-	Variable pos,wid,amp,alpha,i0,phi,localalpha,amp2	
-	Variable p0,pf,nSpec=howManySpec(thw),cSpec=1,thetaVal	
-	
+
+	Variable nTransitions = DimSize(norm3D,2)
+	Variable pos,wid,amp,alpha,i0,phi,localalpha,amp2
+	Variable p0,pf,nSpec=howManySpec(thw),cSpec=1,thetaVal
+
 	Make/O/N=(3,3,nTransitions) filmTensor3D,r0x3D,r90x3D,r180x3D,r270x3D,tilt3D,correctedMolTensor3D
-	
+
 	Variable nAtoms = pw[0]
-		
-	Make/O/D/N=(3,3) currentTensor = 0 
-	
+
+	Make/O/D/N=(3,3) currentTensor = 0
+
 	Variable nPnts = numpnts(yw)/nSpec
-	
+
 	Make/O/N=(nTransitions) MA = 0,vecAngle = 0,vecAngle2 = 0
-	 
+
 	//Wave that will populate the XX/YY and ZZ tensor elements into 2D vector
 	Make/O/N=2 vector
 	//Make rotation matrices for rotation of 90,180,and 270 degrees around z-axis
@@ -825,7 +928,7 @@ Function simDFTfit2(pw,yw,ew,thw,sw) :FitFunc
 	Make/O/D/N=(3,3) rotMat90  = {{cos(90*(Pi/180)) ,sin(90*(Pi/180)),0} ,{-sin(90*(Pi/180)) ,cos(90*(Pi/180)),0} ,{0,0,1}}
 	Make/O/D/N=(3,3) rotMat180 = {{cos(180*(Pi/180)),sin(180*(Pi/180)),0},{-sin(180*(Pi/180)),cos(180*(Pi/180)),0},{0,0,1}}
 	Make/O/D/N=(3,3) rotMat270 = {{cos(270*(Pi/180)),sin(270*(Pi/180)),0},{-sin(270*(Pi/180)),cos(270*(Pi/180)),0},{0,0,1}}
-	
+
 	//Duplicated parameter wave that will contain the results of rotating the molecular tensor
 	Duplicate/O pw,pwMolAdj,pwFilm
 	Wave pwMolAdj,pwFilm
@@ -835,9 +938,9 @@ Function simDFTfit2(pw,yw,ew,thw,sw) :FitFunc
 	//1. Ratio of in-plane vs out-of-plane components?
 	//2. Need a second parameter to describe amplitude? Possibly related to a local alpha?
 		//*********Will need to change pWave from 10 parameters per peak to 11!*******
-	//3. Visualize tensor elements for each cluster (Tensor Element vs Cluster ID) -->Log plot	
+	//3. Visualize tensor elements for each cluster (Tensor Element vs Cluster ID) -->Log plot
 	//4. Additive oscillator strength... How to accomplish this programatically???
-	i0         = pw[1] 
+	i0         = pw[1]
 	alpha      = pw[2] * (Pi/180)
 	phi        = pw[3] * (Pi/180)
 	Variable count = 0
@@ -847,8 +950,8 @@ Function simDFTfit2(pw,yw,ew,thw,sw) :FitFunc
 		amp        = ABS(pw[i + 2])
 		localalpha = pw[i + 9]
 		amp2       = pw[i + 10]
-		
-		
+
+
 		currentTensor = tensor3D[p][q][j]// norm3D[p][q][j]
 		vector[0] = currentTensor[0][0]
 		vector[1] = currentTensor[2][2]
@@ -856,7 +959,7 @@ Function simDFTfit2(pw,yw,ew,thw,sw) :FitFunc
 		currentTensor[0][0] =  abs(rv[0])
 		currentTensor[1][1] =  abs(rv[0])
 		currentTensor[2][2] =  abs(rv[1])
-		
+
 		if(WaveExists(pwMolAdj))
 			pwMolAdj[i+3] = currentTensor[0][0]
 			pwMolAdj[i+4] = currentTensor[0][1]
@@ -865,27 +968,27 @@ Function simDFTfit2(pw,yw,ew,thw,sw) :FitFunc
 			pwMolAdj[i+7] = currentTensor[1][2]
 			pwMolAdj[i+8] = currentTensor[2][2]
 		endif
-		
+
 		Variable ang2 = atan(0.5*(tensor3D[2][2][j]/tensor3D[0][0][j])) * (180/pi)
 		Variable ang3 = atan((0.5*rv[1])/rv[0]) * (180/pi)
-		
+
 		vecAngle[j] = ang2
 		vecAngle2[j] = ang3
 		currentTensor *= i0 * amp// * currentTensor
 		Make/O/D/N=(3,3) rotMatAlignX = {{1,0,0},{0,cos(alpha),sin(alpha)},{0,-sin(alpha),cos(alpha)}}
-			
+
 		//Tilt the tensor by angle alpha
-		MatrixOP/O  tiltedTensorX = rotMatAlignX x currentTensor x rotMatAlignX^t			 
-		//Construct the film tensor by adding the azimuthal rotations 
+		MatrixOP/O  tiltedTensorX = rotMatAlignX x currentTensor x rotMatAlignX^t
+		//Construct the film tensor by adding the azimuthal rotations
 		MatrixOP/O  RotTensor0X   =  rotMat0   x tiltedTensorX x rotMat0^t
 		MatrixOP/O  RotTensor90X  =  rotMat90  x tiltedTensorX x rotMat90^t
 		MatrixOP/O  RotTensor180X =  rotMat180 x tiltedTensorX x rotMat180^t
 		MatrixOP/O  RotTensor270X =  rotMat270 x tiltedTensorX x rotMat270^t
 		MatrixOP/O filmTensor = RotTensor0X + RotTensor90X + RotTensor180X + RotTensor270X
-		
-		
+
+
 		Wave filmTensorT = truncate2D(filmTensor,targetDP)
-		
+
 		if(WaveExists(pwFilm))
 			pwFilm[i+3] = filmTensorT[0][0]
 			pwFilm[i+4] = filmTensorT[0][1]
@@ -894,7 +997,7 @@ Function simDFTfit2(pw,yw,ew,thw,sw) :FitFunc
 			pwFilm[i+7] = filmTensorT[1][2]
 			pwFilm[i+8] = filmTensorT[2][2]
 		endif
-		
+
 		correctedMolTensor3D[][][j] = currentTensor[p][q]	//Molecular tensor after rotating ZZ/XX elements by ModTheta
 		filmTensor3D[][][j]         = filmTensorT[p][q]		//Film Tensor after tilting molecular tensor by alpha and 4-fold addition
 		r0x3D[][][j]                = RotTensor0X[p][q]
@@ -902,7 +1005,7 @@ Function simDFTfit2(pw,yw,ew,thw,sw) :FitFunc
 		r180x3D[][][j]              = RotTensor180X[p][q]
 		r270x3D[][][j]              = RotTensor270X[p][q]
 		tilt3D[][][j]               = tiltedTensorX[p][q]
-		
+
 		if(j<nTransitions)
 			if(cSpec == 1)
 				p0 = 0
@@ -919,11 +1022,11 @@ Function simDFTfit2(pw,yw,ew,thw,sw) :FitFunc
 			endif
 		endif
 		//Need to extract xx and zz tensor elements and create NEXAFS waves from them
-		
+
 		//Apply electric field to current tensor to obtain the mass absorbance
-		Make/O/D/N=(3) eField = {sin(thetaVal)*cos(phi),sin(thetaVal)*sin(phi),cos(thetaVal)}	
+		Make/O/D/N=(3) eField = {sin(thetaVal)*cos(phi),sin(thetaVal)*sin(phi),cos(thetaVal)}
 		MatrixOP/O tempMA = eField^t x filmTensor x eField
-		
+
 		if(numtype(tempMA[0]) !=0)
 			print "Transition " + num2str(j) + " with a theta value of " + num2str(thetaVal) + " has a problem"
 		else
@@ -935,10 +1038,10 @@ Function simDFTfit2(pw,yw,ew,thw,sw) :FitFunc
 		Wave z = $pkName
 		ControlInfo/W=ClusteringAlgorithm Eini
 		Variable Eini = V_Value
-			
+
 		ControlInfo/W=ClusteringAlgorithm Efin
 		Variable Efin = V_Value
-			
+
 		SetScale/i x,Eini,Efin,z
 		z = 0
 		z = (MA[j]) * gauss(x,pos,wid)
@@ -946,26 +1049,26 @@ Function simDFTfit2(pw,yw,ew,thw,sw) :FitFunc
 		//yw[p0,pf] += sqrt(2*Pi) * wid * MA[j] * gauss(ew,pos,wid)
 		yw[p0,pf] += MA[j] * gauss(ew,pos,wid)
 		j+=1
-		
+
 		if(j<=nTransitions)
 			if(cSpec == 1)
 				if(j==(nTransitions) && cSpec < nSpec)
 					i=nAtoms + 4 - 11
 					cSpec+=1
 					j=0
-				endif 			
+				endif
 			else
 				if(j==(nTransitions) && cSpec < nSpec)
 					i=nAtoms + 4 - 11
 					cSpec+=1
 					j=0
-				endif 
+				endif
 			endif
 		endif
 	endfor
-	
+
 	KillWaves/Z rotMat0,rotMat90,rotMat180,rotMat270,RotTensor0,RotTensor90,RotTensor180,RotTensor270,TEMPma
-	
+
 End
 
 Function simDFTModel(pw,yw,ew,thw,sw) :FitFunc
@@ -975,36 +1078,36 @@ Function simDFTModel(pw,yw,ew,thw,sw) :FitFunc
 	Wave ew	//Wave containing the energies of the various spectra to be fit (i.e. the x wave)
 	Wave thw	//Wave containing the various values of theta
 	Wave sw	//Step Wave
-		
+
 	Variable i,j=0,k,m
-	
+
 	//Make the absorption tensor for each transition, normalize it, and place each transition into a layer of a 3D wave
 	makeTensor1D(pw)
-	normalizeTensor()	
+	normalizeTensor()
 	make3DnormWave()
 	Wave norm3D
-	
+
 	Variable nTransitions = DimSize(norm3D,2)
-	Variable pos,wid,amp,alpha,i0,phi,localalpha,amp2	
-	Variable p0,pf,nSpec=howManySpec(thw),cSpec=1,thetaVal	
+	Variable pos,wid,amp,alpha,i0,phi,localalpha,amp2
+	Variable p0,pf,nSpec=howManySpec(thw),cSpec=1,thetaVal
 	Variable nAtoms = pw[0]
 	Variable targetDP = 10
 
 	Make/O/D/N=(3,3) currentTensor = 0
 	//This is the wave that will contain the DFT tensor model NEXAFS
-	String tNXFSname = "totalNEXAFS_" + num2str(pw[2]) 
+	String tNXFSname = "totalNEXAFS_" + num2str(pw[2])
 	Duplicate/D/O yw,$tNXFSname
-	Wave totalNEXAFS = $tNXFSname 
+	Wave totalNEXAFS = $tNXFSname
 	totalNEXAFS = sw
 	Variable nPnts = numpnts(yw)/nSpec
-	Make/O/D/N=(nTransitions) MA = 0 
-	
+	Make/O/D/N=(nTransitions) MA = 0
+
 	//Make rotation matrices for rotation of 90,180,and 270 degrees around z-axis
 	Make/O/D/N=(3,3) rotMat0   = {{cos(0*(Pi/180))  ,sin(0*(Pi/180)),0}  ,{-sin(0*(Pi/180))  ,cos(0*(Pi/180)),0}  ,{0,0,1}}
 	Make/O/D/N=(3,3) rotMat90  = {{cos(90*(Pi/180)) ,sin(90*(Pi/180)),0} ,{-sin(90*(Pi/180)) ,cos(90*(Pi/180)),0} ,{0,0,1}}
 	Make/O/D/N=(3,3) rotMat180 = {{cos(180*(Pi/180)),sin(180*(Pi/180)),0},{-sin(180*(Pi/180)),cos(180*(Pi/180)),0},{0,0,1}}
 	Make/O/D/N=(3,3) rotMat270 = {{cos(270*(Pi/180)),sin(270*(Pi/180)),0},{-sin(270*(Pi/180)),cos(270*(Pi/180)),0},{0,0,1}}
-	
+
 	for(i=nAtoms + 4 ;i<11*nTransitions + nAtoms;i+=11)
 		i0    = pw[1]
 		alpha = pw[2]//90-pw[i+9]
@@ -1014,20 +1117,20 @@ Function simDFTModel(pw,yw,ew,thw,sw) :FitFunc
 		amp   = pw[i + 2]
 		localalpha = pw[i + 9]
 		amp2       = pw[i + 10]
-		
+
 		currentTensor = i0 * amp * norm3D[p][q][j]
-		
+
 		Make/O/D/N=(3,3) rotMatAlignX = {{1,0,0},{0,cos(alpha*(Pi/180)),sin(alpha*(Pi/180))},{0,-sin(alpha*(Pi/180)),cos(alpha*(Pi/180))}}
-		
+
 		MatrixOP/O tiltedTensor = rotMatAlignX x currentTensor x rotMatAlignX^t
-		
+
 		MatrixOP/O  RotTensor0   =  rotMat0   x tiltedTensor x rotMat0^t
 		MatrixOP/O  RotTensor90  =  rotMat90  x tiltedTensor x rotMat90^t
 		MatrixOP/O  RotTensor180 =  rotMat180 x tiltedTensor x rotMat180^t
 		MatrixOP/O  RotTensor270 =  rotMat270 x tiltedTensor x rotMat270^t
-		
+
 		MatrixOP/O filmTensor = RotTensor0 + RotTensor90 + RotTensor180 + RotTensor270
-		
+
 		for(k=0;k<=2;k+=1)
 			for(m=0;m<=2;m+=1)
 				Variable currComp = filmTensor[k][m]
@@ -1039,7 +1142,7 @@ Function simDFTModel(pw,yw,ew,thw,sw) :FitFunc
 				filmTensor[k][m] = currComp
 			endfor
 		endfor
-		
+
 		if(j<nTransitions)
 			if(cSpec == 1)
 				p0 = 0
@@ -1055,41 +1158,41 @@ Function simDFTModel(pw,yw,ew,thw,sw) :FitFunc
 				thetaVal = thw[p0]
 			endif
 		endif
-		
-		Make/O/D/N=(3) eField = {sin(thetaVal*(Pi/180))*cos(phi*(Pi/180)),sin(thetaVal*(Pi/180))*sin(phi*(Pi/180)),cos(thetaVal*(Pi/180))}	
+
+		Make/O/D/N=(3) eField = {sin(thetaVal*(Pi/180))*cos(phi*(Pi/180)),sin(thetaVal*(Pi/180))*sin(phi*(Pi/180)),cos(thetaVal*(Pi/180))}
 		MatrixOP/O tempMA = amp * (eField^t x filmTensor x eField)
-		
+
 		if(numtype(tempMA[0]) !=0)
 			MA[j] = 0
 		else
 			MA[j] = tempMA[0]
 		endif
-		
-		String pkName = "pk" + num2str(j) + "_spec" + num2str(cSpec) + "_Alpha" + num2str(pw[2]) 
+
+		String pkName = "pk" + num2str(j) + "_spec" + num2str(cSpec) + "_Alpha" + num2str(pw[2])
 		Make/O/N=2000 $pkName
 		Wave z = $pkName
 		SetScale/i x,280,360,z
-		z =  MA[j] * gauss(x,pos,wid)		
+		z =  MA[j] * gauss(x,pos,wid)
 		totalNEXAFS[p0,pf] += MA[j] * gauss(ew,pos,wid)
 		j+=1
-		
+
 		if(j<=nTransitions)
 			if(cSpec == 1)
 				if(j==(nTransitions) && cSpec < nSpec)
 					i=nAtoms + 4 - 11
 					cSpec+=1
 					j=0
-				endif 			
+				endif
 			else
 				if(j==(nTransitions) && cSpec < nSpec)
 					i=nAtoms + 4 - 11
 					cSpec+=1
 					j=0
-				endif 
+				endif
 			endif
-		endif		
+		endif
 	endfor
-	
+
 End
 
 Function modifyWaves(w,nSpec,thetaList)
@@ -1097,7 +1200,7 @@ Function modifyWaves(w,nSpec,thetaList)
 	Wave w
 	Variable nSpec
 	String thetaList
-	
+
 	Variable i,j=0,n = DimSize(w,0),pps=n/nSpec,newSpec=ItemsInList(thetaList),newSize = newSpec*pps
 	Duplicate/O w, test
 	Redimension/N=(newSize,3) test
@@ -1125,20 +1228,20 @@ Function modelWrapper(thetaList,pw,eval,pwOri,d,[fit,fetchWaves,moveStepY])
 	Wave pw,pwOri
 	Variable eVal,fit,fetchWaves,moveStepY,d
 	String thetaList
-	
+
 	//Look for the waves used in the fit and to construct the ETS wave?
 	if(fetchWaves)
-		Wave holdWave     = findHoldWave() 
-		Wave valuesPolar  = findThetaWave() 
-		Wave allExpEnergy = findExpEnergyWave() 
-		Wave allDFTSteps  = findStepWave() 
-		Wave allExpSpec   = findExpSpecWave() 
+		Wave holdWave     = findHoldWave()
+		Wave valuesPolar  = findThetaWave()
+		Wave allExpEnergy = findExpEnergyWave()
+		Wave allDFTSteps  = findStepWave()
+		Wave allExpSpec   = findExpSpecWave()
 		Wave eps          = findEpsWave()
 	else
 		Wave holdWave,valuesPolar,allExpEnergy,allDFTSteps,allExpSpec,eps
 	endif
 	Duplicate/O allDFTSteps,DFTStepNew
-	DFTStepNew = allDFTSteps + moveStepY 
+	DFTStepNew = allDFTSteps + moveStepY
 	Duplicate/O allExpEnergy,totalNEXAFS
 	Duplicate/O pw,pwMolAdj,pwFilm,pwRes
 	totalNEXAFS = 0
@@ -1148,12 +1251,12 @@ Function modelWrapper(thetaList,pw,eval,pwOri,d,[fit,fetchWaves,moveStepY])
 	splitSpec(totalNEXAFS,nSpec,"NXFS")
 	splitSpec(DFTStepNew,nSpec,"dftStep")
 	//plotAlphaIntensities2(eVal,enw,"NXFS",nSpec,thetaList)
-	
+
 	//Make function that plots DFT Model against Experimental NEXAFS
 	if(!fit)
-		plotModel(thetaList)	//Plot Change in parameters 
+		plotModel(thetaList)	//Plot Change in parameters
 		getAmpEnFromFit(pw,pwOri,20,1,50,pwMolAdj,d=d)
-		//gaugeChange(pwOri,pw)	
+		//gaugeChange(pwOri,pw)
 	else 						   //Fit the model
 		DFTfitNew(pw,holdWave,valuesPolar,allExpEnergy,allDFTSteps,allExpSpec,eps)
 	endif
@@ -1192,7 +1295,7 @@ Function/WAVE findExpEnergyWave()
 	SetDataFolder $iniFolder
 	String nName = iniFolder + "allExpEnergy"
 	Duplicate/O allExpEnergy,$nName
-	
+
 	return allExpEnergy
 End
 
@@ -1236,7 +1339,7 @@ Function plotModel(thetaList,[fit])
 
 	String thetaList
 	Variable fit
-	
+
 	Variable n = ItemsInList(thetaList),i,pDiff
 	Make/O/N=(n) percentDiff
 	String iniFolder = GetDataFolder(1)
@@ -1246,31 +1349,31 @@ Function plotModel(thetaList,[fit])
 	String fitFolder  = iniFolder + "TensorMisc"
 	SetDataFolder $fitFolder
 	String energies = WaveList("expEnergy*",";",""),enWaveName = StringFromList(0,energies)
-	Wave enWave = $enWaveName 
-	String expNXFS = WaveList("expSpec*",";","")	
+	Wave enWave = $enWaveName
+	String expNXFS = WaveList("expSpec*",";","")
 	String steps = WaveList("dftStep*",";","")
 	Wave step = $StringFromList(0,steps)
 	DoWindow ModelvsExpPlot
-	
+
 	String Rlist = "0;1;39321;65535",Glist = "3204;34817;1;43690",Blist = "13107;52428;1;0"
 	DoWindow ModelvsExpPlot
 	if(!V_Flag)
 		Display/N=ModelvsExpPlot/K=1/W=(0,0,1500,400)
 		NewFreeAxis/L residuals
 		NewFreeAxis/L peaks
-		
+
 		for(i=0;i<n;i+=1)
-			Variable r = str2num(StringFromList(i,Rlist))	,g = str2num(StringFromList(i,Glist)),b = str2num(StringFromList(i,Blist))	
+			Variable r = str2num(StringFromList(i,Rlist))	,g = str2num(StringFromList(i,Glist)),b = str2num(StringFromList(i,Blist))
 			SetDataFolder $fitFolder
 			String expName = StringFromList(i,expNXFS)
 			Wave nxfs = $expName
 			AppendToGraph/W=ModelvsExpPlot nxfs vs enWave
-			
+
 			Variable x = numpnts(nxfs)
 			String resName = "res" + num2str(i)
 			Make/O/N=(x) $resName
 			Wave res = $resName
-			
+
 			SetDataFolder $iniFolder
 			if(!fit)
 				String dftName = StringFromList(i,DFTNXFS)
@@ -1285,29 +1388,29 @@ Function plotModel(thetaList,[fit])
 				Wave fitW  = $fitName
 				AppendToGraph/W=ModelvsExpPlot fitW vs enWave
 				ModifyGraph lstyle($fitName)=3
-				res =(( nxfs - fitW)/nxfs)*100	
+				res =(( nxfs - fitW)/nxfs)*100
 				pDiff = calcPercentDiff(nxfs,fitW)
 				ModifyGraph rgb($expName)=(r,g,b),rgb($fitName)=(r,g,b),lsize($expName)=3,lsize($fitName)=3
 			endif
-			
+
 			AppendToGraph/W=ModelvsExpPlot/L=residuals res vs enWave
 			ModifyGraph rgb($resName)=(r,g,b)
 			percentDiff[i] = pDiff
 		endfor
-		
+
 		SetDataFolder $iniFolder
-		
+
 		//Append the DFT step edge onto graph
 		AppendToGraph/W=ModelvsExpPlot step vs enWave
 		ModifyGraph lsize($StringFromList(0,steps))=2,rgb($StringFromList(0,steps))=(0,0,0)
-		
-		for(i=0;i<npks;i+=1) 	
+
+		for(i=0;i<npks;i+=1)
 			String pkName = StringFromList(i,pks)
 			Wave pk  = $pkName
 			AppendToGraph/W=ModelvsExpPlot/L=peaks pk
 			ModifyGraph rgb($pkName)=(0,0,0),lsize($pkName)=1.5
 		endfor
-		
+
 		ModifyGraph grid=2,mirror=1,minor=1,fStyle=1,fSize=12,axisEnab(left)={0.2,0.8}
 		ModifyGraph lblPosMode(residuals)=1,axisEnab(residuals)={0.82,1},freePos(residuals)=0
 		ModifyGraph lblPosMode(peaks)=1,axisEnab(peaks)={0,0.18},freePos(peaks)=0,lblPosMode(left)=1
@@ -1332,21 +1435,21 @@ Function plotModel(thetaList,[fit])
 			if(i != (n-1))
 				legendPortion += alpha + "° \\s('"+ expSpec +"') \\s('" + dftSpec +"') " + num2str(percentDiff[i]) +"\r\n"
 			else
-				legendPortion += alpha + "° \\s('"+ expSpec +"') \\s('" + dftSpec +"') " + num2str(percentDiff[i]) 
+				legendPortion += alpha + "° \\s('"+ expSpec +"') \\s('" + dftSpec +"') " + num2str(percentDiff[i])
 			endif
 		endfor
 		Legend/C/A=RT/N=text0/J totalLegend + legendPortion
 	else
-		for(i=0;i<n;i+=1)	
+		for(i=0;i<n;i+=1)
 			SetDataFolder $fitFolder
 			expName = StringFromList(i,expNXFS)
 			Wave nxfs = $expName
-			
+
 			x = numpnts(nxfs)
 			resName = "res" + num2str(i)
 			Make/O/N=(x) $resName
 			Wave res = $resName
-			
+
 			SetDataFolder $iniFolder
 			if(!fit)
 				dftName = StringFromList(i,DFTNXFS)
@@ -1356,12 +1459,12 @@ Function plotModel(thetaList,[fit])
 			else
 				fitName = StringFromList(i,fitNXFS)
 				Wave fitW  = $fitName
-				res =(( nxfs - fitW)/nxfs)*100	
+				res =(( nxfs - fitW)/nxfs)*100
 				pDiff = calcPercentDiff(nxfs,fitW)
 			endif
 			percentDiff[i] = pDiff
 		endfor
-		
+
 		totalLegend = "θ[°]  EXP  DFT  %Diff\r"
 		legendPortion = ""
 		if(fit)
@@ -1376,10 +1479,10 @@ Function plotModel(thetaList,[fit])
 			if(i != (n-1))
 				legendPortion += alpha + "° \\s('"+ expSpec +"') \\s('" + dftSpec +"') " + num2str(percentDiff[i]) +"\r\n"
 			else
-				legendPortion += alpha + "° \\s('"+ expSpec +"') \\s('" + dftSpec +"') " + num2str(percentDiff[i]) 
+				legendPortion += alpha + "° \\s('"+ expSpec +"') \\s('" + dftSpec +"') " + num2str(percentDiff[i])
 			endif
 		endfor
-		Legend/C/A=RT/N=text0/J/W=ModelvsExpPlot totalLegend + legendPortion	
+		Legend/C/A=RT/N=text0/J/W=ModelvsExpPlot totalLegend + legendPortion
 	endif
 	SetDataFolder $iniFolder
 End
@@ -1406,7 +1509,7 @@ Function gaugeChange(pwOri,pwNew)
 		difAmp2[j] = ((newAmp2 - oriAmp2)/oriAmp2)*100
 		j+=1
 	endfor
-	
+
 	DoWindow ParameterChanges
 	if(!V_Flag)
 		NewFreeAxis/L ampchange
@@ -1429,14 +1532,14 @@ End
 Function DFTfitNew(pw,hw,tw,xw,sw,ew,epsw)
 
 	Wave pw,hw,tw,xw,sw,ew,epsw //parameter,hold,theta,energy,step,experimental,and epsilon waves
-	
+
 	//Wave makeSingleConstraintWave(holdAmps,holdWidths,holdPos,holdAlpha,holdSecAmp,pWave1D,pkID)
 	String H = holdWaveToStr(hw)
 	Duplicate/O ew,fitRes,results
 	Duplicate/O pw,refineFitpw
 	Variable V_FitError = 0.000001
-	FuncFit/H=H/M=2/Q simDFTfit2,refineFitpw, ew /X={xw,tw,sw} /R=fitRes /E=epsw /D=results// /C=constraint 
-	Wave totalNEXAFS 
+	FuncFit/H=H/M=2/Q simDFTfit2,refineFitpw, ew /X={xw,tw,sw} /R=fitRes /E=epsw /D=results// /C=constraint
+	Wave totalNEXAFS
 	splitSpec(totalNEXAFS,4,"fitResult")
 	plotModel("40;55;70;90",fit=1)
 End
@@ -1444,7 +1547,7 @@ End
 Function/S holdWaveToStr(hw)
 
 	Wave hw
-	
+
 	Variable n = numpnts(hw),i
 	String H =""
 	for(i=0;i<n;i+=1)
@@ -1456,37 +1559,37 @@ End
 
 Function cleanUpTensorWaves2()
 
-	String resonanceList  = WaveList("resonance_*",";","")	
+	String resonanceList  = WaveList("resonance_*",";","")
 	String normResonanceList  = WaveList("norm_resonance_*",";","")
 	String pWaveList = SortList(WaveList("pWave_*",";",""))
-	
+
 	Variable nResonances  = ItemsInList(resonanceList)
 	Variable nPwaves = ItemsInList(pWaveList)
-	
+
 	Variable k
-	
+
 	//Place the tensors for each step into a 3D wave. Each layer corresponds to a resonance tensor
 	Make/O/N=(3,3,nResonances) oritensor3D,normTensor3D
-	
-	Concatenate/NP=2/O resonanceList,oritensor3D 	
+
+	Concatenate/NP=2/O resonanceList,oritensor3D
 	Concatenate/NP=2/O normResonanceList,normTensor3D
-	
+
 	//Remove the 2D tensor waves that clutter the workspace
 	for(k=0;k<=nResonances-1;k+=1)
 		String currentResWave  = StringFromList(k,resonanceList)
 		String currentNormResWave  = StringFromList(k,normResonanceList)
-		
+
 		Wave w = $currentResWave
 		Wave z = $currentNormResWave
 		KillWaves/Z $currentResWave,$currentNormResWave
 	endfor
-	
+
 	for(k=0;k<=nPwaves-1;k+=1)
 		String currentPwave   = StringFromList(k,pWaveList)
 		Wave b = $currentPwave
 		KillWaves/Z $currentPwave
 	endfor
-	
+
 	KillWaves/Z rotMatAlignX,rotMatAlignY,rotMatAlignZ,rotXY,rotYX
 	KillWaves/Z totAzi,tensor3D,TransitionInstances
 End
@@ -1495,11 +1598,11 @@ Function/WAVE makePolarWave2(thetaList,nPnts)
 
 	String thetaList
 	Variable nPnts
-	
+
 	Make/O/D/N=(nPnts) valuesPolar
 	Variable nThetas = ItemsInList(thetaList)
 	Variable pointsPerTheta = nPnts/nThetas
-	
+
 	Variable i,j=0
 	for(i=0;i<nPnts;i+=1)
 		valuesPolar[i] =str2num(StringFromList(j,thetaList))
@@ -1507,7 +1610,7 @@ Function/WAVE makePolarWave2(thetaList,nPnts)
 			j+=1
 		endif
 	endfor
-	
+
 	return valuesPolar
 End
 
@@ -1518,11 +1621,11 @@ Function splitSpec(w,n,name,[alpha,reScale])
 	String name	//What should be the base names of the split spectra?
 	Variable alpha	//What's the alpha value for the generated spectra?
 	Variable reScale	//SetScale of wave?
-	
+
 	Variable pnts = numpnts(w)/n
 	String cSpec
 	Variable i,j=0,k=0
-	
+
 	for(i=1;i<=n;i+=1)
 		if(ParamIsDefault(alpha))
 			cSpec = name + num2str(i)// + "_alpha" + num2str(alpha)
@@ -1534,9 +1637,9 @@ Function splitSpec(w,n,name,[alpha,reScale])
 		if(reScale)
 			SetScale/i x,280,360,y	//Update this so that the x scale is obtained from the panel
 		endif
-		
+
 		for(j=j;j<=i*pnts-1;j+=1)
-			
+
 			if(n==1)
 				y[k] = w[j]
 			else
@@ -1545,13 +1648,13 @@ Function splitSpec(w,n,name,[alpha,reScale])
 			k+=1
 		endfor
 		k=0
-	endfor 
+	endfor
 End
 
 Function plotPeaks(nSpec,nPeaks,alpha,tval,ovpVal)
 
 	Variable nSpec,nPeaks,alpha,tval,ovpVal
-	
+
 	Variable i,j
 	for(j=1;j<=nSpec;j+=1)
 		String graphName = "Spec_" + num2str(j) +"_Alpha" + replaceString(".",num2str(alpha),"p") + "_OS" + replaceString(".",num2str(tval),"p") + "_OVP" + replaceString(".",num2str(ovpVal),"p")
@@ -1559,7 +1662,7 @@ Function plotPeaks(nSpec,nPeaks,alpha,tval,ovpVal)
 		if(!V_Flag)
 			Display/N=$graphName
 			for(i=0;i<nPeaks;i+=1)
-				String cPeakName = "pk" + num2str(i) + "_spec" + num2str(j)  
+				String cPeakName = "pk" + num2str(i) + "_spec" + num2str(j)
 				Wave z = $cPeakName
 				AppendToGraph/W=$graphName z
 			endfor
@@ -1572,48 +1675,48 @@ Function plotPeaks(nSpec,nPeaks,alpha,tval,ovpVal)
 End
 
 Function plotResults(baseNameList,alpha,eName,thetaList,tval,ovpVal)
-	
+
 	String baseNameList
 	Variable alpha
 	String eName
 	String thetaList
 	Variable tval
 	Variable ovpVal
-	
+
 	Variable nItems = ItemsInList(baseNameList,";")
 
 	Variable i,j,k
 
 	for(i=0;i<nItems;i+=1)
-	
+
 		String currentWaveList = StringFromList(i,baseNameList,";")
 		String currentSetList = WaveList(currentWaveList+"*alpha"+num2str(alpha),";","")
 		String energyList = WaveList(eName +"*alpha"+num2str(alpha),";","")
 		Variable nSet = ItemsInList(currentSetList)
-		
+
 		String plotName = currentWaveList +"_Alpha" + replaceString(".",num2str(alpha),"p") + "_OS" + replaceString(".",num2str(tval),"p") + "_OVP" + replaceString(".",num2str(ovpVal),"p")
 		DoWindow $plotName
-			
-		if(!V_Flag)			
+
+		if(!V_Flag)
 			String totalLegend = ""
-		
+
 			for(j=0;j<nSet;j+=1)
 				String currentWave = StringFromList(j,currentSetList)
 				String currentEnergy = StringFromList(j,energyList)
 				Wave w = $currentWave
 				Wave x = $currentEnergy
-				
+
 				if(j==0)
 				Display/N=$plotName/K=1 w vs x
 				elseif(j<nSet)
 					AppendToGraph/W=$plotName w vs x
 				endif
-				
+
 				String currentTheta = StringFromList(j,thetaList)
-				String legendPortion 	
+				String legendPortion
 				if(StringMatch(currentWaveList,"dftSpec"))
 				if(j<nSet-1)
-					legendPortion = "\\s(" + currentWave + ") " + currentTheta + "\r" 
+					legendPortion = "\\s(" + currentWave + ") " + currentTheta + "\r"
 					else
 						legendPortion = "\\s(" + currentWave + ") " + currentTheta
 					endif
@@ -1623,25 +1726,25 @@ Function plotResults(baseNameList,alpha,eName,thetaList,tval,ovpVal)
 					else
 						legendPortion = "\\s(" + currentWave + ") " + currentTheta
 					endif
-				elseif(StringMatch(currentWaveList,"expSpec"))		
+				elseif(StringMatch(currentWaveList,"expSpec"))
 					if(j<nSet-1)
 						legendPortion = "\\s(" + currentWave + ") " + currentTheta + "\r"
 					else
 						legendPortion = "\\s(" + currentWave + ") " + currentTheta
 					endif
 				endif
-		
-				totalLegend += legendPortion 	
+
+				totalLegend += legendPortion
 			endfor
-			
-			if(StringMatch(currentWaveList,"dftSpec"))	
-				Legend/C/N=text0/J "DFT \r \\JCθ[°]\r \\JL" + totalLegend	
+
+			if(StringMatch(currentWaveList,"dftSpec"))
+				Legend/C/N=text0/J "DFT \r \\JCθ[°]\r \\JL" + totalLegend
 			elseif(StringMatch(currentWaveList,"dftStep"))
-				Legend/C/N=text0/J "Step \r \\JCθ[°]\r \\JL" + totalLegend	
+				Legend/C/N=text0/J "Step \r \\JCθ[°]\r \\JL" + totalLegend
 			elseif(StringMatch(currentWaveList,"expSpec"))
-				Legend/C/N=text0/J "Experiment \r\\JCθ[°]\r \\JL" + totalLegend	
+				Legend/C/N=text0/J "Experiment \r\\JCθ[°]\r \\JL" + totalLegend
 			endif
-			
+
 			Label left "Mass Absorbance [cm\\S2\\M/g] \\U";DelayUpdate
 			Label bottom "Transition Energy [eV]";DelayUpdate
 			ModifyGraph grid=2,mirror=1,nticks=10,minor=1,fStyle=1,fSize=16,lsize=1.5
@@ -1649,11 +1752,11 @@ Function plotResults(baseNameList,alpha,eName,thetaList,tval,ovpVal)
 			ApplyColorTableToTopGraph("ColdWarm")
 		endif
 	endfor
-	
+
 End
 
 Function plotResultsFit2(baseNameList,alpha,eName,thetaList,tval,ovpMax,nPeaks,NEXAFStype)
-	
+
 	String baseNameList
 	Variable alpha
 	String eName
@@ -1662,11 +1765,11 @@ Function plotResultsFit2(baseNameList,alpha,eName,thetaList,tval,ovpMax,nPeaks,N
 	Variable ovpMax
 	Variable nPeaks
 	String NEXAFStype
-	
+
 	Variable nItems = ItemsInList(baseNameList,";")
 
 	Variable i,j
-	
+
 	alpha = round(alpha)
 	for(i=0;i<nItems;i+=1)
 		String currentWaveList = StringFromList(i,baseNameList,";")
@@ -1675,51 +1778,51 @@ Function plotResultsFit2(baseNameList,alpha,eName,thetaList,tval,ovpMax,nPeaks,N
 		Variable nSet = ItemsInList(currentSetList)
 	endfor
 
-	String summaryPlot = "Final_Comparison" + replaceString(".",num2str(alpha),"p") + "_OS" + replaceString(".",num2str(tval),"p") + "_OVP" + replaceString(".",num2str(ovpMax),"p") + "_" + NEXAFStype 
-	DoWindow $summaryPlot	
+	String summaryPlot = "Final_Comparison" + replaceString(".",num2str(alpha),"p") + "_OS" + replaceString(".",num2str(tval),"p") + "_OVP" + replaceString(".",num2str(ovpMax),"p") + "_" + NEXAFStype
+	DoWindow $summaryPlot
 	if(!V_Flag)
 		Display/N=$summaryPlot/K=1
-		
+
 		for(i=0;i<nSet;i+=1)
 			String currentExp  = StringFromList(0,baseNameList,";")
 			String currentDFT  = StringFromList(1,baseNameList,";")
-			
+
 			String currentExpList  = WaveList(currentExp  +"*alpha"+num2str(alpha),";","")
 			String currentDFTList  = WaveList(currentDFT  +"*alpha"+num2str(alpha),";","")
 			String enList          = WaveList(eName +"*alpha"+num2str(alpha),";","")
-		
-			String currentTheta = StringFromList(i,thetaList)	
-			
+
+			String currentTheta = StringFromList(i,thetaList)
+
 			String currentExpWave  = StringFromList(i,currentExpList ,";")
 			String currentDFTWave  = StringFromList(i,currentDFTList ,";")
 			String currentEnerWave = StringFromList(i,enList,";")
-		
+
 			Wave w = $currentExpWave
-			Wave y = $currentDFTWave		
+			Wave y = $currentDFTWave
 			Wave x = $currentEnerWave
-			
+
 			AppendToGraph w,y vs x
 			ModifyGraph lstyle($currentDFTWave)=3
 		endfor
-		
+
 		ApplyColorTableToTopGraph("ColdWarm")
-		
+
 		//Append Step
 		String currentStepWave = "dftStep1_alpha" + num2str(alpha)
 		Wave z = $currentStepWave
 		AppendToGraph z vs x
 		ModifyGraph rgb($currentStepWave)=(39321,39321,39321)
-		
+
 		Variable magicAngleSpec = findMagicAngle(thetaList)
-		NewFreeAxis/L BBPeaks					
+		NewFreeAxis/L BBPeaks
 		//Append BB peaks to plot
 		for(i=0;i<nPeaks;i+=1)
-			String cPeakName = "pk" + num2str(i) + "_spec" + num2str(magicAngleSpec)  
+			String cPeakName = "pk" + num2str(i) + "_spec" + num2str(magicAngleSpec)
 			Wave pk = $cPeakName
 			AppendToGraph/L=BBPeaks/W=$summaryPlot pk
 			ModifyGraph rgb($cPeakName)=(0,0,0)
 		endfor
-		
+
 		Label left "Mass Absorbance [cm\\S2\\M/g] \\U";DelayUpdate
 		Label bottom "Transition Energy [eV]";DelayUpdate
 		ModifyGraph grid=2,mirror=1,nticks=20,minor=1,fStyle=1,fSize=16,lsize=1.5
@@ -1730,14 +1833,14 @@ Function plotResultsFit2(baseNameList,alpha,eName,thetaList,tval,ovpMax,nPeaks,N
 		String legendText = "\\s(" + currentExpWave +") Experiment \\s(" + currentDFTWave + ") DFT\r\\s(" + currentStepWave +") Step"
 		Legend/C/N=text0/J "\\JCα = " + num2str(alpha) + "°\r" + legendText
 	endif
-	
+
 End
 
 Function/WAVE getParams(tval,ovpVal)
 
 	Variable tval,ovpVal
-	
-	String iniFolder = GetDataFolder(1)	
+
+	String iniFolder = GetDataFolder(1)
 	String dftFitFolder = "All"
 	//Look for folder containing results from amplitude fitting DFT clusters of each component
 	String iniPwaveName
@@ -1746,24 +1849,24 @@ Function/WAVE getParams(tval,ovpVal)
 		SetDataFolder	$dftFitFolder
 		if(fit)
 			iniPwaveName = "combClusterPWAll"//Use this if using the pwave before fitting to dft
-		else	
+		else
 			iniPwaveName = "pw2DFit"//"pw2dOriginal"//Use this using pwave after fitting to dft
 		endif
 		Wave pWave = $iniPwaveName
 		SetDataFolder	iniFolder
 		Duplicate/O pWave, $iniPwaveName
-	else	
+	else
 		print "Data folder for " + dftFitFolder + " not found."
 	endif
 	Wave pw2D = $iniPwaveName
-	
+
 	return pw2d
 End
 
 Function/WAVE make2Dfrom1DPwave(pw1d)
 
 	Wave pw1d
-	
+
 	Variable i=0,j,nClusters = (numpnts(pw1d)-4-pw1d[0])/11
 	Make/O/N=(nClusters,3) pw2D
 	for(j=4+pw1d[0];j<4+pw1d[0]+11*nClusters;j+=11)
@@ -1771,8 +1874,8 @@ Function/WAVE make2Dfrom1DPwave(pw1d)
 		pw2D[i][1]  = pw1D[j+1]//Width
 		pw2D[i][2]  = pw1D[j+2]//Amp
 		i+=1
-	endfor	
-	
+	endfor
+
 	return pw2d
 End
 
@@ -1780,11 +1883,11 @@ End
 Function makeTensor(pWave)
 
 	Wave pWave
-	
+
 	Variable nClusters = DimSize(pWave,0),i=0
 	Variable tol = 1/100	//What is the minimum threshold of values to consider for the TDM tensor? If component is less than the V_max*tol then make it 0
 	Variable targetDP = 10
-	
+
 	for(i=0;i<nClusters;i+=1)
 		String tensorName =  "resonance_" + num2str(i)
 		Make/O/N=(3,3) $tensorName
@@ -1792,9 +1895,9 @@ Function makeTensor(pWave)
 		w = 0
 		w[0][0] = pWave[i][8] ; w[0][1] = pWave[i][11]; w[0][2] = pWave[i][12]
 		w[1][0] = pWave[i][11]; w[1][1] = pWave[i][9] ; w[1][2] = pWave[i][13]
-		w[2][0] = pWave[i][12]; w[2][1] = pWave[i][13]; w[2][2] = pWave[i][10] 
+		w[2][0] = pWave[i][12]; w[2][1] = pWave[i][13]; w[2][2] = pWave[i][10]
 		truncateSym(w,targetDP,tol)
-	endfor	
+	endfor
 End
 
 Function normalizeTensor()
@@ -1802,10 +1905,10 @@ Function normalizeTensor()
 	String resonanceList = WaveList("resonance_*",";","")
 	Variable nResonances = ItemsInList(resonanceList)
 	Variable k
-	
+
 	//Add a wave that will contain the max amplitudes
 	Make/O/N=(nResonances) maxAmplitudes
-		
+
 	for(k=0;k<=nResonances-1;k+=1)
 		String currentTensorName = StringFromList(k,resonanceList)
 		Wave currentTensor  = $currentTensorName
@@ -1827,12 +1930,12 @@ Function getAmpEnFromFit(pwFit,pwOri,alpha,tval,ovpVal,pwMolAdj,[d])
 	Variable tval
 	Variable ovpVal
 	Variable d
-	
+
 	Variable nPeaks = (numpnts(pwOri) - pwOri[0] - 4)/11
 	Variable i,j=0,k=0
 	Variable i0dIF = pwFit[1]
 	Make/o/n=(nPeaks) iniAmps,fitAmps,iniEns,fitEns,iniTheta,fitTheta
-	Make/O/N=(nPeaks) ampChange,enChange,modThetaChange,tdmThetaChange,widChange	
+	Make/O/N=(nPeaks) ampChange,enChange,modThetaChange,tdmThetaChange,widChange
 	Make/O/N=(nPeaks) iniTDMTheta,fitTDMTheta,iniWidth,fitWidth
 	//Get the fitted and original Peak Amplitudes,Widths, and Positions
 	for(i=pwOri[0] + 4;i<11*nPeaks+pwOri[0]+4;i+=11)
@@ -1840,22 +1943,22 @@ Function getAmpEnFromFit(pwFit,pwOri,alpha,tval,ovpVal,pwMolAdj,[d])
 		fitAmps[j]   = pwFit[i+2]
 		fitTheta[j]  = pwFit[i+10]
 		// ------------------------------------------------------------
-		// Calculate the azamuthal angle by computing the planar and 
+		// Calculate the azamuthal angle by computing the planar and
 		// vector components
 		// ------------------------------------------------------------
 		variable planar_ini = sqrt(pwMolAdj[i+6]^2 + pwMolAdj[i+3]^2)
 		variable planar_fit = sqrt(pwOri[i+6]^2 + pwOri[i+3]^2)
-		
+
 		fitTDMTheta[j] = atan(planar_ini/pwMolAdj[i+8])*(180/pi)
 		fitWidth[j] = pwFit[i+1]*2.355
-		
+
 		iniEns[j]   = pwOri[i]
 		iniAmps[j]  = pwOri[i+2]
 		iniTheta[j] = pwOri[i+10]
-		
+
 		iniTDMTheta[j] = atan(planar_fit/pwOri[i+8])*(180/pi)
 		iniWidth[j] = pwOri[i+1]*2.355
-		
+
 		Variable wid = pwFit[i+1]*2.355
 		enChange[j]    = (fitEns[j]   - iniEns[j])/(wid)	//Relative energy change
 		modThetaChange[j] = fitTDMTheta[j] - iniTDMTheta[j]//Change in modTheta
@@ -1864,13 +1967,13 @@ Function getAmpEnFromFit(pwFit,pwOri,alpha,tval,ovpVal,pwMolAdj,[d])
 		widChange[j] = (fitWidth[j] - iniWidth[j])/iniWidth[j]//Relative change in width
 		j+=1
 	endfor
-	
+
 	if(d)
 		String gName = "FitParamChange_OS" +num2str(tval) + "_OVP" + num2str(ovpval)
 		DoWindow $gName
 		if(!V_Flag)
 			Display/N=$gName/W=(0,0,300,500)/K=1 ampChange
-			NewFreeAxis/L deltaEn 
+			NewFreeAxis/L deltaEn
 			NewFreeAxis/L deltaTh
 			NewFreeAxis/L deltaTDM
 			AppendToGraph/W=$gName/L=deltaEn enChange
@@ -1915,7 +2018,7 @@ Function/WAVE fitAlpha(E1,E2,pw,xw,ew,tw,sw,nSpec,os,ovp)
 	Wave pw,xw,ew,sw,tw	//Parameter wave, concatenated energy wave,concatenated experimental NEXAFS,concatenated sample theta wave
 	Variable E1,E2	//Energy range that we want to fit alpha in
 	Variable nSpec,os,ovp//How many spectra are we fitting?
-	
+
 	Wave mw = makeMaskWave(E1,E2,xw)
 	String H = makeHoldStrAlphaFit(pw,E2)
 	Wave eps = makeEpsiltonWaveAlphaFit(pw,E2)
@@ -1927,7 +2030,7 @@ Function/WAVE fitAlpha(E1,E2,pw,xw,ew,tw,sw,nSpec,os,ovp)
 	splitSpec(alphaFitResults,nSpec,"alphaFit",alpha=pwAlphaFit[2])
 	Variable alpha = pwAlphaFit[2],i0 = pwAlphaFit[1]
 //	plotFitResults("alphaFit",alpha,i0,os,ovp)
-	
+
 	return pwAlphaFit
 End
 
@@ -1945,14 +2048,14 @@ Function/WAVE fitAlpha2(E1,E2,pw,xw,ew,nSpec,tl,alpha,i0,os,ovp,sw)
 	Duplicate/O ew,ew_Sub
 	ew_Sub = ew - sw
 	//Variable newAlpha = popAlphaPWave(xw,E1,E2,ew_Sub,alphaFitVals,nSpec,tl,alpha,i0,os,ovp)
-	//pwAlphaFit[2] = newAlpha 
+	//pwAlphaFit[2] = newAlpha
 	return pwAlphaFit
 End
 
 Function detEnPnts(w,E1,E2)
 	Wave w
 	Variable E1,E2
-	
+
 	Variable p1 = round(BinarySearchInterp(w,E1))
 	Variable p2 = round(BinarySearchInterp(w,E2))
 	Variable dif = p2-p1
@@ -1966,7 +2069,7 @@ Function popAlphaPWave(xw,E1,E2,ew,pw,nSpec,tl,alpha,i0,os,ovp)
 	Wave pw//2D wave that will be populated with energies and intensities to fit
 	String tl//List containing sample theta values
 	Variable E1,E2,nSpec,alpha,i0,os,ovp
-	
+
 	Variable i,j,pps=numpnts(xw)/nSpec//,n = DimSize(pw,0)
 	//Variable p1 = round(BinarySearchInterp(xw,E1))
 	//Variable p2 = round(BinarySearchInterp(xw,E2))
@@ -1980,21 +2083,21 @@ Function popAlphaPWave(xw,E1,E2,ew,pw,nSpec,tl,alpha,i0,os,ovp)
 	//This loop will populate the energies for desired energy range
 	for(i=0;i<n;i+=1)
 		pw[i][0] = xw[p1 + i]
-		energies[i] = xw[p1 + i]		
+		energies[i] = xw[p1 + i]
 	endfor
-	
+
 	//This loop will populate the intensities for desired energy range for each sample theta into pw
 	for(j=0;j<nSpec;j+=1)
 		for(i=0;i<n;i+=1)
 			pw[i][j] = ew[p1 + j*pps + i]
 		endfor
 	endfor
-	
+
 	//This loop will populate the theta wave based on the theta list
 	for(i=0;i<nSpec;i+=1)
 		thetas[i] = str2num(StringFromList(i,tl))
 	endfor
-	
+
 	//This loop will make and populate the 1d waves containing:
 	//1. the intensites for each sample theta for each energy
 	//2. The pw for the alpha fits
@@ -2024,7 +2127,7 @@ Function popAlphaPWave(xw,E1,E2,ew,pw,nSpec,tl,alpha,i0,os,ovp)
 		for(j=0;j<nSpec;j+=1)
 			w[j] = pw[i][j]
 		endfor
-		
+
 		//Fit alpha
 		FuncFit/Q fitStohrAlpha , fitpw, w /X=thetas /D=w3 /R=res /E=eps /C=con
 		Wave W_Sigma
@@ -2032,7 +2135,7 @@ Function popAlphaPWave(xw,E1,E2,ew,pw,nSpec,tl,alpha,i0,os,ovp)
 		sigmas[i] = W_sigma[0]
 		KillWaves $name,$name3,$name2,$name4,$name5,$name6
 	endfor
-	
+
 	WaveStats/Q alphas
 	avgAlpha = V_avg
 	Variable alphaMin = V_min
@@ -2052,7 +2155,7 @@ Function popAlphaPWave(xw,E1,E2,ew,pw,nSpec,tl,alpha,i0,os,ovp)
 //		Legend/C/N=text0/J/A=MC "\\s(alphas) alphas\r\\s(avgAlpha) avgAlpha\rAVG α = "+num2str(avgAlpha[0])+" ± "+num2str(avgError)+"°"
 //		Legend/C/N=text0/J/A=MC "\\s(alphas) alphas\r\\s(avgAlpha) avgAlpha\rAVG α = "+num2str(alphaMin)+" ± "+num2str(avgError)+"°"
 //	endif
-	
+
 	return alphaMin//avgAlpha[0]//
 End
 
@@ -2066,7 +2169,7 @@ Function fitStohrAlpha(pw,yw,xw):FitFunc
 	//if(pw[0] > 55)
 	//	Debugger
 	//endif
-	
+
 	for(i=0;i<n;i+=1)
 		if(pw[2]==0)//Vector Orbital
 			yw[i] = pw[1]*(1/3)*(1+0.50*(3*cos(pw[0])^2-1)*(3*cos(xw[i])^2-1))//Vector Orbital
@@ -2097,12 +2200,12 @@ Function plotFitResults(fitStage,alpha,i0,os,ovp)
 	String fitStage
 	Variable alpha
 	Variable i0,os,ovp
-	
+
 	Variable i,j=0
-	
+
 	Wave M_colors = makeColorWave(0.5)
 	Variable nColors = DimSize(M_colors,0)
-	
+
 	String wList = WaveList(fitStage+"*alpha"+num2str(round(alpha)),";","")
 	String xList = WaveList("energy*",";","")
 	String eList = WaveList("exp*",";","")
@@ -2110,7 +2213,7 @@ Function plotFitResults(fitStage,alpha,i0,os,ovp)
 	String pltName = fitStage + "_Results" + "OS" +num2str(os) + "_OVP" + num2str(ovp)
 	DoWindow $pltName
 	if(!V_Flag)
-		Display/N=$pltName/K=1 
+		Display/N=$pltName/K=1
 		for(i=0;i<n;i+=1)
 			String cwn = StringFromList(i,wList)
 			String xwn = StringFromList(i,xList)
@@ -2158,39 +2261,39 @@ Function/WAVE fitI0(E1,E2,pw,xw,ew,tw,sw,nSpec,tval,ovpval)
 End
 
 Function organizeTensorWaves(alpha,fit)
-	
+
 	Variable alpha
 	String fit
 
 	String iniFolder = GetDataFolder(1)
 	Variable i,j
-	
+
 	NewDataFolder/O TensorMisc
 	String misc = WaveList("!totalNEXAFS*",";","")
 	Variable nMisc = ItemsInList(misc)
-	
+
 	for(j=0;j<nMisc;j+=1)
 		String currentWave = StringFromList(j,misc)
 		Wave w = $currentWave
 		String destFolder = iniFolder + "TensorMisc:"
 		MoveWave w,$destFolder
-	endfor	
-	
-	
+	endfor
+
+
 	String finalFolderName = "Alpha_" + replaceString(".",num2str(alpha),"p")
 	NewDataFolder/O $finalFolderName
-	
+
 	MoveDataFolder/O=3 TensorMisc,$finalFolderName
-	
+
 	if(StringMatch(fit,"no"))
 		MoveDataFolder/O=3 $finalFolderName,Modeling
 	endif
 End
 
 Function howManySpec(w)
-	
+
 	Wave w
-	
+
 	Variable dim = WaveDims(w)
 	Variable n,i,j=1,val
 	if(dim == 1)
@@ -2198,7 +2301,7 @@ Function howManySpec(w)
 	else
 		n = DimSize(w,0)
 	endif
-	
+
 	for(i=1;i<n;i+=1)
 		if(dim == 1)
 			val = w[i]
@@ -2218,9 +2321,9 @@ Function howManySpec(w)
 End
 
 Function/S makeThetaList(w)
-	
+
 	Wave w
-	
+
 	Variable dim = WaveDims(w)
 	Variable n,i,val
 	String thetaList = ""
@@ -2229,7 +2332,7 @@ Function/S makeThetaList(w)
 	else
 		n = DimSize(w,0)
 	endif
-	
+
 	for(i=1;i<n;i+=1)
 		if(dim == 1)
 			val = w[i]
@@ -2255,15 +2358,15 @@ Function makeCoVar(pw,cvMat,sd,pNames,alpha,[d])
 
 	Wave pw,cvMat,sd,pNames
 	Variable alpha,d
-	
+
 	Variable i,j=0
 	Variable n=numpnts(pw)
 	Variable nPeaks = (numpnts(pw) - 4 - pw[0])/11
-	
+
 	Duplicate/O cvMat,cvMadAdj,corrMat
 	Duplicate/O pw,pw2
 	Duplicate/O pNames,pNames2
-	
+
 	for(i=0;i<n;i+=1)
 		Variable sdev = sd[i]
 		Variable corr = cvMadAdj[i][j]/sdev
@@ -2272,32 +2375,32 @@ Function makeCoVar(pw,cvMat,sd,pNames,alpha,[d])
 		else
 			corrMat[i][j] = corr
 		endif
-		
+
 		if(j>=n-1)
 			break
 		endif
-		
+
 		if(i==n-1)
 			i=0
 			j+=1
 		endif
-		
+
 	endfor
-	
+
 	//Remove Normalized Values of Oscillator Strength. Not used for fitting.
 	for(i=11*nPeaks+4+pw[0]-6;i>4 + pw[0];i-=11)
 		DeletePoints i,6,cvMadAdj,corrMat
 		DeletePoints/M=1 i,6,cvMadAdj,corrMat
 		DeletePoints i,6,pw2,pNames2
 	endfor
-	
+
 	//Remove Ionization Potentials. Not used for fitting.
 	for(i=pw[0] + 3;i>3;i-=1)
 		DeletePoints	 i,1,cvMadAdj,corrMat
 		DeletePoints/M=1	 i,1,cvMadAdj,corrMat
 		DeletePoints i,1,pw2,pNames2
 	endfor
-	
+
 	////Remove phi and number of Atoms. Not used for fitting.
 	if(d)
 		String corrGName = "CORRELATION_" + replaceString(".",num2str(alpha),"p")
@@ -2339,7 +2442,7 @@ end
 Function/S makeHoldString(holdAmps,holdWidths,holdPos,pWave1D,holdModTheta,holdAlpha,step)
 	Variable holdAmps,holdWidths,holdPos,holdModTheta,holdAlpha,step
 	Wave pWave1D
-	
+
 	Variable i,nPeaks = (numpnts(pwave1d)-pwave1d[0]-4)/11
 	//Make Hold String for fit. Open amplitudes, hold position and width constant
 	if(holdAlpha)
@@ -2350,52 +2453,52 @@ Function/S makeHoldString(holdAmps,holdWidths,holdPos,pWave1D,holdModTheta,holdA
 	for(i=1;i<=pWave1D[0];i+=1)
 		H +="1" //For Ionization Potentials from DFT. Used to build the Step Edge. Hold them constant.
 	endfor
-	
+
 	for(i=0;i<=nPeaks-1;i+=1)
 		//Hold string for peak parameters. Position, Width, Max Amplitude, xxNoRM, xyNorm,xzNorm,yyNorm,yzNorm,zzNorm
 		//Hold cases:
-		if(!holdPos && !holdWidths && !holdAmps && !holdModTheta)   
+		if(!holdPos && !holdWidths && !holdAmps && !holdModTheta)
 			H +="00011111110"//"00011111110"
-		elseif(holdPos && !holdWidths && holdAmps && !holdModTheta)  
+		elseif(holdPos && !holdWidths && holdAmps && !holdModTheta)
 			H +="10111111110"
-		elseif(holdPos && !holdWidths && !holdAmps && !holdModTheta)  
+		elseif(holdPos && !holdWidths && !holdAmps && !holdModTheta)
 			H +="10011111110"//"10011111110"
-		elseif(holdPos && holdWidths && !holdAmps && !holdModTheta)  
+		elseif(holdPos && holdWidths && !holdAmps && !holdModTheta)
 			H +="11011111110"//"11011111110"
-		elseif(!holdPos && holdWidths && !holdAmps && !holdModTheta) 
+		elseif(!holdPos && holdWidths && !holdAmps && !holdModTheta)
 			H +="01011111110"
 		elseif(!holdPos && !holdWidths && holdAmps && !holdModTheta)
 			H +="00111111110"
 		elseif(!holdPos && holdWidths && holdAmps && !holdModTheta)
 			H +="01111111110"
-		elseif(holdAmps && holdWidths && holdAmps && !holdModTheta) 
+		elseif(holdAmps && holdWidths && holdAmps && !holdModTheta)
 			H +="11111111110"
-		elseif(!holdPos && !holdWidths && !holdAmps && holdModTheta)   
+		elseif(!holdPos && !holdWidths && !holdAmps && holdModTheta)
 			H +="00011111111"//"00011111110"
-		elseif(holdPos && !holdWidths && holdAmps && holdModTheta)  
+		elseif(holdPos && !holdWidths && holdAmps && holdModTheta)
 			H +="10111111111"
-		elseif(holdPos && !holdWidths && !holdAmps && holdModTheta)  
+		elseif(holdPos && !holdWidths && !holdAmps && holdModTheta)
 			H +="10011111111"//"10011111110"
-		elseif(holdPos && holdWidths && !holdAmps && holdModTheta)  
+		elseif(holdPos && holdWidths && !holdAmps && holdModTheta)
 			H +="11011111111"//"11011111110"
-		elseif(!holdPos && holdWidths && !holdAmps && holdModTheta) 
+		elseif(!holdPos && holdWidths && !holdAmps && holdModTheta)
 			H +="01011111111"
 		elseif(!holdPos && !holdWidths && holdAmps && holdModTheta)
 			H +="00111111111"
 		elseif(!holdPos && holdWidths && holdAmps && holdModTheta)
 			H +="01111111111"
-		elseif(holdAmps && holdWidths && holdAmps && holdModTheta) 
-			H +="11111111111"	
+		elseif(holdAmps && holdWidths && holdAmps && holdModTheta)
+			H +="11111111111"
 		endif
 	endfor
-	   
-	String hName = "holdWave" + num2str(step) 
+
+	String hName = "holdWave" + num2str(step)
 	Make/O/N=(numpnts(pWave1D)) $hName
 	Wave holdWave = $hName
 	for(i=0;i<numpnts(pWave1D);i+=1)
 		holdWave[i] = str2num(H[i,i])
 	endfor
-	
+
 	//print H
 	return H
 End
@@ -2403,16 +2506,16 @@ End
 Function/S makeHoldStrAlphaFit(pw,Emax)
 	Wave pw
 	Variable Emax
-	
+
 	Variable i,nPeaks = (numpnts(pw)-pw[0]-4)/11
 	//Make Hold String for fit. Open amplitudes, hold position and width constant
-	String H	= "1101"	//H1 = Number of atoms, i0, alpha, phi	
-	
+	String H	= "1101"	//H1 = Number of atoms, i0, alpha, phi
+
 	for(i=1;i<=pw[0];i+=1)
 		H +="1" //For Ionization Potentials from DFT. Used to build the Step Edge. Hold them constant.
 	endfor
-	
-	for(i=0;i<=nPeaks-1;i+=1)  
+
+	for(i=0;i<=nPeaks-1;i+=1)
 		Variable E = pw[i*11+4+pw[0]]
 		if( E < Emax)
 			H +="11011111111"//If peak position is less than max mask energy then open amplitudes
@@ -2420,7 +2523,7 @@ Function/S makeHoldStrAlphaFit(pw,Emax)
 			H +="11111111111"//If peak position is greater than max mask energy then close amplitudes
 		endif
 	endfor
-	
+
 	Make/O/N=(numpnts(pw)) holdWave_alphaFit
 	for(i=0;i<numpnts(pw);i+=1)
 		holdWave_alphaFit[i] = str2num(H[i,i])
@@ -2430,19 +2533,19 @@ End
 
 Function/S makeHoldStrI0Fit(pw)
 	Wave pw
-	
+
 	Variable i,nPeaks = (numpnts(pw)-pw[0]-4)/11
 	//Make Hold String for fit. Open amplitudes, hold position and width constant
 	String H	= "1011"	//Number of atoms, i0, alpha, phi. Open only i0
-	
+
 	for(i=1;i<=pw[0];i+=1)
 		H +="1" //For Ionization Potentials from DFT. Used to build the Step Edge. Hold them constant.
 	endfor
-	
-	for(i=0;i<=nPeaks-1;i+=1)  
+
+	for(i=0;i<=nPeaks-1;i+=1)
 		H +="11111111111"
 	endfor
-	
+
 	Make/O/N=(numpnts(pw)) holdWave_I0Fit
 	for(i=0;i<numpnts(pw);i+=1)
 		holdWave_I0Fit[i] = str2num(H[i,i])
@@ -2452,14 +2555,14 @@ End
 
 Function/WAVE makeConstraintAlphaFit(pw,Emax)
 	Wave pw
-	Variable Emax	
-	
+	Variable Emax
+
 	Variable i,nPeaks = (numpnts(pw)-pw[0]-4)/11,pos,j=0
 	String c
-	Make/O/T/N=2 constraintAlpha	
+	Make/O/T/N=2 constraintAlpha
 	constraintAlpha[0] = {"K2 >= 0","K2 <= 90"}
 	for(i=4 + pw[0];i < 4 + pw[0] + 11*(nPeaks);i+=11)
-		pos   = pw[i+0]	
+		pos   = pw[i+0]
 		if(pos <= Emax)
 			c = "K" + num2str(i+2)  + " >= 0"
 			Redimension/N=(2+j) constraintAlpha
@@ -2473,10 +2576,10 @@ Function/WAVE makeConstraintAlphaFit(pw,Emax)
 End
 
 Function/WAVE makeEpsiltonWave(pWave1D,holdAmps,holdWidths,holdPos,holdModTheta,holdAlpha,step,[tol])
-	
+
 	Wave pWave1D
 	Variable holdAmps,holdWidths,holdPos,holdModTheta,holdAlpha,step,tol
-	
+
 	Variable i,nPeaks = (numpnts(pwave1d)-pwave1d[0]-4)/11,epsPos,epsWid,epsAmp,epsMT
 	//Set up values for epsilon wave
 	String eName = "eps" +num2str(step)
@@ -2487,7 +2590,7 @@ Function/WAVE makeEpsiltonWave(pWave1D,holdAmps,holdWidths,holdPos,holdModTheta,
 		epsWid  = 1e-3
 		epsAmp  = 1e-3
 		epsMT   = 1e-3
-	else 
+	else
 		epsPos  = tol
 		epsWid  = tol
 	   epsAmp  = tol
@@ -2496,100 +2599,100 @@ Function/WAVE makeEpsiltonWave(pWave1D,holdAmps,holdWidths,holdPos,holdModTheta,
 	eps[0] = 0
 	eps[1] = 0
 	if(holdAlpha)
-		eps[2] = 0	
+		eps[2] = 0
 	else
-		eps[2] = 1e-2	
+		eps[2] = 1e-2
 	endif
 	eps[3] = 0
-	
+
 	for(i=4;i<pWave1D[0] + 4;i+=1)
 		eps[i]   = 0	//For Ionization Potentials from DFT. Used to build the Step Edge
 	endfor
-	
+
 	for(i=4 + pWave1D[0];i<11*nPeaks+4+pWave1D[0];i+=11)
-		
-		if(!holdPos && !holdWidths && !holdAmps && holdModTheta)   
-			eps[i + 0]    = epsPos		
+
+		if(!holdPos && !holdWidths && !holdAmps && holdModTheta)
+			eps[i + 0]    = epsPos
 			eps[i + 1]    = epsWid
 			eps[i + 2]    = epsAmp
 			eps[i + 10]   = 0
-		elseif(holdPos && !holdWidths && holdAmps && holdModTheta)  
-			eps[i + 0]   = 0	
+		elseif(holdPos && !holdWidths && holdAmps && holdModTheta)
+			eps[i + 0]   = 0
 			eps[i + 1]   = epsWid
 			eps[i + 2]   = 0
 			eps[i + 10]   = 0
-		elseif(holdPos && !holdWidths && !holdAmps && holdModTheta)  
-			eps[i + 0]    = 0		
+		elseif(holdPos && !holdWidths && !holdAmps && holdModTheta)
+			eps[i + 0]    = 0
 			eps[i + 1]    = epsWid
 			eps[i + 2]    = epsAmp
 			eps[i + 10]   = 0
-		elseif(holdPos && holdWidths && !holdAmps && holdModTheta)  
-			eps[i + 0]    = 0	
+		elseif(holdPos && holdWidths && !holdAmps && holdModTheta)
+			eps[i + 0]    = 0
 			eps[i + 1]    = 0
 			eps[i + 2]    = epsAmp
 			eps[i + 10]   = 0
-		elseif(!holdPos && holdWidths && !holdAmps && holdModTheta) 
-			eps[i + 0]    = epsPos		
+		elseif(!holdPos && holdWidths && !holdAmps && holdModTheta)
+			eps[i + 0]    = epsPos
 			eps[i + 1]    = 0
 			eps[i + 2]    = epsAmp
 			eps[i + 10]   = 0
 		elseif(!holdPos && !holdWidths && holdAmps && holdModTheta)
-			eps[i + 0]   = epsPos		
+			eps[i + 0]   = epsPos
 			eps[i + 1]   = epsWid
 			eps[i + 2]   = 0
 			eps[i + 10]   = 0
 		elseif(!holdPos && holdWidths && holdAmps && holdModTheta)
-			eps[i + 0]   = epsPos		
+			eps[i + 0]   = epsPos
 			eps[i + 1]   = 0
 			eps[i + 2]   = 0
 			eps[i + 10]   = 0
-		elseif(holdAmps && holdWidths && holdAmps && holdModTheta) 
-			eps[i + 0]   = 0		
+		elseif(holdAmps && holdWidths && holdAmps && holdModTheta)
+			eps[i + 0]   = 0
 			eps[i + 1]   = 0
 			eps[i + 2]   = 0
 			eps[i + 10]   = 0
 		elseif(!holdPos && !holdWidths && !holdAmps && !holdModTheta)   //
-			eps[i + 0]    = epsPos		
+			eps[i + 0]    = epsPos
 			eps[i + 1]    = epsWid
 			eps[i + 2]    = epsAmp
 			eps[i + 10]    = epsMT
-		elseif(holdPos && !holdWidths && holdAmps && !holdModTheta)  
-			eps[i + 0]   = 0	
+		elseif(holdPos && !holdWidths && holdAmps && !holdModTheta)
+			eps[i + 0]   = 0
 			eps[i + 1]   = epsWid
 			eps[i + 2]   = 0
 			eps[i + 10]   = epsMT
-		elseif(holdPos && !holdWidths && !holdAmps && !holdModTheta)  
-			eps[i + 0]    = 0		
+		elseif(holdPos && !holdWidths && !holdAmps && !holdModTheta)
+			eps[i + 0]    = 0
 			eps[i + 1]    = epsWid
 			eps[i + 2]    = epsAmp
 			eps[i + 10]    = epsMT
-		elseif(holdPos && holdWidths && !holdAmps && !holdModTheta)  
-			eps[i + 0]    = 0	
+		elseif(holdPos && holdWidths && !holdAmps && !holdModTheta)
+			eps[i + 0]    = 0
 			eps[i + 1]    = 0
 			eps[i + 2]    = epsAmp
 			eps[i + 10]    = epsMT
-		elseif(!holdPos && holdWidths && !holdAmps && !holdModTheta) 
-			eps[i + 0]    = epsPos		
+		elseif(!holdPos && holdWidths && !holdAmps && !holdModTheta)
+			eps[i + 0]    = epsPos
 			eps[i + 1]    = 0
 			eps[i + 2]    = epsAmp
 			eps[i + 10]    = epsMT
 		elseif(!holdPos && !holdWidths && holdAmps && !holdModTheta)
-			eps[i + 0]   = epsPos		
+			eps[i + 0]   = epsPos
 			eps[i + 1]   = epsWid
 			eps[i + 2]   = 0
 			eps[i + 10]   = epsMT
 		elseif(!holdPos && holdWidths && holdAmps && !holdModTheta)
-			eps[i + 0]   = epsPos		
+			eps[i + 0]   = epsPos
 			eps[i + 1]   = 0
 			eps[i + 2]   = 0
 			eps[i + 10]   = epsMT
-		elseif(holdAmps && holdWidths && holdAmps && !holdModTheta) 
-			eps[i + 0]   = 0		
+		elseif(holdAmps && holdWidths && holdAmps && !holdModTheta)
+			eps[i + 0]   = 0
 			eps[i + 1]   = 0
 			eps[i + 2]   = 0
 			eps[i + 10]   = epsMT
 		endif
-		
+
 		eps[i + 3]   = 0
 		eps[i + 4]   = 0
 		eps[i + 5]   = 0
@@ -2598,37 +2701,37 @@ Function/WAVE makeEpsiltonWave(pWave1D,holdAmps,holdWidths,holdPos,holdModTheta,
 		eps[i + 8]   = 0
 		eps[i + 9]   = 0
 	endfor
-	
+
 	return eps
 
 End
 
 Function/WAVE makeEpsiltonWaveAlphaFit(pw,Emax)
-	
+
 	Wave pw
 	Variable Emax
-	
+
 	Variable i,nPeaks = (numpnts(pw)-pw[0]-4)/11
 	//Set up values for epsilon wave
 	Make/O/N=(numpnts(pw)) eps_alphaFit
 	Wave eps = eps_alphaFit
-	
+
 	Variable epsAmp  = 1e-4
 	Variable epsAmp2 = 1e-4
 	eps[0] = 0
 	eps[1] = 0//5e-9
 	eps[2] = 1e-2
 	eps[3] = 0
-	
+
 	for(i=4;i<pw[0] + 4;i+=1)
 		eps[i]   = 0	//For Ionization Potentials from DFT. Used to build the Step Edge
 	endfor
-	
+
 	for(i=4 + pw[0];i<11*nPeaks+4+pw[0];i+=11)
-		 
-		eps[i + 0]    = 0	
+
+		eps[i + 0]    = 0
 		eps[i + 1]    = 0
-		if(pw[i] < Emax) 
+		if(pw[i] < Emax)
 			eps[i + 2]    = epsAmp
 		else
 			eps[i + 2]    = 0
@@ -2642,30 +2745,30 @@ Function/WAVE makeEpsiltonWaveAlphaFit(pw,Emax)
 		eps[i + 9]   = 0
 		eps[i + 10]  = 0
 	endfor
-	
+
 	return eps
 End
 
 Function/WAVE makeEpsiltonWaveI0Fit(pw)
-	
+
 	Wave pw
-	
+
 	Variable i,nPeaks = (numpnts(pw)-pw[0]-4)/11
 	//Set up values for epsilon wave
 	Make/O/N=(numpnts(pw)) eps_I0Fit
 	Wave eps = eps_I0Fit
-	
+
 	eps[0] = 0
 	eps[1] = 1e-2
 	eps[2] = 0
 	eps[3] = 0
-	
+
 	for(i=4;i<pw[0] + 4;i+=1)
 		eps[i]   = 0	//For Ionization Potentials from DFT. Used to build the Step Edge
 	endfor
-	
-	for(i=4 + pw[0];i<11*nPeaks+4+pw[0];i+=11)		 
-		eps[i + 0]   = 0	
+
+	for(i=4 + pw[0];i<11*nPeaks+4+pw[0];i+=11)
+		eps[i + 0]   = 0
 		eps[i + 1]   = 0
 		eps[i + 2]   = 0
 		eps[i + 3]   = 0
@@ -2676,22 +2779,22 @@ Function/WAVE makeEpsiltonWaveI0Fit(pw)
 		eps[i + 8]   = 0
 		eps[i + 9]   = 0
 		eps[i + 10]  = 0
-	endfor	
+	endfor
 	return eps
 End
 
 Function/WAVE makeConstraintWave(holdAmps,holdWidths,holdPos,nPeaks,pWave1D,holdModTheta,holdAlpha,step)
-	
+
 	Variable holdAmps,holdWidths,holdPos,holdModTheta,holdAlpha,step
 	Variable nPeaks
 	Wave pWave1D
-	
+
 	Variable i,j,pos,pLow,pHigh,wHigh,wid,n=2,emax=360,aMod,wMult=2
 //	if(nPeaks>14)
 //	n=1
 //	wMult=1.5
 //	else
-//	
+//
 //	endif
 	//Variable openParams = holdAmps + holdWidths + holdPos
 	String cName = "constraints" + num2str(step)
@@ -2704,7 +2807,7 @@ Function/WAVE makeConstraintWave(holdAmps,holdWidths,holdPos,nPeaks,pWave1D,hold
 		j=0
 		aMod=0
 	endif
-	
+
 	if(!holdAlpha)
 		if(nPeaks == 1)
 			Make/O/T/N=(2) $cName
@@ -2719,34 +2822,34 @@ Function/WAVE makeConstraintWave(holdAmps,holdWidths,holdPos,nPeaks,pWave1D,hold
 		Make/O/T/N=(nPeaks) $cName
 		Wave/T constraints = $cName
 	endif
-	
+
 	String lcp,hcp,lcp2,hcp2//Constraint strings for position
 	String lcw,hcw//Constraint strings for width
 	String lca //Constraint strings for amplitude
 	String lcm,hcm	//Constraint strings for modTheta
-	
+
 		if(!holdPos && !holdWidths && !holdAmps &&holdModTheta)
 			Redimension/N=(5*nPeaks+aMod) constraints
 			for(i=4 + pWave1D[0];i<11*nPeaks + 4 + pWave1D[0];i+=11)
 				pos   = pWave1D[i+0]
 				wid   = pWave1D[i+1]
 				pLow  = pos - n*wid
-				pHigh = pos + n*wid 
+				pHigh = pos + n*wid
 				wHigh = wMult*wid
 			//	lcp   = "K" + num2str(i+0)  + " >=" + num2str(pLow)
-			//	hcp   = "K" + num2str(i+0)  + " <=" + num2str(pHigh)  
+			//	hcp   = "K" + num2str(i+0)  + " <=" + num2str(pHigh)
 				lcw   = "K" + num2str(i+1)  + " > 0"
-				hcw   = "K" + num2str(i+1)  + " <=" + num2str(wHigh)  
+				hcw   = "K" + num2str(i+1)  + " <=" + num2str(wHigh)
 				lca   = "K" + num2str(i+2)  + " > 0"
 				if(i==4 + pWave1D[0])
 					lcp  = "K" + num2str(i+0)  + " >" + num2str(pLow)
-					hcp   = "K" + num2str(i+0)  + " <" + num2str(pHigh)  
+					hcp   = "K" + num2str(i+0)  + " <" + num2str(pHigh)
 				elseif(i == 11*(nPeaks-1) + 4 + pWave1D[0])
 					lcp  = "K" + num2str(i+0)  + " >" + num2str(pWave1D[i-11])
-					hcp   = "K" + num2str(i+0)  + " <" + num2str(pHigh)  
+					hcp   = "K" + num2str(i+0)  + " <" + num2str(pHigh)
 				else
 					lcp  = "K" + num2str(i+0)  + " >" + num2str(pWave1D[i-11])
-					hcp  = "K" + num2str(i+0)  + " <" + num2str(pWave1D[i+11])		
+					hcp  = "K" + num2str(i+0)  + " <" + num2str(pWave1D[i+11])
 				endif
 				hcp2  = "K" + num2str(i+0)  + " <=" + num2str(emax)
 				constraints[j+0]  = lcp
@@ -2756,7 +2859,7 @@ Function/WAVE makeConstraintWave(holdAmps,holdWidths,holdPos,nPeaks,pWave1D,hold
 				constraints[j+4]  = lca
 				j+=5
 			endfor
-		elseif(holdPos && !holdWidths && holdAmps &&holdModTheta)  
+		elseif(holdPos && !holdWidths && holdAmps &&holdModTheta)
 			Redimension/N=(2*nPeaks+aMod) constraints
 			for(i=4 + pWave1D[0];i<11*nPeaks + 4 + pWave1D[0];i+=11)
 				wid   = pWave1D[i+1]
@@ -2767,7 +2870,7 @@ Function/WAVE makeConstraintWave(holdAmps,holdWidths,holdPos,nPeaks,pWave1D,hold
 				constraints[j+1]   = hcw
 				j+=2
 			endfor
-		elseif(holdPos && !holdWidths && !holdAmps &&holdModTheta)  
+		elseif(holdPos && !holdWidths && !holdAmps &&holdModTheta)
 			Redimension/N=(3*nPeaks+aMod) constraints
 			for(i=4 + pWave1D[0];i<11*nPeaks + 4 + pWave1D[0];i+=11)
 				wid   = pWave1D[i+1]
@@ -2780,32 +2883,32 @@ Function/WAVE makeConstraintWave(holdAmps,holdWidths,holdPos,nPeaks,pWave1D,hold
 				constraints[j+2]  = lca
 				j+=3
 			endfor
-		elseif(holdPos && holdWidths && !holdAmps &&holdModTheta)  
+		elseif(holdPos && holdWidths && !holdAmps &&holdModTheta)
 			Redimension/N=(1*nPeaks+aMod) constraints
 			for(i=4 + pWave1D[0];i<11*nPeaks + 4 + pWave1D[0];i+=11)
 				lca   = "K" + num2str(i+2)  + " > 0"
 				constraints[j+0]  = lca
 				j+=1
 			endfor
-		elseif(!holdPos && holdWidths && !holdAmps &&holdModTheta) 
+		elseif(!holdPos && holdWidths && !holdAmps &&holdModTheta)
 			Redimension/N=(3*nPeaks+aMod) constraints
 			for(i=4 + pWave1D[0];i<11*nPeaks + 4 + pWave1D[0];i+=11)
 				pos   = pWave1D[i+0]
 				wid   = pWave1D[i+1]
 				pLow  = pos - n*wid
-				pHigh = pos + n*wid						
+				pHigh = pos + n*wid
 			//	lcp   = "K" + num2str(i+0)  + " >=" + num2str(pLow)
-			//	hcp   = "K" + num2str(i+0)  + " <=" + num2str(pHigh) 
+			//	hcp   = "K" + num2str(i+0)  + " <=" + num2str(pHigh)
 				lca   = "K" + num2str(i+2)  + " > 0"
 				if(i==4 + pWave1D[0])
 					lcp  = "K" + num2str(i+0)  + " >" + num2str(pLow)
-					hcp   = "K" + num2str(i+0)  + " <" + num2str(pHigh)  
+					hcp   = "K" + num2str(i+0)  + " <" + num2str(pHigh)
 				elseif(i == 11*(nPeaks-1) + 4 + pWave1D[0])
 					lcp  = "K" + num2str(i+0)  + " >" + num2str(pWave1D[i-11])
-					hcp   = "K" + num2str(i+0)  + " <" + num2str(pHigh)  
+					hcp   = "K" + num2str(i+0)  + " <" + num2str(pHigh)
 				else
 					lcp  = "K" + num2str(i+0)  + " >" + num2str(pWave1D[i-11])
-					hcp  = "K" + num2str(i+0)  + " <" + num2str(pWave1D[i+11])		
+					hcp  = "K" + num2str(i+0)  + " <" + num2str(pWave1D[i+11])
 				endif
 				hcp2  = "K" + num2str(i+0)  + " <=" + num2str(emax)
 				constraints[j+0]  = lcp
@@ -2820,7 +2923,7 @@ Function/WAVE makeConstraintWave(holdAmps,holdWidths,holdPos,nPeaks,pWave1D,hold
 				wid   = pWave1D[i+1]
 				wHigh = wMult*wid
 				pLow  = pos - n*wid
-				pHigh = pos + n*wid						
+				pHigh = pos + n*wid
 			//	lcp   = "K" + num2str(i+0) + " >=" + num2str(pLow)
 			//	hcp   = "K" + num2str(i+0) + " <=" + num2str(pHigh)
 				lcw   = "K" + num2str(i+1)  + " > 0"
@@ -2828,13 +2931,13 @@ Function/WAVE makeConstraintWave(holdAmps,holdWidths,holdPos,nPeaks,pWave1D,hold
 				lca   = "K" + num2str(i+1) + " > 0"
 				if(i==4 + pWave1D[0])
 					lcp  = "K" + num2str(i+0)  + " >" + num2str(pLow)
-					hcp  = "K" + num2str(i+0)  + " <" + num2str(pHigh)  
+					hcp  = "K" + num2str(i+0)  + " <" + num2str(pHigh)
 				elseif(i == 11*(nPeaks-1) + 4 + pWave1D[0])
 					lcp  = "K" + num2str(i+0)  + " >" + num2str(pWave1D[i-11])
-					hcp   = "K" + num2str(i+0)  + " <" + num2str(pHigh)  
+					hcp   = "K" + num2str(i+0)  + " <" + num2str(pHigh)
 				else
 					lcp  = "K" + num2str(i+0)  + " >" + num2str(pWave1D[i-11])
-					hcp  = "K" + num2str(i+0)  + " <" + num2str(pWave1D[i+11])		
+					hcp  = "K" + num2str(i+0)  + " <" + num2str(pWave1D[i+11])
 				endif
 				hcp2  = "K" + num2str(i+0)  + " <=" + num2str(emax)
 				constraints[j+0] = lcp
@@ -2850,18 +2953,18 @@ Function/WAVE makeConstraintWave(holdAmps,holdWidths,holdPos,nPeaks,pWave1D,hold
 				pos   = pWave1D[i+0]
 				wid   = pWave1D[i+1]
 				pLow  = pos - n*wid
-				pHigh = pos + n*wid						
+				pHigh = pos + n*wid
 			//	lcp   = "K" + num2str(i+0) + " >=" + num2str(pLow)
 			//	hcp   = "K" + num2str(i+0) + " <=" + num2str(pHigh)
 				if(i==4 + pWave1D[0])
 					lcp  = "K" + num2str(i+0)  + " >" + num2str(pLow)
-					hcp  = "K" + num2str(i+0)  + " <" + num2str(pHigh)  
+					hcp  = "K" + num2str(i+0)  + " <" + num2str(pHigh)
 				elseif(i == 11*(nPeaks-1) + 4 + pWave1D[0])
 					lcp  = "K" + num2str(i+0)  + " >" + num2str(pWave1D[i-11])
-					hcp   = "K" + num2str(i+0)  + " <" + num2str(pHigh)  
+					hcp   = "K" + num2str(i+0)  + " <" + num2str(pHigh)
 				else
 					lcp  = "K" + num2str(i+0)  + " >" + num2str(pWave1D[i-11])
-					hcp  = "K" + num2str(i+0)  + " <" + num2str(pWave1D[i+11])		
+					hcp  = "K" + num2str(i+0)  + " <" + num2str(pWave1D[i+11])
 				endif
 				hcp2  = "K" + num2str(i+0)  + " <=" + num2str(emax)
 				constraints[j+0] = lcp
@@ -2876,9 +2979,9 @@ Function/WAVE makeConstraintWave(holdAmps,holdWidths,holdPos,nPeaks,pWave1D,hold
 				wid   = pWave1D[i+1]
 				wHigh = wMult*wid
 				pLow  = pos - n*wid
-				pHigh = pos + n*wid 
+				pHigh = pos + n*wid
 			//	lcp   = "K" + num2str(i+0)  + " >=" + num2str(pLow)
-			//	hcp   = "K" + num2str(i+0)  + " <=" + num2str(pHigh)  
+			//	hcp   = "K" + num2str(i+0)  + " <=" + num2str(pHigh)
 				lcw   = "K" + num2str(i+1)  + " > 0"
 				hcw   = "K" + num2str(i+1)  + " <=" + num2str(wHigh)
 				lca   = "K" + num2str(i+2)  + " > 0"
@@ -2886,13 +2989,13 @@ Function/WAVE makeConstraintWave(holdAmps,holdWidths,holdPos,nPeaks,pWave1D,hold
 				hcm   = "K" + num2str(i+10) + " <= 90"
 				if(i==4 + pWave1D[0])
 					lcp  = "K" + num2str(i+0)  + " >" + num2str(pLow)
-					hcp   = "K" + num2str(i+0)  + " <" + num2str(pHigh)  
+					hcp   = "K" + num2str(i+0)  + " <" + num2str(pHigh)
 				elseif(i == 11*(nPeaks-1) + 4 + pWave1D[0])
 					lcp  = "K" + num2str(i+0)  + " >" + num2str(pWave1D[i-11])
-					hcp   = "K" + num2str(i+0)  + " <" + num2str(pHigh)  
+					hcp   = "K" + num2str(i+0)  + " <" + num2str(pHigh)
 				else
 					lcp  = "K" + num2str(i+0)  + " >" + num2str(pWave1D[i-11])
-					hcp  = "K" + num2str(i+0)  + " <" + num2str(pWave1D[i+11])		
+					hcp  = "K" + num2str(i+0)  + " <" + num2str(pWave1D[i+11])
 				endif
 				hcp2  = "K" + num2str(i+0)  + " <=" + num2str(emax)
 				constraints[j+0]  = lcp
@@ -2904,7 +3007,7 @@ Function/WAVE makeConstraintWave(holdAmps,holdWidths,holdPos,nPeaks,pWave1D,hold
 				constraints[j+6]  = hcm
 				j+=7
 			endfor
-		elseif(holdPos && !holdWidths && holdAmps &&!holdModTheta)  
+		elseif(holdPos && !holdWidths && holdAmps &&!holdModTheta)
 			Redimension/N=(4*nPeaks+aMod) constraints
 			for(i=4 + pWave1D[0];i<11*nPeaks + 4 + pWave1D[0];i+=11)
 				wid   = pWave1D[i+1]
@@ -2919,7 +3022,7 @@ Function/WAVE makeConstraintWave(holdAmps,holdWidths,holdPos,nPeaks,pWave1D,hold
 				constraints[j+3]  = hcm
 				j+=4
 			endfor
-		elseif(holdPos && !holdWidths && !holdAmps &&!holdModTheta)  
+		elseif(holdPos && !holdWidths && !holdAmps &&!holdModTheta)
 			Redimension/N=(5*nPeaks+aMod) constraints//(3*nPeaks) constraints
 			for(i=4 + pWave1D[0];i<11*nPeaks + 4 + pWave1D[0];i+=11)
 				wid   = pWave1D[i+1]
@@ -2936,7 +3039,7 @@ Function/WAVE makeConstraintWave(holdAmps,holdWidths,holdPos,nPeaks,pWave1D,hold
 				constraints[j+4]  = hcm
 				j+=5
 			endfor
-		elseif(holdPos && holdWidths && !holdAmps &&!holdModTheta)  
+		elseif(holdPos && holdWidths && !holdAmps &&!holdModTheta)
 			Redimension/N=(3*nPeaks+aMod) constraints//(2*nPeaks) constraints
 			for(i=4 + pWave1D[0];i<11*nPeaks + 4 + pWave1D[0];i+=11)
 				lca   = "K" + num2str(i+2)  + " > 0"
@@ -2947,27 +3050,27 @@ Function/WAVE makeConstraintWave(holdAmps,holdWidths,holdPos,nPeaks,pWave1D,hold
 				constraints[j+2]  = hcm
 				j+=3
 			endfor
-		elseif(!holdPos && holdWidths && !holdAmps &&!holdModTheta) 
+		elseif(!holdPos && holdWidths && !holdAmps &&!holdModTheta)
 			Redimension/N=(5*nPeaks+aMod) constraints//(4*nPeaks) constraints
 			for(i=4 + pWave1D[0];i<11*nPeaks + 4 + pWave1D[0];i+=11)
 				pos   = pWave1D[i+0]
 				wid   = pWave1D[i+1]
 				pLow  = pos - n*wid
-				pHigh = pos + n*wid						
+				pHigh = pos + n*wid
 		//		lcp   = "K" + num2str(i+0)  + " >=" + num2str(pLow)
-		//		hcp   = "K" + num2str(i+0)  + " <=" + num2str(pHigh) 
+		//		hcp   = "K" + num2str(i+0)  + " <=" + num2str(pHigh)
 				lca   = "K" + num2str(i+2)  + " > 0"
 				lcm   = "K" + num2str(i+10) + " >= -90"
 				hcm   = "K" + num2str(i+10) + " <= 90"
 				if(i==4 + pWave1D[0])
 					lcp  = "K" + num2str(i+0)  + " >" + num2str(pLow)
-					hcp   = "K" + num2str(i+0)  + " <" + num2str(pHigh)  
+					hcp   = "K" + num2str(i+0)  + " <" + num2str(pHigh)
 				elseif(i == 11*(nPeaks-1) + 4 + pWave1D[0])
 					lcp  = "K" + num2str(i+0)  + " >" + num2str(pWave1D[i-11])
-					hcp   = "K" + num2str(i+0)  + " <" + num2str(pHigh)  
+					hcp   = "K" + num2str(i+0)  + " <" + num2str(pHigh)
 				else
 					lcp  = "K" + num2str(i+0)  + " >" + num2str(pWave1D[i-11])
-					hcp  = "K" + num2str(i+0)  + " <" + num2str(pWave1D[i+11])		
+					hcp  = "K" + num2str(i+0)  + " <" + num2str(pWave1D[i+11])
 				endif
 				hcp2  = "K" + num2str(i+0)  + " <=" + num2str(emax)
 				constraints[j+0]  = lcp
@@ -2984,7 +3087,7 @@ Function/WAVE makeConstraintWave(holdAmps,holdWidths,holdPos,nPeaks,pWave1D,hold
 				wid   = pWave1D[i+1]
 				wHigh = wMult*wid
 				pLow  = pos - n*wid
-				pHigh = pos + n*wid						
+				pHigh = pos + n*wid
 			//	lcp   = "K" + num2str(i+0) + " >=" + num2str(pLow)
 			//	hcp   = "K" + num2str(i+0) + " <=" + num2str(pHigh)
 				lcw   = "K" + num2str(i+1) + " > 0"
@@ -2993,13 +3096,13 @@ Function/WAVE makeConstraintWave(holdAmps,holdWidths,holdPos,nPeaks,pWave1D,hold
 				hcm   = "K" + num2str(i+10) + " <= 90"
 				if(i==4 + pWave1D[0])
 					lcp  = "K" + num2str(i+0)  + " >" + num2str(pLow)
-					hcp   = "K" + num2str(i+0)  + " <" + num2str(pHigh)  
+					hcp   = "K" + num2str(i+0)  + " <" + num2str(pHigh)
 				elseif(i == 11*(nPeaks-1) + 4 + pWave1D[0])
 					lcp  = "K" + num2str(i+0)  + " >" + num2str(pWave1D[i-11])
-					hcp   = "K" + num2str(i+0)  + " <" + num2str(pHigh)  
+					hcp   = "K" + num2str(i+0)  + " <" + num2str(pHigh)
 				else
 					lcp  = "K" + num2str(i+0)  + " >" + num2str(pWave1D[i-11])
-					hcp  = "K" + num2str(i+0)  + " <" + num2str(pWave1D[i+11])		
+					hcp  = "K" + num2str(i+0)  + " <" + num2str(pWave1D[i+11])
 				endif
 				hcp2  = "K" + num2str(i+0)  + " <=" + num2str(emax)
 				constraints[j+0] = lcp
@@ -3016,20 +3119,20 @@ Function/WAVE makeConstraintWave(holdAmps,holdWidths,holdPos,nPeaks,pWave1D,hold
 				pos   = pWave1D[i+0]
 				wid   = pWave1D[i+1]
 				pLow  = pos - n*wid
-				pHigh = pos + n*wid						
+				pHigh = pos + n*wid
 			//	lcp   = "K" + num2str(i+0) + " >=" + num2str(pLow)
 			//	hcp   = "K" + num2str(i+0) + " <=" + num2str(pHigh)
 				lcm   = "K" + num2str(i+10) + " >= -90"
 				hcm   = "K" + num2str(i+10) + " <= 90"
 				if(i==4 + pWave1D[0])
 					lcp  = "K" + num2str(i+0)  + " >" + num2str(pLow)
-					hcp   = "K" + num2str(i+0)  + " <" + num2str(pHigh)  
+					hcp   = "K" + num2str(i+0)  + " <" + num2str(pHigh)
 				elseif(i == 11*(nPeaks-1) + 4 + pWave1D[0])
 					lcp  = "K" + num2str(i+0)  + " >" + num2str(pWave1D[i-11])
-					hcp   = "K" + num2str(i+0)  + " <" + num2str(pHigh)  
+					hcp   = "K" + num2str(i+0)  + " <" + num2str(pHigh)
 				else
 					lcp  = "K" + num2str(i+0)  + " >" + num2str(pWave1D[i-11])
-					hcp  = "K" + num2str(i+0)  + " <" + num2str(pWave1D[i+11])		
+					hcp  = "K" + num2str(i+0)  + " <" + num2str(pWave1D[i+11])
 				endif
 				hcp2  = "K" + num2str(i+0)  + " <=" + num2str(emax)
 				constraints[j+0] = lcp
@@ -3037,27 +3140,27 @@ Function/WAVE makeConstraintWave(holdAmps,holdWidths,holdPos,nPeaks,pWave1D,hold
 				constraints[j+2] = lcm
 				constraints[j+3] = hcm
 				j+=4
-			endfor							
-		elseif(holdAmps && holdWidths && holdAmps &&holdModTheta) 
+			endfor
+		elseif(holdAmps && holdWidths && holdAmps &&holdModTheta)
 			print "Constraint wave not built due to all parameters being held constant"
-		endif		
-	
+		endif
+
 	return constraints
 End
 
 
 Function/WAVE makeConstraintWave2(holdAmps,holdWidths,holdPos,nPeaks,pWave1D,holdModTheta,holdAlpha,step)
-	
+
 	Variable holdAmps,holdWidths,holdPos,holdModTheta,holdAlpha,step
 	Variable nPeaks
 	Wave pWave1D
-	
+
 	Variable i,j,pos,pLow,pHigh,wHigh,wid,n=1,emax=360,aMod,wMult=1.5
 //	if(nPeaks>14)
 //	n=1
 //	wMult=1.5
 //	else
-//	
+//
 //	endif
 	//Variable openParams = holdAmps + holdWidths + holdPos
 	String cName = "constraints" + num2str(step)
@@ -3070,7 +3173,7 @@ Function/WAVE makeConstraintWave2(holdAmps,holdWidths,holdPos,nPeaks,pWave1D,hol
 		j=0
 		aMod=0
 	endif
-	
+
 	if(!holdAlpha)
 		if(nPeaks == 1)
 			Make/O/T/N=(2) $cName
@@ -3085,27 +3188,27 @@ Function/WAVE makeConstraintWave2(holdAmps,holdWidths,holdPos,nPeaks,pWave1D,hol
 		Make/O/T/N=(nPeaks) $cName
 		Wave/T constraints = $cName
 	endif
-	
+
 	String lcp,hcp,lcp2,hcp2//Constraint strings for position
 	String lcw,hcw//Constraint strings for width
 	String lca //Constraint strings for amplitude
 	String lcm,hcm	//Constraint strings for modTheta
-	
+
 		if(!holdPos && !holdWidths && !holdAmps &&holdModTheta)
 			Redimension/N=(2*nPeaks+aMod) constraints
 			for(i=4 + pWave1D[0];i<11*nPeaks + 4 + pWave1D[0];i+=11)
 				pos   = pWave1D[i+0]
 				wid   = pWave1D[i+1]
 				pLow  = pos - n*wid
-				pHigh = pos + n*wid 
-				wHigh = wMult*wid 
+				pHigh = pos + n*wid
+				wHigh = wMult*wid
 				lcw   = "K" + num2str(i+1)  + " > 0"
 				lca   = "K" + num2str(i+2)  + " > 0"
 				constraints[j+0]  = lcw
 				constraints[j+1]  = lca
 				j+=2
 			endfor
-		elseif(holdPos && !holdWidths && holdAmps &&holdModTheta)  
+		elseif(holdPos && !holdWidths && holdAmps &&holdModTheta)
 			Redimension/N=(1*nPeaks+aMod) constraints
 			for(i=4 + pWave1D[0];i<11*nPeaks + 4 + pWave1D[0];i+=11)
 				wid   = pWave1D[i+1]
@@ -3114,7 +3217,7 @@ Function/WAVE makeConstraintWave2(holdAmps,holdWidths,holdPos,nPeaks,pWave1D,hol
 				constraints[j+0]   = lcw
 				j+=1
 			endfor
-		elseif(holdPos && !holdWidths && !holdAmps &&holdModTheta)  
+		elseif(holdPos && !holdWidths && !holdAmps &&holdModTheta)
 			Redimension/N=(2*nPeaks+aMod) constraints
 			for(i=4 + pWave1D[0];i<11*nPeaks + 4 + pWave1D[0];i+=11)
 				wid   = pWave1D[i+1]
@@ -3125,20 +3228,20 @@ Function/WAVE makeConstraintWave2(holdAmps,holdWidths,holdPos,nPeaks,pWave1D,hol
 				constraints[j+2]  = lca
 				j+=2
 			endfor
-		elseif(holdPos && holdWidths && !holdAmps &&holdModTheta)  
+		elseif(holdPos && holdWidths && !holdAmps &&holdModTheta)
 			Redimension/N=(1*nPeaks+aMod) constraints
 			for(i=4 + pWave1D[0];i<11*nPeaks + 4 + pWave1D[0];i+=11)
 				lca   = "K" + num2str(i+2)  + " > 0"
 				constraints[j+0]  = lca
 				j+=1
 			endfor
-		elseif(!holdPos && holdWidths && !holdAmps &&holdModTheta) 
+		elseif(!holdPos && holdWidths && !holdAmps &&holdModTheta)
 			Redimension/N=(1*nPeaks+aMod) constraints
 			for(i=4 + pWave1D[0];i<11*nPeaks + 4 + pWave1D[0];i+=11)
 				pos   = pWave1D[i+0]
 				wid   = pWave1D[i+1]
 				pLow  = pos - n*wid
-				pHigh = pos + n*wid						
+				pHigh = pos + n*wid
 				lca   = "K" + num2str(i+2)  + " > 0"
 				constraints[j+0]  = lca
 				j+=1
@@ -3150,7 +3253,7 @@ Function/WAVE makeConstraintWave2(holdAmps,holdWidths,holdPos,nPeaks,pWave1D,hol
 				wid   = pWave1D[i+1]
 				wHigh = wMult*wid
 				pLow  = pos - n*wid
-				pHigh = pos + n*wid						
+				pHigh = pos + n*wid
 				lcw   = "K" + num2str(i+1)  + " > 0"
 				lca   = "K" + num2str(i+1) + " > 0"
 				constraints[j+2] = lcw
@@ -3163,7 +3266,7 @@ Function/WAVE makeConstraintWave2(holdAmps,holdWidths,holdPos,nPeaks,pWave1D,hol
 				pos   = pWave1D[i+0]
 				wid   = pWave1D[i+1]
 				pLow  = pos - n*wid
-				pHigh = pos + n*wid						
+				pHigh = pos + n*wid
 				j+=0
 			endfor
 		////////////////////////////////////////////////////////
@@ -3174,7 +3277,7 @@ Function/WAVE makeConstraintWave2(holdAmps,holdWidths,holdPos,nPeaks,pWave1D,hol
 				wid   = pWave1D[i+1]
 				wHigh = wMult*wid
 				pLow  = pos - n*wid
-				pHigh = pos + n*wid 
+				pHigh = pos + n*wid
 				lcw   = "K" + num2str(i+1)  + " > 0"
 				lca   = "K" + num2str(i+2)  + " > 0"
 				lcm   = "K" + num2str(i+10) + " >= -90"
@@ -3185,7 +3288,7 @@ Function/WAVE makeConstraintWave2(holdAmps,holdWidths,holdPos,nPeaks,pWave1D,hol
 				constraints[j+3]  = hcm
 				j+=4
 			endfor
-		elseif(holdPos && !holdWidths && holdAmps &&!holdModTheta)  
+		elseif(holdPos && !holdWidths && holdAmps &&!holdModTheta)
 			Redimension/N=(3*nPeaks+aMod) constraints
 			for(i=4 + pWave1D[0];i<11*nPeaks + 4 + pWave1D[0];i+=11)
 				wid   = pWave1D[i+1]
@@ -3198,7 +3301,7 @@ Function/WAVE makeConstraintWave2(holdAmps,holdWidths,holdPos,nPeaks,pWave1D,hol
 				constraints[j+2]  = hcm
 				j+=3
 			endfor
-		elseif(holdPos && !holdWidths && !holdAmps &&!holdModTheta)  
+		elseif(holdPos && !holdWidths && !holdAmps &&!holdModTheta)
 			Redimension/N=(4*nPeaks+aMod) constraints//(3*nPeaks) constraints
 			for(i=4 + pWave1D[0];i<11*nPeaks + 4 + pWave1D[0];i+=11)
 				wid   = pWave1D[i+1]
@@ -3213,7 +3316,7 @@ Function/WAVE makeConstraintWave2(holdAmps,holdWidths,holdPos,nPeaks,pWave1D,hol
 				constraints[j+3]  = hcm
 				j+=4
 			endfor
-		elseif(holdPos && holdWidths && !holdAmps &&!holdModTheta)  
+		elseif(holdPos && holdWidths && !holdAmps &&!holdModTheta)
 			Redimension/N=(3*nPeaks+aMod) constraints//(2*nPeaks) constraints
 			for(i=4 + pWave1D[0];i<11*nPeaks + 4 + pWave1D[0];i+=11)
 				lca   = "K" + num2str(i+2)  + " > 0"
@@ -3224,13 +3327,13 @@ Function/WAVE makeConstraintWave2(holdAmps,holdWidths,holdPos,nPeaks,pWave1D,hol
 				constraints[j+2]  = hcm
 				j+=3
 			endfor
-		elseif(!holdPos && holdWidths && !holdAmps &&!holdModTheta) 
+		elseif(!holdPos && holdWidths && !holdAmps &&!holdModTheta)
 			Redimension/N=(3*nPeaks+aMod) constraints//(4*nPeaks) constraints
 			for(i=4 + pWave1D[0];i<11*nPeaks + 4 + pWave1D[0];i+=11)
 				pos   = pWave1D[i+0]
 				wid   = pWave1D[i+1]
 				pLow  = pos - n*wid
-				pHigh = pos + n*wid						
+				pHigh = pos + n*wid
 				lca   = "K" + num2str(i+2)  + " > 0"
 				lcm   = "K" + num2str(i+10) + " >= -90"
 				hcm   = "K" + num2str(i+10) + " <= 90"
@@ -3246,7 +3349,7 @@ Function/WAVE makeConstraintWave2(holdAmps,holdWidths,holdPos,nPeaks,pWave1D,hol
 				wid   = pWave1D[i+1]
 				wHigh = wMult*wid
 				pLow  = pos - n*wid
-				pHigh = pos + n*wid						
+				pHigh = pos + n*wid
 				lcw   = "K" + num2str(i+1) + " > 0"
 				lcm   = "K" + num2str(i+10) + " >= -90"
 				hcm   = "K" + num2str(i+10) + " <= 90"
@@ -3261,17 +3364,17 @@ Function/WAVE makeConstraintWave2(holdAmps,holdWidths,holdPos,nPeaks,pWave1D,hol
 				pos   = pWave1D[i+0]
 				wid   = pWave1D[i+1]
 				pLow  = pos - n*wid
-				pHigh = pos + n*wid				
+				pHigh = pos + n*wid
 				lcm   = "K" + num2str(i+10) + " >= -90"
 				hcm   = "K" + num2str(i+10) + " <= 90"
 				constraints[j+0] = lcm
 				constraints[j+1] = hcm
 				j+=2
-			endfor							
-		elseif(holdAmps && holdWidths && holdAmps &&holdModTheta) 
+			endfor
+		elseif(holdAmps && holdWidths && holdAmps &&holdModTheta)
 			print "Constraint wave not built due to all parameters being held constant"
-		endif		
-	
+		endif
+
 	return constraints
 End
 
@@ -3280,7 +3383,7 @@ Function alphaModelPlotting(fit,allExpEnergy,allExpSpec,allStepEnergy,allDFTStep
 	String fit,thetaList,NEXAFStype
 	Wave allExpEnergy,allExpSpec,allStepEnergy,allDFTSteps,results,totalNEXAFS,pwCopy
 	Variable nSpec,nPeaks,tval,ovpVal,d,alpha
-	
+
 	if(StringMatch(fit,"yes"))
 		splitSpec(allExpEnergy ,nSpec,"expEnergy" ,alpha=round(pwCopy[2]))
 		splitSpec(allExpSpec   ,nSpec,"expSpec"   ,alpha=round(pwCopy[2]))
@@ -3288,7 +3391,7 @@ Function alphaModelPlotting(fit,allExpEnergy,allExpSpec,allStepEnergy,allDFTStep
 		splitSpec(allDFTSteps  ,nSpec,"dftStep"   ,alpha=round(pwCopy[2]))
 		splitSpec(results  ,nSpec,"fitresults"    ,alpha=round(pwCopy[2]))
 	//	if(d)
-	//		print "Generating comparison plots from fits." 
+	//		print "Generating comparison plots from fits."
 	//		plotResultsFit2("expSpec;fitresults;dftStep;",pwCopy[2],"expEnergy",thetaList,tval,ovpVal,nPeaks,NEXAFStype)
 	//	endif
 	elseif(StringMatch(fit,"no"))
@@ -3301,22 +3404,22 @@ Function alphaModelPlotting(fit,allExpEnergy,allExpSpec,allStepEnergy,allDFTStep
 			print "Generating comparison plots from modeling."
 		//	plotPeaks(nSpec,nPeaks,pwCopy[2],tval,ovpVal)
 			plotResults("dftSpec;",alpha,"expEnergy",thetaList,tval,ovpVal)
-		endif	
+		endif
 	endif
 End
 
 Function findMagicAngle(thetaList)
 
 	String thetaList
-	
+
 	Variable nThetas = ItemsInList(thetaList),i
 	for(i=0;i<nThetas;i+=1)
 		Variable thetaVal = str2num(StringFromList(i,thetaList))
 		if((54 <= thetaVal) && (thetaVal <=55))
-			break 
+			break
 		endif
 	endfor
-	
+
 	return i+1
 End
 
@@ -3335,7 +3438,7 @@ Function/WAVE makeMaskWave(E1,E2,xw)
 			maskWave[i] = 0
 		endif
 	endfor
-	
+
 	return maskWave
 End
 
@@ -3343,14 +3446,14 @@ End
 Function simpleDFTModel(pw,norm3D,thetaValues)
 
 	Wave pw	//1D Parameter wave. Has peak positions,widths, and amplitudes. has initial guess for alpha and IPs required to build step edge
-	Wave norm3D //Absorption tensor	
+	Wave norm3D //Absorption tensor
 	Wave thetaValues
 	Variable i,j=0,k,m
 	//Make the absorption tensor for each transition, normalize it, and place each transition into a layer of a 3D wave
-	
+
 	Variable nTransitions = DimSize(norm3D,2)
-	Variable pos,wid,amp,alpha,i0,phi	
-	Variable p0,pf,nSpec=numpnts(thetaValues),cSpec=1,thetaVal	
+	Variable pos,wid,amp,alpha,i0,phi
+	Variable p0,pf,nSpec=numpnts(thetaValues),cSpec=1,thetaVal
 	Variable nAtoms = pw[0]
 	Variable targetDP = 10
 
@@ -3361,14 +3464,14 @@ Function simpleDFTModel(pw,norm3D,thetaValues)
 	Wave xWave = makeX(ini,fin,specpnts,nSpec)
 	Wave thw = makeThetaWave(ini,fin,specpnts,nSpec,thetaValues)
 	Variable nPnts = specpnts/nSpec
-	Make/O/D/N=(nTransitions) MA = 0 
-	
+	Make/O/D/N=(nTransitions) MA = 0
+
 	//Make rotation matrices for rotation of 90,180,and 270 degrees around z-axis
 	Make/O/D/N=(3,3) rotMat0   = {{cos(0*(Pi/180))  ,sin(0*(Pi/180)),0}  ,{-sin(0*(Pi/180))  ,cos(0*(Pi/180)),0}  ,{0,0,1}}
 	Make/O/D/N=(3,3) rotMat90  = {{cos(90*(Pi/180)) ,sin(90*(Pi/180)),0} ,{-sin(90*(Pi/180)) ,cos(90*(Pi/180)),0} ,{0,0,1}}
 	Make/O/D/N=(3,3) rotMat180 = {{cos(180*(Pi/180)),sin(180*(Pi/180)),0},{-sin(180*(Pi/180)),cos(180*(Pi/180)),0},{0,0,1}}
 	Make/O/D/N=(3,3) rotMat270 = {{cos(270*(Pi/180)),sin(270*(Pi/180)),0},{-sin(270*(Pi/180)),cos(270*(Pi/180)),0},{0,0,1}}
-	
+
 	for(i=3;i<3+3*nTransitions;i+=3)
 		i0    = pw[0]
 		alpha = pw[1]//90-pw[i+9]
@@ -3376,20 +3479,20 @@ Function simpleDFTModel(pw,norm3D,thetaValues)
 		pos   = pw[i + 0]
 		wid   = pw[i + 1]
 		amp   = pw[i + 2]
-		
+
 		currentTensor = i0 * amp * norm3D[p][q][j]
-		
+
 		Make/O/D/N=(3,3) rotMatAlignX = {{1,0,0},{0,cos(alpha*(Pi/180)),sin(alpha*(Pi/180))},{0,-sin(alpha*(Pi/180)),cos(alpha*(Pi/180))}}
-		
+
 		MatrixOP/O tiltedTensor = rotMatAlignX x currentTensor x rotMatAlignX^t
-		
+
 		MatrixOP/O  RotTensor0   =  rotMat0   x tiltedTensor x rotMat0^t
 		MatrixOP/O  RotTensor90  =  rotMat90  x tiltedTensor x rotMat90^t
 		MatrixOP/O  RotTensor180 =  rotMat180 x tiltedTensor x rotMat180^t
 		MatrixOP/O  RotTensor270 =  rotMat270 x tiltedTensor x rotMat270^t
-		
+
 		MatrixOP/O filmTensor = RotTensor0 + RotTensor90 + RotTensor180 + RotTensor270
-		
+
 		for(k=0;k<=2;k+=1)
 			for(m=0;m<=2;m+=1)
 				Variable currComp = filmTensor[k][m]
@@ -3401,7 +3504,7 @@ Function simpleDFTModel(pw,norm3D,thetaValues)
 				filmTensor[k][m] = currComp
 			endfor
 		endfor
-		
+
 		if(j<nTransitions)
 			if(cSpec == 1)
 				p0 = 0
@@ -3417,47 +3520,47 @@ Function simpleDFTModel(pw,norm3D,thetaValues)
 				thetaVal = thw[p0]
 			endif
 		endif
-		
+
 		String eName = "eField_" + num2str(thetaVal)
-		Make/O/D/N=(3) $eName = {sin(thetaVal*(Pi/180))*cos(phi*(Pi/180)),sin(thetaVal*(Pi/180))*sin(phi*(Pi/180)),cos(thetaVal*(Pi/180))}	
+		Make/O/D/N=(3) $eName = {sin(thetaVal*(Pi/180))*cos(phi*(Pi/180)),sin(thetaVal*(Pi/180))*sin(phi*(Pi/180)),cos(thetaVal*(Pi/180))}
 		Wave eField = $eName
 		MatrixOP/O tempMA = amp * (eField^t x filmTensor x eField)
-		
+
 		if(numtype(tempMA[0]) !=0)
 			MA[j] = 0
 		else
 			MA[j] = tempMA[0]
 		endif
 		//Make totalNEXAFS for current Theta
-		String tNXFSname = "totalNEXAFS_" + num2str(thetaVal) 
+		String tNXFSname = "totalNEXAFS_" + num2str(thetaVal)
 		Make/O/N=(specpnts) $tNXFSname
-		Wave totalNEXAFS = $tNXFSname 
+		Wave totalNEXAFS = $tNXFSname
 		//Make peaks associated with current theta
-		String pkName = "pk" + num2str(j) + "_spec" + num2str(cSpec) + "_Alpha" + num2str(alpha) + "_Theta" + num2str(thetaVal) 
+		String pkName = "pk" + num2str(j) + "_spec" + num2str(cSpec) + "_Alpha" + num2str(alpha) + "_Theta" + num2str(thetaVal)
 		Make/O/N=(res) $pkName
 		Wave z = $pkName
 		SetScale/i x,ini,fin,z
-		z =  MA[j] * gauss(x,pos,wid)		
+		z =  MA[j] * gauss(x,pos,wid)
 		totalNEXAFS += MA[j] * gauss(xWave,pos,wid)
 		j+=1
-		
+
 		if(j<=nTransitions)
 			if(cSpec == 1)
 				if(j==(nTransitions) && cSpec < nSpec)
 					i=0
 					cSpec+=1
 					j=0
-				endif 			
+				endif
 			else
 				if(j==(nTransitions) && cSpec < nSpec)
 					i=0
 					cSpec+=1
 					j=0
-				endif 
+				endif
 			endif
-		endif		
+		endif
 	endfor
-	
+
 	KillWaves rotMat0,rotMat90,rotMat180,rotMat270,rotTensor0,rotTensor90,rotTensor180,rotTensor270,rotMatAlignX
 	organizeSimpleModel(alpha)
 	plotSimpleTensor(pw)
@@ -3470,11 +3573,11 @@ End
 Function organizeSimpleModel(alpha)
 
 	Variable alpha
-	
+
 	String iniFolder = GetDataFolder(1)
 	String fName = "Alpha_" + num2str(alpha)
 	NewDataFolder/O $fName
-	
+
 	String pkWaves = WaveList("pk*",";","")
 	Variable npks = ItemsInList(pkWaves),i
 	for(i=0;i<npks;i+=1)
@@ -3487,9 +3590,9 @@ Function organizeSimpleModel(alpha)
 End
 
 Function plotSimpleTensor(pWave)
-	
+
 	Wave pWave
-	
+
 	Variable alpha = pWave[1]
 	Variable energy = pWave[3],width = pWave[4],i
 	String iniFolder = GetDataFolder(1)
@@ -3500,11 +3603,11 @@ Function plotSimpleTensor(pWave)
 	String plotName = "Theta_Peaks"//"Alpha_" + num2str(alpha) + "_PLOT"
 	DoWindow $plotName
 	if(!V_Flag)
-		Display/N=$plotName/K=1 
+		Display/N=$plotName/K=1
 		for(i=0;i<n;i+=1)
 			String wName = StringFromList(i,wList)
 			Wave w = $wName
-			AppendToGraph/W=$plotName w 
+			AppendToGraph/W=$plotName w
 		endfor
 		SetAxis bottom energy-3*width,energy+3*width
 		ModifyGraph grid=2,mirror=1,nticks(left)=10,minor=1,fStyle=1,fSize=14,lsize=1.5
@@ -3512,14 +3615,14 @@ Function plotSimpleTensor(pWave)
 		Label bottom "Transition Energy [eV]"
 		ApplyColorTableToTopGraph("ColdWarm")
 		TextBox/C/N=text0 "Alpha " + num2str(alpha)
-	endif 
+	endif
 	SetDataFolder $iniFolder
 End
 
 Function plotAlphaIntensities(pWave,tw,ew)
-	
+
 	Wave pWave,tw,ew
-	
+
 	Variable pt = BinarySearch(ew,pWave[3])
 	Variable alpha = pWave[1]
 	String iniFolder = GetDataFolder(1)
@@ -3535,25 +3638,25 @@ Function plotAlphaIntensities(pWave,tw,ew)
 		Wave w = $name
 		intensity[i] = w[pt]
 	endfor
-	
+
 	String plotName = "Theta_Intensities"//"alphaIntensities_" + num2str(alpha)
 	DoWindow $plotName
 	if(!V_Flag)
-		Display/N=$plotName/K=1 intensity vs tw 
+		Display/N=$plotName/K=1 intensity vs tw
 		ModifyGraph grid=2,mirror=1,nticks(left)=10,minor=1,fStyle=1,fSize=14,lsize=1.5,mode=4,marker=19,msize=3
 		Label left "Transition Intensity [a.u.]"
 		Label bottom "Sample θ [°]"
 	endif
-	
+
 	SetDataFolder $iniFolder
 End
- 
+
 Function plotAlphaIntensities2(en,ew,nxname,nSpec,thetaList)
-	
+
 	Wave ew
 	Variable en,nSpec
 	String nxName,thetaList
-	
+
 	Variable pt = BinarySearch(ew,en),i
 	Make/O/N=(nSpec) intensity,tw
 	String nxList = WaveList(nxname+"*",";","")
@@ -3563,22 +3666,22 @@ Function plotAlphaIntensities2(en,ew,nxname,nSpec,thetaList)
 		intensity[i] = w[pt]
 		tw[i] = str2num(StringFromList(i,thetaList))
 	endfor
-	
+
 	String plotName = "Theta_Intensities"//"alphaIntensities_" + num2str(alpha)
 	DoWindow $plotName
 	if(!V_Flag)
-		Display/N=$plotName/K=1 intensity vs tw 
+		Display/N=$plotName/K=1 intensity vs tw
 		ModifyGraph grid=2,mirror=1,nticks(left)=10,minor=1,fStyle=1,fSize=14,lsize=1.5,mode=4,marker=19,msize=3
 		Label left "Transition Intensity [a.u.]"
 		Label bottom "Sample θ [°]"
 	endif
-	
+
 End
 
 Function/WAVE makeX(ini,fin,res,nSpec)
 
 	Variable ini,fin,res,nSpec
-	
+
 	Make/O/N=(res) xWave = 0
 	Variable i,j=1,c=1
 	for(i=0;i<res;i+=1)
@@ -3594,7 +3697,7 @@ Function/WAVE makeX(ini,fin,res,nSpec)
 			endif
 		endif
 	endfor
-	
+
 	return xWave
 End
 
@@ -3602,7 +3705,7 @@ Function/WAVE makeThetaWave(ini,fin,res,nSpec,thetaValues)
 
 	Variable ini,fin,res,nSpec
 	Wave thetaValues
-	
+
 	Make/O/N=(res) thetaWave = 0
 	Variable i,c=0
 	for(i=0;i<res;i+=1)
@@ -3617,20 +3720,20 @@ Function/WAVE makeThetaWave(ini,fin,res,nSpec,thetaValues)
 			endif
 		endif
 	endfor
-	
+
 	return thetaWave
 End
 
 Function/WAVE makeX2(ini,fin,res)
 
 	Variable ini,fin,res
-	
+
 	Make/O/N=(res) enWave = 0
 	Variable i
 	for(i=0;i<res;i+=1)
 		enWave[i] = ini + i*(fin-ini)/res
 	endfor
-	
+
 	return enWave
 End
 
@@ -3648,49 +3751,49 @@ Function concatenateEField()
 End
 
 Function fitSinglePeak(pw,pkID,holdPos,holdWidths,holdAmps,holdSecAmp,tval,ovpMax,alpha,mol)
-	
+
 	Wave pw
 	Variable pkId
 	Variable holdPos,holdWidths,holdAmps,holdSecAmp
 	Variable tval,ovpMax
-	Variable alpha 
+	Variable alpha
 	String mol
-	
-	String baseFolder = "root:Packages:DFTClustering:PolarAngles_"+mol+":TransitionFiltering_"+ replaceString(".",num2str(tval),"p") + "OS_" + replaceString(".",num2str(ovpMax),"p") +"OVP:AmplitudeFitting1:" 
+
+	String baseFolder = "root:Packages:DFTClustering:PolarAngles_"+mol+":TransitionFiltering_"+ replaceString(".",num2str(tval),"p") + "OS_" + replaceString(".",num2str(ovpMax),"p") +"OVP:AmplitudeFitting1:"
 	String iniFolder = baseFolder + "Alpha_" + replaceString(".",num2str(alpha),"p")
 	String tensorFolder = iniFolder + ":TensorMisc:"
 	SetDataFolder $tensorFolder
-	
+
 	//TO DO:
 	//1. Find the parameter wave for the fits
 	String newpwName = "refine_pwCopy_pk" + num2str(pkID)
 	Duplicate/O pw,$newpwName
 	Wave newpw = $newpwName
-	
+
 	//2. Find the experimental NEXAFS to be fit
 	String specName = tensorFolder + "allExpSpec"
 	Wave spec = $specName
-	String resultsName = "refine_results_pk" + num2str(pkID) 
+	String resultsName = "refine_results_pk" + num2str(pkID)
 	String residualName = "refine_res_pk" + num2str(pkID)
 	Duplicate/O spec,$resultsName,$residualName
 	Wave results = $resultsName
 	Wave res = $residualName
-	
+
 	//3. Find the experimental energies
 	String enName = tensorFolder + "allExpEnergy"
 	Wave en = $enName
-	
+
 	//4.Get wave with sample theta values
 	Wave valuesPolar
-	
+
 	//5.Get wave with DFT step edge
 	Wave allDFTSteps
-	
+
 	//6. Modify hold string ,constraint wave and epsilon wave so that only the parameters of the current peak are modified
 	Wave constraints = makeSingleConstraintWave(holdAmps,holdWidths,holdPos,holdSecAmp,pw,pkID)
 	Wave epsilon = makeSingleEpsiltonWave(pw,pkID,holdAmps,holdWidths,holdPos,holdSecAmp)
 	String H = makeSingleHoldString(holdAmps,holdWidths,holdPos,holdSecAmp,pw,pkID)
-	
+
 	//Variable V_FitError = 0
 	Variable V_FitTol = 0.00001
 	if(holdAmps && holdWidths && holdPos)
@@ -3698,38 +3801,38 @@ Function fitSinglePeak(pw,pkID,holdPos,holdWidths,holdAmps,holdSecAmp,tval,ovpMa
 	else
 		FuncFit/H=H/M=2 simDFTfit2,newpw, spec /X={en,valuesPolar,allDFTSteps} /R=res /E=epsilon /C=constraints /D=results
 	endif
-	
+
 	splitSpec(results,4,"refine_results_pk" + num2str(pkID) +"_",alpha=alpha)
 End
 
 //This function makes the constraint wave for the fit refinement.
 //The amplitudes of all peaks remain open but the position,width, amplitude, local alpha, and tensor element ratio can be opened for a desired peak.
 Function/WAVE makeSingleConstraintWave(holdAmps,holdWidths,holdPos,holdSecAmp,pWave1D,pkID)
-	
+
 	Variable holdAmps,holdWidths,holdPos,holdSecAmp
 	Variable pkID
 	Wave pWave1D
-	
+
 	Variable i=4 + pWave1D[0] + pkID*11,j=2,pos,pLow,pHigh,wid,n=2
 	Variable nPeaks = ((numpnts(pWave1D) - 4 -  pWave1D[0])/11)-1,cpk=0
-	
+
 	Variable totalConstraints = 0
 	if(!holdAmps)
-		totalConstraints +=1	
+		totalConstraints +=1
 	endif
-	
+
 	if(!holdWidths)
-		totalConstraints +=1	
+		totalConstraints +=1
 	endif
-	
+
 	if(!holdPos)
-		totalConstraints +=2	
+		totalConstraints +=2
 	endif
-	
+
 	if(!holdSecAmp)
-		totalConstraints +=1	
+		totalConstraints +=1
 	endif
-	
+
 	String constraintWName = "constraints_Pk" + num2str(pkID)
 	Make/O/T/N=(nPeaks + totalConstraints) $constraintWName
 	Wave/T constraints = $constraintWName
@@ -3750,9 +3853,9 @@ Function/WAVE makeSingleConstraintWave(holdAmps,holdWidths,holdPos,holdSecAmp,pW
 				pos   = pWave1D[i+0]
 				wid   = pWave1D[i+1]
 				pLow  = pos - n*wid
-				pHigh = pos + n*wid 
+				pHigh = pos + n*wid
 				lc0   = "K" + num2str(i+0)  + " >=" + num2str(pLow)
-				hc0   = "K" + num2str(i+0)  + " <=" + num2str(pHigh)  
+				hc0   = "K" + num2str(i+0)  + " <=" + num2str(pHigh)
 				lc1   = "K" + num2str(i+1)  + " >= 0"
 				lc2   = "K" + num2str(i+2)  + " >= 0"
 				lc3   = "K" + num2str(i+10) + " >= 0"
@@ -3770,7 +3873,7 @@ Function/WAVE makeSingleConstraintWave(holdAmps,holdWidths,holdPos,holdSecAmp,pW
 				cpk+=1
 			endif
 		endfor
-	elseif(holdPos && !holdWidths && holdAmps && !holdSecAmp)  
+	elseif(holdPos && !holdWidths && holdAmps && !holdSecAmp)
 		Redimension/N=(nPeaks + totalConstraints) constraints
 		j=0
 		for(i=4 + pWave1D[0];i < 4 + pWave1D[0] + 11*(nPeaks+1);i+=11)
@@ -3787,8 +3890,8 @@ Function/WAVE makeSingleConstraintWave(holdAmps,holdWidths,holdPos,holdSecAmp,pW
 				j+=1
 				cpk+=1
 			endif
-		endfor	
-	elseif(holdPos && !holdWidths && !holdAmps && !holdSecAmp)  
+		endfor
+	elseif(holdPos && !holdWidths && !holdAmps && !holdSecAmp)
 		Redimension/N=(nPeaks + totalConstraints) constraints//(3*nPeaks) constraints
 		j=0
 		for(i=4 + pWave1D[0];i < 4 + pWave1D[0] + 11*(nPeaks+1);i+=11)
@@ -3809,8 +3912,8 @@ Function/WAVE makeSingleConstraintWave(holdAmps,holdWidths,holdPos,holdSecAmp,pW
 				j+=1
 				cpk+=1
 			endif
-		endfor	
-	elseif(holdPos && holdWidths && !holdAmps && !holdSecAmp)  
+		endfor
+	elseif(holdPos && holdWidths && !holdAmps && !holdSecAmp)
 		Redimension/N=(nPeaks + totalConstraints) constraints//(2*nPeaks) constraints
 		j=0
 		for(i=4 + pWave1D[0];i < 4 + pWave1D[0] + 11*(nPeaks+1);i+=11)
@@ -3830,7 +3933,7 @@ Function/WAVE makeSingleConstraintWave(holdAmps,holdWidths,holdPos,holdSecAmp,pW
 				cpk+=1
 			endif
 		endfor
-	elseif(!holdPos && holdWidths && !holdAmps && !holdSecAmp) 
+	elseif(!holdPos && holdWidths && !holdAmps && !holdSecAmp)
 		Redimension/N=(nPeaks + totalConstraints) constraints//(4*nPeaks) constraints
 		j=0
 		for(i=4 + pWave1D[0];i < 4 + pWave1D[0] + 11*(nPeaks+1);i+=11)
@@ -3838,9 +3941,9 @@ Function/WAVE makeSingleConstraintWave(holdAmps,holdWidths,holdPos,holdSecAmp,pW
 				pos   = pWave1D[i+0]
 				wid   = pWave1D[i+1]
 				pLow  = pos - n*wid
-				pHigh = pos + n*wid						
+				pHigh = pos + n*wid
 				lc0   = "K" + num2str(i+0)  + " >=" + num2str(pLow)
-				hc0   = "K" + num2str(i+0)  + " <=" + num2str(pHigh) 
+				hc0   = "K" + num2str(i+0)  + " <=" + num2str(pHigh)
 				lc2   = "K" + num2str(i+2)  + " >= 0"
 				lc3   = "K" + num2str(i+10) + " >= 0"
 				constraints[j+0]  = lc0
@@ -3866,7 +3969,7 @@ Function/WAVE makeSingleConstraintWave(holdAmps,holdWidths,holdPos,holdSecAmp,pW
 				pos   = pWave1D[i+0]
 				wid   = pWave1D[i+1]
 				pLow  = pos - n*wid
-				pHigh = pos + n*wid						
+				pHigh = pos + n*wid
 				lc0   = "K" + num2str(i+0) + " >=" + num2str(pLow)
 				hc0   = "K" + num2str(i+0) + " <=" + num2str(pHigh)
 				lc1   = "K" + num2str(i+1) + " >= 0"
@@ -3894,7 +3997,7 @@ Function/WAVE makeSingleConstraintWave(holdAmps,holdWidths,holdPos,holdSecAmp,pW
 				pos   = pWave1D[i+0]
 				wid   = pWave1D[i+1]
 				pLow  = pos - n*wid
-				pHigh = pos + n*wid						
+				pHigh = pos + n*wid
 				lc0   = "K" + num2str(i+0) + " >=" + num2str(pLow)
 				hc0   = "K" + num2str(i+0) + " <=" + num2str(pHigh)
 				lc3   = "K" + num2str(i+10) + " >= 0"
@@ -3920,9 +4023,9 @@ Function/WAVE makeSingleConstraintWave(holdAmps,holdWidths,holdPos,holdSecAmp,pW
 				pos   = pWave1D[i+0]
 				wid   = pWave1D[i+1]
 				pLow  = pos - n*wid
-				pHigh = pos + n*wid 
+				pHigh = pos + n*wid
 				lc0   = "K" + num2str(i+0)  + " >=" + num2str(pLow)
-				hc0   = "K" + num2str(i+0)  + " <=" + num2str(pHigh)  
+				hc0   = "K" + num2str(i+0)  + " <=" + num2str(pHigh)
 				lc1   = "K" + num2str(i+1)  + " >= 0"
 				lc2   = "K" + num2str(i+2)  + " >= 0"
 				lc3   = "K" + num2str(i+10) + " >= 0"
@@ -3942,7 +4045,7 @@ Function/WAVE makeSingleConstraintWave(holdAmps,holdWidths,holdPos,holdSecAmp,pW
 				cpk+=1
 			endif
 		endfor
-	elseif(holdPos && !holdWidths && holdAmps && holdSecAmp)  
+	elseif(holdPos && !holdWidths && holdAmps && holdSecAmp)
 		Redimension/N=(nPeaks + totalConstraints) constraints
 		j=0
 		for(i=4 + pWave1D[0];i < 4 + pWave1D[0] + 11*(nPeaks+1);i+=11)
@@ -3959,8 +4062,8 @@ Function/WAVE makeSingleConstraintWave(holdAmps,holdWidths,holdPos,holdSecAmp,pW
 				j+=1
 				cpk+=1
 			endif
-		endfor	
-	elseif(holdPos && !holdWidths && !holdAmps && holdSecAmp)  
+		endfor
+	elseif(holdPos && !holdWidths && !holdAmps && holdSecAmp)
 		Redimension/N=(nPeaks + totalConstraints) constraints//(3*nPeaks) constraints
 		j=0
 		for(i=4 + pWave1D[0];i < 4 + pWave1D[0] + 11*(nPeaks+1);i+=11)
@@ -3981,8 +4084,8 @@ Function/WAVE makeSingleConstraintWave(holdAmps,holdWidths,holdPos,holdSecAmp,pW
 				j+=1
 				cpk+=1
 			endif
-		endfor	
-	elseif(holdPos && holdWidths && !holdAmps && holdSecAmp)  
+		endfor
+	elseif(holdPos && holdWidths && !holdAmps && holdSecAmp)
 		Redimension/N=(nPeaks + totalConstraints) constraints//(2*nPeaks) constraints
 		j=0
 		for(i=4 + pWave1D[0];i < 4 + pWave1D[0] + 11*(nPeaks+1);i+=11)
@@ -4002,7 +4105,7 @@ Function/WAVE makeSingleConstraintWave(holdAmps,holdWidths,holdPos,holdSecAmp,pW
 				cpk+=1
 			endif
 		endfor
-	elseif(!holdPos && holdWidths && !holdAmps && holdSecAmp) 
+	elseif(!holdPos && holdWidths && !holdAmps && holdSecAmp)
 		Redimension/N=(nPeaks + totalConstraints) constraints//(4*nPeaks) constraints
 		j=0
 		for(i=4 + pWave1D[0];i < 4 + pWave1D[0] + 11*(nPeaks+1);i+=11)
@@ -4010,9 +4113,9 @@ Function/WAVE makeSingleConstraintWave(holdAmps,holdWidths,holdPos,holdSecAmp,pW
 				pos   = pWave1D[i+0]
 				wid   = pWave1D[i+1]
 				pLow  = pos - n*wid
-				pHigh = pos + n*wid						
+				pHigh = pos + n*wid
 				lc0   = "K" + num2str(i+0)  + " >=" + num2str(pLow)
-				hc0   = "K" + num2str(i+0)  + " <=" + num2str(pHigh) 
+				hc0   = "K" + num2str(i+0)  + " <=" + num2str(pHigh)
 				lc2   = "K" + num2str(i+2)  + " >= 0"
 				lc3   = "K" + num2str(i+10) + " >= 0"
 				constraints[j+0]  = lc0
@@ -4038,7 +4141,7 @@ Function/WAVE makeSingleConstraintWave(holdAmps,holdWidths,holdPos,holdSecAmp,pW
 				pos   = pWave1D[i+0]
 				wid   = pWave1D[i+1]
 				pLow  = pos - n*wid
-				pHigh = pos + n*wid						
+				pHigh = pos + n*wid
 				lc0   = "K" + num2str(i+0) + " >=" + num2str(pLow)
 				hc0   = "K" + num2str(i+0) + " <=" + num2str(pHigh)
 				lc1   = "K" + num2str(i+1) + " >= 0"
@@ -4064,7 +4167,7 @@ Function/WAVE makeSingleConstraintWave(holdAmps,holdWidths,holdPos,holdSecAmp,pW
 				pos   = pWave1D[i+0]
 				wid   = pWave1D[i+1]
 				pLow  = pos - n*wid
-				pHigh = pos + n*wid						
+				pHigh = pos + n*wid
 				lc0   = "K" + num2str(i+0) + " >=" + num2str(pLow)
 				hc0   = "K" + num2str(i+0) + " <=" + num2str(pHigh)
 				constraints[j+0] = lc0
@@ -4080,124 +4183,124 @@ Function/WAVE makeSingleConstraintWave(holdAmps,holdWidths,holdPos,holdSecAmp,pW
 				cpk+=1
 			endif
 		endfor
-	elseif(holdAmps && holdWidths && holdAmps && holdSecAmp) 
+	elseif(holdAmps && holdWidths && holdAmps && holdSecAmp)
 		print "Constraint wave not built due to all parameters being held constant"
-	endif		
-	
-	return constraints		
+	endif
+
+	return constraints
 End
 
 Function/WAVE makeSingleEpsiltonWave(pWave1D,pkID,holdAmps,holdWidths,holdPos,holdSecAmp)
-	
+
 	Wave pWave1D
 	Variable pkID
 	Variable holdAmps,holdWidths,holdPos,holdSecAmp
-	
+
 	Variable nPeaks = (numpnts(pWave1D) - 4 - pWave1D[0])/11,cPk=0
 	Variable i
 	//Set up values for epsilon wave
 	String epsWaveName = "eps_Pk" + num2str(pkID)
 	Make/O/N=(numpnts(pWave1D)) $epsWaveName
 	Wave eps = $epsWaveName
-	
+
 	Variable epsPos  = 1e-7
 	Variable epsWid  = 1e-7
 	Variable epsAmp  = 1e-4
 	Variable epsProp = 1e-4
 	eps[0] = 0
 	eps[1] = 0//5e-9
-	
+
 	eps[3] = 0
-	
+
 	for(i=4;i<pWave1D[0] + 4;i+=1)
 		eps[i]   = 0	//For Ionization Potentials from DFT. Used to build the Step Edge
 	endfor
-	
+
 	for(i=4 + pWave1D[0];i<11*nPeaks+4+pWave1D[0];i+=11)
-		
+
 		if(cPk == pkID)//i==(11*pkID + 4 + pWave1D[0]))
-			if(!holdPos && !holdWidths && !holdAmps && holdSecAmp)   
-				eps[i + 0]   = epsPos		
+			if(!holdPos && !holdWidths && !holdAmps && holdSecAmp)
+				eps[i + 0]   = epsPos
 				eps[i + 1]   = epsWid
 				eps[i + 2]   = epsAmp
 				eps[i + 10]   = 0
-			elseif(holdPos && !holdWidths && holdAmps && holdSecAmp)  
-				eps[i + 0]   = 0	
+			elseif(holdPos && !holdWidths && holdAmps && holdSecAmp)
+				eps[i + 0]   = 0
 				eps[i + 1]   = epsWid
 				eps[i + 2]   = 0
 				eps[i + 10]   = 0
-			elseif(holdPos && !holdWidths && !holdAmps && holdSecAmp)  
-				eps[i + 0]   = 0		
+			elseif(holdPos && !holdWidths && !holdAmps && holdSecAmp)
+				eps[i + 0]   = 0
 				eps[i + 1]   = epsWid
 				eps[i + 2]   = epsAmp
 				eps[i + 10]   = 0
-			elseif(holdPos && holdWidths && !holdAmps && holdSecAmp)  
-				eps[i + 0]   = 0	
+			elseif(holdPos && holdWidths && !holdAmps && holdSecAmp)
+				eps[i + 0]   = 0
 				eps[i + 1]   = 0
 				eps[i + 2]   = epsAmp
 				eps[i + 10]   = 0
-			elseif(!holdPos && holdWidths && !holdAmps && holdSecAmp) 
-				eps[i + 0]   = epsPos		
+			elseif(!holdPos && holdWidths && !holdAmps && holdSecAmp)
+				eps[i + 0]   = epsPos
 				eps[i + 1]   = 0
 				eps[i + 2]   = epsAmp
 				eps[i + 10]   = 0
 			elseif(!holdPos && !holdWidths && holdAmps && holdSecAmp)
-				eps[i + 0]   = epsPos		
+				eps[i + 0]   = epsPos
 				eps[i + 1]   = epsWid
 				eps[i + 2]   = 0
 				eps[i + 10]   = 0
 			elseif(!holdPos && holdWidths && holdAmps && holdSecAmp)
-				eps[i + 0]   = epsPos		
+				eps[i + 0]   = epsPos
 				eps[i + 1]   = 0
 				eps[i + 2]   = 0
 				eps[i + 10]   = 0
-			elseif(holdPos && holdWidths && holdAmps && holdSecAmp) 
-				eps[i + 0]   = 0		
+			elseif(holdPos && holdWidths && holdAmps && holdSecAmp)
+				eps[i + 0]   = 0
 				eps[i + 1]   = 0
 				eps[i + 2]   = 0
 				eps[i + 10]   = 0
-			elseif(!holdPos && !holdWidths && !holdAmps && !holdSecAmp)   
-				eps[i + 0]   = epsPos		
+			elseif(!holdPos && !holdWidths && !holdAmps && !holdSecAmp)
+				eps[i + 0]   = epsPos
 				eps[i + 1]   = epsWid
 				eps[i + 2]   = epsAmp
 				eps[i + 10]   = epsProp
-			elseif(holdPos && !holdWidths && holdAmps && !holdSecAmp)  
-				eps[i + 0]   = 0	
+			elseif(holdPos && !holdWidths && holdAmps && !holdSecAmp)
+				eps[i + 0]   = 0
 				eps[i + 1]   = epsWid
 				eps[i + 2]   = 0
 				eps[i + 10]   = epsProp
-			elseif(holdPos && !holdWidths && !holdAmps && !holdSecAmp)  
-				eps[i + 0]   = 0		
+			elseif(holdPos && !holdWidths && !holdAmps && !holdSecAmp)
+				eps[i + 0]   = 0
 				eps[i + 1]   = epsWid
 				eps[i + 2]   = epsAmp
 				eps[i + 10]   = epsProp
-			elseif(holdPos && holdWidths && !holdAmps && !holdSecAmp)  
-				eps[i + 0]   = 0	
+			elseif(holdPos && holdWidths && !holdAmps && !holdSecAmp)
+				eps[i + 0]   = 0
 				eps[i + 1]   = 0
 				eps[i + 2]   = epsAmp
 				eps[i + 10]   = epsProp
-			elseif(!holdPos && holdWidths && !holdAmps && !holdSecAmp) 
-				eps[i + 0]   = epsPos		
+			elseif(!holdPos && holdWidths && !holdAmps && !holdSecAmp)
+				eps[i + 0]   = epsPos
 				eps[i + 1]   = 0
 				eps[i + 2]   = epsAmp
 				eps[i + 10]   = epsProp
 			elseif(!holdPos && !holdWidths && holdAmps && !holdSecAmp)
-				eps[i + 0]   = epsPos		
+				eps[i + 0]   = epsPos
 				eps[i + 1]   = epsWid
 				eps[i + 2]   = 0
 				eps[i + 10]   = epsProp
 			elseif(!holdPos && holdWidths && holdAmps && !holdSecAmp)
-				eps[i + 0]   = epsPos		
+				eps[i + 0]   = epsPos
 				eps[i + 1]   = 0
 				eps[i + 2]   = 0
 				eps[i + 10]   = epsProp
-			elseif(holdPos && holdWidths && holdAmps && !holdSecAmp) 
-				eps[i + 0]    = 0		
+			elseif(holdPos && holdWidths && holdAmps && !holdSecAmp)
+				eps[i + 0]    = 0
 				eps[i + 1]    = 0
 				eps[i + 2]    = 0
 				eps[i + 10]   = epsProp
 			endif
-		
+
 			eps[i + 3]    = 0
 			eps[i + 4]    = 0
 			eps[i + 5]    = 0
@@ -4206,7 +4309,7 @@ Function/WAVE makeSingleEpsiltonWave(pWave1D,pkID,holdAmps,holdWidths,holdPos,ho
 			eps[i + 8]    = 0
 			eps[i + 9]    = 0
 		else
-			eps[i + 0]    = 0		
+			eps[i + 0]    = 0
 			eps[i + 1]    = 0
 			eps[i + 2]    = 0//epsAmp
 			eps[i + 3]    = 0
@@ -4220,7 +4323,7 @@ Function/WAVE makeSingleEpsiltonWave(pWave1D,pkID,holdAmps,holdWidths,holdPos,ho
 		endif
 		cPk+=1
 	endfor
-	
+
 	return eps
 
 End
@@ -4229,67 +4332,67 @@ Function/S makeSingleHoldString(holdAmps,holdWidths,holdPos,holdSecAmp,pWave1D,p
 	Variable holdAmps,holdWidths,holdPos,holdSecAmp
 	Wave pWave1D
 	Variable pkID
-	
+
 	Variable i
 	Variable nPeaks = (numpnts(pWave1D) - 4 - pWave1D[0])/11
 	//Make Hold String for fit. Open amplitudes, hold position and width constant
-	String H = "1111"//H1 = Number of atoms, i0, alpha, phi	
-	
+	String H = "1111"//H1 = Number of atoms, i0, alpha, phi
+
 	for(i=1;i<=pWave1D[0];i+=1)
 		H +="1" //For Ionization Potentials from DFT. Used to build the Step Edge. Hold them constant.
 	endfor
-	
+
 	for(i=0;i<=nPeaks-1;i+=1)
 	//Hold string for peak parameters. Position, Width, Max Amplitude, xxNoRM, xyNorm,xzNorm,yyNorm,yzNorm,zzNorm
 	//Hold cases:
 		if(i==pkID)
-			if(!holdPos && !holdWidths && !holdAmps && holdSecAmp)   
+			if(!holdPos && !holdWidths && !holdAmps && holdSecAmp)
 				H +="00011111111"
-			elseif(holdPos && !holdWidths && holdAmps && holdSecAmp)  
+			elseif(holdPos && !holdWidths && holdAmps && holdSecAmp)
 				H +="10111111111"
-			elseif(holdPos && !holdWidths && !holdAmps && holdSecAmp)  
+			elseif(holdPos && !holdWidths && !holdAmps && holdSecAmp)
 				H +="10011111111"
-			elseif(holdPos && holdWidths && !holdAmps && holdSecAmp)  
+			elseif(holdPos && holdWidths && !holdAmps && holdSecAmp)
 				H +="11011111111"
-			elseif(!holdPos && holdWidths && !holdAmps && holdSecAmp) 
+			elseif(!holdPos && holdWidths && !holdAmps && holdSecAmp)
 				H +="01011111111"
 			elseif(!holdPos && !holdWidths && holdAmps && holdSecAmp)
 				H +="00111111111"
 			elseif(!holdPos && holdWidths && holdAmps && holdSecAmp)
 				H +="01111111111"
-			elseif(holdAmps && holdWidths && holdAmps && holdSecAmp) 
+			elseif(holdAmps && holdWidths && holdAmps && holdSecAmp)
 				H +="11111111111"
 			//
-			elseif(!holdPos && !holdWidths && !holdAmps && !holdSecAmp)   
+			elseif(!holdPos && !holdWidths && !holdAmps && !holdSecAmp)
 				H +="00011111110"
-			elseif(holdPos && !holdWidths && holdAmps && !holdSecAmp)  
+			elseif(holdPos && !holdWidths && holdAmps && !holdSecAmp)
 				H +="10111111110"
-			elseif(holdPos && !holdWidths && !holdAmps && !holdSecAmp)  
+			elseif(holdPos && !holdWidths && !holdAmps && !holdSecAmp)
 				H +="10011111110"
-			elseif(holdPos && holdWidths && !holdAmps && !holdSecAmp)  
+			elseif(holdPos && holdWidths && !holdAmps && !holdSecAmp)
 				H +="11011111110"
-			elseif(!holdPos && holdWidths && !holdAmps && !holdSecAmp) 
+			elseif(!holdPos && holdWidths && !holdAmps && !holdSecAmp)
 				H +="01011111110"
 			elseif(!holdPos && !holdWidths && holdAmps && !holdSecAmp)
 				H +="00111111110"
 			elseif(!holdPos && holdWidths && holdAmps && !holdSecAmp)
 				H +="01111111110"
-			elseif(holdAmps && holdWidths && holdAmps && !holdSecAmp) 
-				H +="11111111110"	
-			//	
+			elseif(holdAmps && holdWidths && holdAmps && !holdSecAmp)
+				H +="11111111110"
+			//
 			endif
 		else
 			H +="11111111111"//"11011111111"
 		endif
 	endfor
-	
+
 	String holdWaveName = "holdWave_pk" + num2str(pkID)
 	Make/O/N=(numpnts(pWave1D)) $holdWaveName
 	Wave holdWave = $holdWaveName
 	for(i=0;i<numpnts(pWave1D);i+=1)
 		holdWave[i] = str2num(H[i,i])
 	endfor
-	
+
 	print H
 	return H
 End
@@ -4297,12 +4400,12 @@ End
 Function compareTransitionPositions(pw1,pw2)
 
 	Wave pw1,pw2
-	
+
 	Variable i,nPeaks = (numpnts(pw1)-4-pw1[0])/11,en1,en2,amp1,amp2,j=0
 	Make/O/N=(nPeaks) iniEnergy,finEnergy,diffEnergy,iniAmp,finAmp,diffAmp
 	print nPeaks
 	for(i=4+pw1[0];i<11*nPeaks+4+pw1[0];i+=11)
-		en1 = pw1[i] 
+		en1 = pw1[i]
 		en2 = pw2[i]
 		amp1 = pw1[i+2]
 		amp2 = pw2[i+2]
@@ -4320,10 +4423,10 @@ Function/WAVE modelVectorOrbital(tw,a)
 
 	Wave tw
 	Variable a
-	
+
 	Variable i,x=numpnts(tw),alphaR = a * (Pi/180)
-	Make/O/N=(x) vecOrb,vecParaInt,vecPerpInt	
-	
+	Make/O/N=(x) vecOrb,vecParaInt,vecPerpInt
+
 	Variable para,perp
 	for(i=0;i<x;i+=1)
 		Variable t_angle = tw[i] * (Pi/180)
@@ -4331,7 +4434,7 @@ Function/WAVE modelVectorOrbital(tw,a)
 		para = (1/3) * (1 + (1/2)*((3 * cos( t_angle)^2 - 1) * (3 * cos(alphaR)^2 - 1)))
 		perp = (1/2) * sin(alphaR)^2
 		vecParaInt[i] = para
-		vecPerpInt[i] = perp	
+		vecPerpInt[i] = perp
 		vecOrb[i] = para + perp
 	endfor
 
@@ -4342,11 +4445,11 @@ Function/WAVE modelPlanarOrbital(tw,a)
 
 	Wave tw
 	Variable a
-	
-	
+
+
 	Variable i,x=numpnts(tw),alphaR = a * (Pi/180)
-	Make/O/N=(x) plOrb,plParaInt,plPerpInt	
-	
+	Make/O/N=(x) plOrb,plParaInt,plPerpInt
+
 	Variable para,perp
 	for(i=0;i<x;i+=1)
 		Variable t_angle = tw[i] * (Pi/180)
@@ -4354,10 +4457,10 @@ Function/WAVE modelPlanarOrbital(tw,a)
 		para = (2/3) * (1 - (1/4)*((3 * cos( t_angle)^2 - 1) * (3 * cos(alphaR)^2 - 1)))
 		perp = (1/2) * ( 1 + cos(alphaR)^2)
 		plParaInt[i] = para
-		plPerpInt[i] = perp	
+		plPerpInt[i] = perp
 		plOrb[i] = para + perp
 	endfor
-	
+
 	return plOrb
 End
 
@@ -4365,10 +4468,10 @@ Function orbitalWrapper(tw,a)
 
 	Wave tw
 	Variable a
-	
+
 	Wave vecOrb = modelVectorOrbital(tw,a)
 	Wave plOrb = modelPlanarOrbital(tw,a)
-	
+
 	Wave plParaInt,vecParaInt,plPerpInt,vecPerpInt
 	WaveStats/Q plParaInt
 	Variable plPaMin = V_min,plPaMax = V_max
@@ -4378,26 +4481,26 @@ Function orbitalWrapper(tw,a)
 	Variable plPeMin = V_min,plPeMax = V_max
 	WaveStats/Q vecPerpInt
 	Variable vPeMin = V_min,vPeMax = V_max
-	
+
 	Variable perpMin,perpMax,paraMin,paraMax
 	if(plPaMin < vPaMin)
 		paraMin = plPaMin
 	else
 		paraMin = vPaMin
 	endif
-	
+
 	if(plPaMax > vPaMax)
 		paraMax = plPaMax
 	else
 		paraMax = vPaMax
 	endif
-	
+
 	if(plPeMin < vPeMin)
 		perpMin = plPeMin
 	else
 		perpMin = vPeMin
 	endif
-	
+
 	if(plPeMax > vPeMax)
 		perpMax = plPeMax
 	else
@@ -4431,7 +4534,7 @@ End
 
 Function/S detOrbType(tensor)
 	Wave tensor
-	
+
 	String type
 	if((tensor[0][0]==tensor[1][1]==tensor[2][2]))
 		type = "I"
@@ -4442,19 +4545,19 @@ Function/S detOrbType(tensor)
 	elseif((tensor[0][0]!=0) && (tensor[1][1]!=0) && (tensor[2][2]!=0))
 		type = "M"
 	endif
-	
+
 	print type
 	return type
 End
 
-Function modelTensorInt(pw,thw,tensor) 
+Function modelTensorInt(pw,thw,tensor)
 
 	Wave pw	//1D Parameter wave. Has peak positions,widths, and amplitudes. has initial guess for alpha and IPs required to build step edge
 	Wave thw	//Wave containing the various values of theta
 	Wave tensor
-		
+
 	Variable i,j=0,k,m,targetDP = 10,n=numpnts(thw)
-	Variable pos,wid,amp,alpha,i0,phi,localalpha,amp2	
+	Variable pos,wid,amp,alpha,i0,phi,localalpha,amp2
 	Duplicate/O tensor,currentTensor
 	Duplicate/O pw,npw
 	Make/O/N=(n) tensorInt,tempMA
@@ -4463,7 +4566,7 @@ Function modelTensorInt(pw,thw,tensor)
 	Make/O/D/N=(3,3) rotMat90  = {{cos(90*(Pi/180)) ,sin(90*(Pi/180)),0} ,{-sin(90*(Pi/180)) ,cos(90*(Pi/180)),0} ,{0,0,1}}
 	Make/O/D/N=(3,3) rotMat180 = {{cos(180*(Pi/180)),sin(180*(Pi/180)),0},{-sin(180*(Pi/180)),cos(180*(Pi/180)),0},{0,0,1}}
 	Make/O/D/N=(3,3) rotMat270 = {{cos(270*(Pi/180)),sin(270*(Pi/180)),0},{-sin(270*(Pi/180)),cos(270*(Pi/180)),0},{0,0,1}}
-	
+
 	String vecType = detOrbType(tensor)
 	//*****POTENTIALLY CHANGE CLUSTERING ALGORITHM****
 	//Generate clusters based on overall/total OS instead of component OS
@@ -4471,7 +4574,7 @@ Function modelTensorInt(pw,thw,tensor)
 	//1. Ratio of in-plane vs out-of-plane components?
 	//2. Need a second parameter to describe amplitude? Possibly related to a local alpha?
 		//*********Will need to change pWave from 10 parameters per peak to 11!*******
-	//3. Visualize tensor elements for each cluster (Tensor Element vs Cluster ID) -->Log plot	
+	//3. Visualize tensor elements for each cluster (Tensor Element vs Cluster ID) -->Log plot
 	//4. Additive oscillator strength... How to accomplish this programatically???
 	alpha      = npw[0]*(Pi/180)
 	phi        = npw[1]*(Pi/180)
@@ -4479,7 +4582,7 @@ Function modelTensorInt(pw,thw,tensor)
 	wid        = ABS(npw[3])
 	amp        = ABS(npw[4])
 	amp2       = npw[5]
-	
+
 	currentTensor = amp * tensor[p][q]
 
 	Make/O/N=2 vector
@@ -4495,27 +4598,27 @@ Function modelTensorInt(pw,thw,tensor)
 	modMolTensor[1][1] = abs(rv[0])^2
 	modMolTensor[2][2] = 2*abs(rv[1])^2
 	//print sqrt(currentTensor[0][0]^2+currentTensor[1][1]^2+currentTensor[2][2]^2)
-	
+
 	Make/O/D/N=(3,3) rotMatAlignX = {{1,0,0},{0,cos(alpha),sin(alpha)},{0,-sin(alpha),cos(alpha)}}
-		
+
 	//Tilt the tensor by angle alpha
-	MatrixOP/O  tiltedTensorX = rotMatAlignX x currentTensor x rotMatAlignX^t			 
-	//Construct the film tensor by adding the azimuthal rotations 
+	MatrixOP/O  tiltedTensorX = rotMatAlignX x currentTensor x rotMatAlignX^t
+	//Construct the film tensor by adding the azimuthal rotations
 	MatrixOP/O  RotTensor0X   =  rotMat0   x tiltedTensorX x rotMat0^t
 	MatrixOP/O  RotTensor90X  =  rotMat90  x tiltedTensorX x rotMat90^t
 	MatrixOP/O  RotTensor180X =  rotMat180 x tiltedTensorX x rotMat180^t
 	MatrixOP/O  RotTensor270X =  rotMat270 x tiltedTensorX x rotMat270^t
 	MatrixOP/O  filmTensor = RotTensor0X + RotTensor90X + RotTensor180X + RotTensor270X
-		
+
 	Wave filmTensorTrunc = truncateMatrix(targetDP,filmTensor)
-	//print sqrt(filmTensorTrunc[0][0]^2+filmTensorTrunc[1][1]^2+filmTensorTrunc[2][2]^2)	
+	//print sqrt(filmTensorTrunc[0][0]^2+filmTensorTrunc[1][1]^2+filmTensorTrunc[2][2]^2)
 	//Apply electric field to current tensor to obtain the mass absorbance
 	for(i=0;i<n;i+=1)
 		Variable thetaVal = thw[i]*(Pi/180)
-		Make/O/D/N=(3) eField = {sin(thetaVal)*cos(phi),sin(thetaVal)*sin(phi),cos(thetaVal)}	
+		Make/O/D/N=(3) eField = {sin(thetaVal)*cos(phi),sin(thetaVal)*sin(phi),cos(thetaVal)}
 		MatrixOP/O tempMA = (eField^t x filmTensorTrunc x eField)//Check if this is correct!
 		tensorInt[i] = tempMA[0]
-		
+
 		String pkName = "t_pk"+ num2str(thw[i])
 		Make/O/N=2000 $pkName
 		Wave z = $pkName
@@ -4523,9 +4626,9 @@ Function modelTensorInt(pw,thw,tensor)
 		z = 0
 		z = (tensorInt[i]) * gauss(x,pos,wid)
 	endfor
-	
+
 	KillWaves/Z rotMat0,rotMat90,rotMat180,rotMat270,RotTensor0,RotTensor90,RotTensor180,RotTensor270,TEMPma
-	
+
 	DoWindow plotTensorInt
 	if(!V_Flag)
 		Display/N=plotTensorInt/K=1 tensorInt vs thw
@@ -4539,10 +4642,10 @@ Function modelTensorInt(pw,thw,tensor)
 End
 
 Function/WAVE truncateMatrix(targetDP,mat)
-	
+
 	Variable targetDP
 	Wave mat
-	
+
 	Variable k,m
 	for(k=0;k<=2;k+=1)
 		for(m=0;m<=2;m+=1)
@@ -4555,7 +4658,7 @@ Function/WAVE truncateMatrix(targetDP,mat)
 			mat[k][m] = currComp
 		endfor
 	endfor
-	
+
 	return mat
 End
 
@@ -4570,16 +4673,16 @@ Function calcVectorRatio(v)
 	else
 		ratio = v[1]/v[0]
 	endif
-	
+
 	return ratio
 
 End
 
 Function/WAVE truncateVector(targetDP,vec)
-	
+
 	Variable targetDP
 	Wave vec
-	
+
 	Variable n = numpnts(vec)
 	Variable k
 	for(k=0;k<n;k+=1)
@@ -4597,7 +4700,7 @@ End
 Function calcVecNorm(v)
 
 	Wave v
-	
+
 	Variable n = numpnts(v),i,mag=0
 	for(i=0;i<n;i+=1)
 		mag += v[i]^2
@@ -4611,7 +4714,7 @@ Function/WAVE normVec(v)
 
 	Wave v
 	Duplicate/O v,nv
-	
+
 	Variable mag = calcVecNorm(v)
 	nv = v/mag
 	Variable mag2 = calcVecNorm(nv)
@@ -4623,7 +4726,7 @@ Function/WAVE rotVector(v,deg,axis)
 	Wave v
 	Variable deg
 	String axis
-	
+
 	Variable n = DimSize(v,0),ndeg
 	Duplicate/O v,rv
 	ndeg = deg * (Pi/180)
@@ -4638,7 +4741,7 @@ Function/WAVE rotVector(v,deg,axis)
 	else
 		Make/O/N=(2,2) rotMat = {{cos(ndeg),sin(ndeg)},{-sin(ndeg),cos(ndeg)}}
 	endif
-	MatrixOP/O rv = rotMat x v 
+	MatrixOP/O rv = rotMat x v
 	Wave rv2 = truncateVector(10,rv)
 	Variable mag = calcVecNorm(rv)
 	return rv2
@@ -4648,23 +4751,23 @@ Function modelTensorvsVector(tensorpw,theta,tensor,alpha,modAmp)
 
 	Wave tensorpw,theta,tensor
 	Variable alpha,modAmp
-	
+
 	tensorpw[0] = alpha
 	tensorpw[5] = modAmp
 	modelTensorInt(tensorpw,theta,tensor)
-	orbitalWrapper(theta,alpha) 
+	orbitalWrapper(theta,alpha)
 End
 
 Function/WAVE vecOpsWrap(v,deg,axis)
 	Wave v
 	Variable deg
 	String axis
-	
+
 	//Determine magnitude of initial vector and normalize it (creates nv)
 	Variable mag = calcVecNorm(v)
 	Wave nv = normVec(v)
 	Variable mag2 = calcVecNorm(nv)
-	//Rotate normalized 2D vector by some degree 
+	//Rotate normalized 2D vector by some degree
 	Wave rv = rotVector(nv,deg,"x")//axis)
 	Variable mag3 = calcVecNorm(rv)
 	//Calculate the ratio between the rotated vector components --> ModAmp(amp2)
@@ -4676,11 +4779,11 @@ Function calcDeterminant(tensor,rotAngle)
 
 	Wave tensor
 	Variable rotAngle
-	
-	Variable detIni,detFin,As,Bs,Cs,Ds,Es,Fs,Gs,Hs,Is,Ae,Be,Ce,De,Ee,Fe,Ge,He,Ie 
+
+	Variable detIni,detFin,As,Bs,Cs,Ds,Es,Fs,Gs,Hs,Is,Ae,Be,Ce,De,Ee,Fe,Ge,He,Ie
 	rotAngle = rotAngle * (Pi/180)
 	Make/O/D/N=(3,3) rotMat = {{cos(rotAngle)  ,sin(rotAngle),0}  ,{-sin(rotAngle)  ,cos(rotAngle),0}  ,{0,0,1}}
-	MatrixOP/O  newTensor = rotMat x tensor x rotMat^t	
+	MatrixOP/O  newTensor = rotMat x tensor x rotMat^t
 	As = tensor[0][0];Bs = tensor[0][1];Cs = tensor[0][2]
 	Ds = tensor[1][0];Es = tensor[1][1];Fs = tensor[1][2]
 	Gs = tensor[2][0];Hs = tensor[2][1];Is = tensor[2][2]
@@ -4695,10 +4798,10 @@ End
 
 Function calcNormTensor(tensor)
 	Wave tensor
-	
+
 	Variable i,j
 	for(i=0;i<3;i+=1)
-		Variable normT = (tensor[i][j])^2 
+		Variable normT = (tensor[i][j])^2
 		if(j==2)
 			break
 		elseif(i<2)
@@ -4714,10 +4817,10 @@ Function/WAVE truncate2D(w,targetDP)
 
 	Wave w
 	Variable targetDP
-	
+
 	WaveStats/Q w
 	Variable k,m
-	//If the value of a component is less than tol times the maximum tensor component then set it to 0 
+	//If the value of a component is less than tol times the maximum tensor component then set it to 0
 	for(k=0;k<=2;k+=1)
 		for(m=0;m<=2;m+=1)
 			Variable currComp = w[k][m]
@@ -4728,45 +4831,45 @@ Function/WAVE truncate2D(w,targetDP)
 			endif
 			w[k][m] = currComp
 		endfor
-	endfor	
+	endfor
 	return w
 End
 
 Function calcRedChiSq(ori,chiSq,nPeaks,openParams,openAlpha)
 	Wave ORI
 	Variable chiSq,nPeaks,openParams,openAlpha
-	
+
 	Variable n=numpnts(ori),redChiSq=0
-	
+
 	redChiSq = chiSq/(n-nPeaks*openParams - openAlpha*1)
 	return redChiSq
 End
 
 Function/WAVE scaleExptoBA(expSpec,expEn,anchorStep1,anchorStep2,mol)
-	
+
 	Wave expSpec,expEn
 	Variable anchorStep1,anchorStep2
 	String mol
-		
+
 	//Find the bare atom waves
 	Wave mu_energy = findBAenergy()
 	Wave mu = findBAMA(mol)
-	
-	//Find energies in mu 
+
+	//Find energies in mu
 	Variable lo = BinarySearch(mu_energy,anchorStep1)
 	Variable hi = BinarySearch(mu_energy,anchorStep2)
 	WaveStats/R=[lo,hi]/Q mu
 	Variable mins = V_min
 	Duplicate/O expSpec,test
-	
-	//Find the experimental energies used for scaling   
+
+	//Find the experimental energies used for scaling
 	Variable exp280 = findWaveValAtEergy(expEn,expSpec,anchorStep1)
 	Variable exp360 = findWaveValAtEergy(expEn,expSpec,anchorStep2)
-	
-	//Find the bare atom energies used for scaling   
+
+	//Find the bare atom energies used for scaling
 	Variable bareStepLo = findWaveValAtEergy(mu_energy,mu,anchorStep1)
 	Variable bareStepHi = findWaveValAtEergy(mu_energy,mu,anchorStep2)
-			
+
 	Variable expScale = (exp360-exp280) / (bareStepHi-bareStepLo)
 	test = test/ expScale + V_min
 	return test
@@ -4776,7 +4879,7 @@ Function MAtoF2F1(maw,ew,rho,mol)
 	Wave maw,ew	//Mass absorbance and energy waves
 	Variable rho //Density of molecule
 	String mol//Name of molecule
-	
+
 	Variable Na=6.0221415e23 //Avogadro's number [at/d.mol]
 	Variable re=2.81794e-13 //classical electron radius [cm]
 	Variable hc=1.97263e-05//eV*cm //1.23984e-4//Product of speed of light and Planck's constant
@@ -4791,7 +4894,7 @@ Function MAtoF2F1(maw,ew,rho,mol)
 	//Convert mass absorbance to beta and then to f2
 	betas = maw*hc/(4*pi*ew)
 	F2=(Mw*maw*ew)/(2*re*hc*Na)
-	//Calculate f1 from f2 wave 
+	//Calculate f1 from f2 wave
 	//Wave f1 = NXA_KK_FFT2(ew, F2, zstar)
 	Wave f1 = BAC_KK_FFT(ew, F2, zstar,19)//
 	String deltaWaveStr=removeending(nameofwave(f1),"_f1")+"_delta"
@@ -4809,7 +4912,7 @@ Function/WAVE BAC_KK_FFT(EnergyWave, f2Wave, Z_star,pad)
 	variable Z_star//sum of effective number of protons of repeating unit
 	//Check Z* calculation
 	variable pad
-	string f2WaveStr	
+	string f2WaveStr
 	redimension/D EnergyWave, f2Wave//, EnergyWave_ori
 	f2WaveStr=removeending(nameofwave(f2Wave),"_f2")+"_F1"
 	make/D/O/N=(2^pad) tempF2
@@ -4893,7 +4996,7 @@ Function MAtoF2(maw,ew,rho,mol)
 	Wave maw,ew	//Mass absorbance and energy waves
 	Variable rho //Density of molecule
 	String mol//Name of molecule
-	
+
 	Variable Na=6.0221415e23 //Avogadro's number [at/d.mol]
 	Variable re=2.81794e-13 //classical electron radius [cm]
 	Variable hc=1.97263e-05//eV*cm //1.23984e-4//Product of speed of light and Planck's constant
@@ -4917,15 +5020,15 @@ Function makeTensorSpecsOCs(pw,yw,ew,thw,sw)
 	Wave ew	//Wave containing the energies of the various spectra to be fit (i.e. the x wave)
 	Wave thw	//Wave containing the various values of theta
 	Wave sw	//Wave containing the concatenated steps from the DFT IPs
-		
+
 	Variable i,j=0,k,m
 	Variable targetDP = 10
 	//Make the absorption tensor for each transition, normalize it, and place each transition into a layer of a 3D wave
 	makeTensor1D(pw)
-	normalizeTensor()	
+	normalizeTensor()
 	Wave norm3D   = make3DnormWave()
 	Wave tensor3D = make3DResonance()
-	
+
 	//Add the step edge
 	yw = sw
 	Duplicate/O yw,output
@@ -4933,21 +5036,21 @@ Function makeTensorSpecsOCs(pw,yw,ew,thw,sw)
 	Duplicate/O yw,xxSpec,yySpec,zzSpec,xySpec,xzSpec,yzSpec
 	//Reference hold Wave. To be used to determine how the peak amplitudes will be defined
 	Wave holdWave
-	
-	Variable nTransitions = DimSize(norm3D,2)	
-	Variable pos,wid,amp,alpha,i0,phi,localalpha,amp2	
-	Variable p0,pf,nSpec=howManySpec(thw),cSpec=1,thetaVal	
-	
+
+	Variable nTransitions = DimSize(norm3D,2)
+	Variable pos,wid,amp,alpha,i0,phi,localalpha,amp2
+	Variable p0,pf,nSpec=howManySpec(thw),cSpec=1,thetaVal
+
 	Make/O/N=(3,3,nTransitions) filmTensor3D,r0x3D,r90x3D,r180x3D,r270x3D,tilt3D,correctedMolTensor3D
-	
+
 	Variable nAtoms = pw[0]
-		
-	Make/O/D/N=(3,3) currentTensor = 0 
-	
+
+	Make/O/D/N=(3,3) currentTensor = 0
+
 	Variable nPnts = numpnts(yw)/nSpec
-	
+
 	Make/O/N=(nTransitions) MA = 0,vecAngle = 0,vecAngle2 = 0
-	 
+
 	//Wave that will populate the XX/YY and ZZ tensor elements into 2D vector
 	Make/O/N=2 vector
 	//Make rotation matrices for rotation of 90,180,and 270 degrees around z-axis
@@ -4955,12 +5058,12 @@ Function makeTensorSpecsOCs(pw,yw,ew,thw,sw)
 	Make/O/D/N=(3,3) rotMat90  = {{cos(90*(Pi/180)) ,sin(90*(Pi/180)),0} ,{-sin(90*(Pi/180)) ,cos(90*(Pi/180)),0} ,{0,0,1}}
 	Make/O/D/N=(3,3) rotMat180 = {{cos(180*(Pi/180)),sin(180*(Pi/180)),0},{-sin(180*(Pi/180)),cos(180*(Pi/180)),0},{0,0,1}}
 	Make/O/D/N=(3,3) rotMat270 = {{cos(270*(Pi/180)),sin(270*(Pi/180)),0},{-sin(270*(Pi/180)),cos(270*(Pi/180)),0},{0,0,1}}
-	
+
 	//Duplicated parameter wave that will contain the results of rotating the molecular tensor
 	Duplicate/O pw,pwMolAdj,pwFilm
 	Wave pwMolAdj,pwFilm
 
-	i0         = pw[1] 
+	i0         = pw[1]
 	alpha      = pw[2] * (Pi/180)
 	phi        = pw[3] * (Pi/180)
 	Variable count = 0
@@ -4970,7 +5073,7 @@ Function makeTensorSpecsOCs(pw,yw,ew,thw,sw)
 		amp        = ABS(pw[i + 2])
 		localalpha = pw[i + 9]
 		amp2       = pw[i + 10]
-		
+
 		currentTensor = tensor3D[p][q][j]// norm3D[p][q][j]
 		vector[0] = currentTensor[0][0]
 		vector[1] = currentTensor[2][2]
@@ -4978,35 +5081,35 @@ Function makeTensorSpecsOCs(pw,yw,ew,thw,sw)
 		currentTensor[0][0] =  abs(rv[0])
 		currentTensor[1][1] =  abs(rv[0])
 		currentTensor[2][2] =  abs(rv[1])
-		
+
 		if(WaveExists(pwMolAdj))
 			pwMolAdj[i+3] = currentTensor[0][0] // xx
 			pwMolAdj[i+4] = currentTensor[0][1] // xy
 			pwMolAdj[i+5] = currentTensor[0][2] // xz
 			pwMolAdj[i+6] = currentTensor[1][1] // yy
-			pwMolAdj[i+7] = currentTensor[1][2] // yz 
+			pwMolAdj[i+7] = currentTensor[1][2] // yz
 			pwMolAdj[i+8] = currentTensor[2][2] // zz - symmetric!
 		endif
-		
+
 		Variable ang2 = atan(0.5*(tensor3D[2][2][j]/tensor3D[0][0][j])) * (180/pi)
 		Variable ang3 = atan((0.5*rv[1])/rv[0]) * (180/pi)
 		vecAngle[j] = ang2
 		vecAngle2[j] = ang3
 		currentTensor *= i0 * amp
 		Make/O/D/N=(3,3) rotMatAlignX = {{1,0,0},{0,cos(alpha),sin(alpha)},{0,-sin(alpha),cos(alpha)}}
-			
+
 		//Tilt the tensor by angle alpha
-		MatrixOP/O  tiltedTensorX = rotMatAlignX x currentTensor x rotMatAlignX^t			 
-		//Construct the film tensor by adding the azimuthal rotations 
+		MatrixOP/O  tiltedTensorX = rotMatAlignX x currentTensor x rotMatAlignX^t
+		//Construct the film tensor by adding the azimuthal rotations
 		MatrixOP/O  RotTensor0X   =  rotMat0   x tiltedTensorX x rotMat0^t
 		MatrixOP/O  RotTensor90X  =  rotMat90  x tiltedTensorX x rotMat90^t
 		MatrixOP/O  RotTensor180X =  rotMat180 x tiltedTensorX x rotMat180^t
 		MatrixOP/O  RotTensor270X =  rotMat270 x tiltedTensorX x rotMat270^t
 		MatrixOP/O filmTensor = RotTensor0X + RotTensor90X + RotTensor180X + RotTensor270X
-		
-		
+
+
 		Wave filmTensorT = truncate2D(filmTensor,targetDP)
-		
+
 		if(WaveExists(pwFilm))
 			pwFilm[i+3] = filmTensorT[0][0]
 			pwFilm[i+4] = filmTensorT[0][1]
@@ -5015,7 +5118,7 @@ Function makeTensorSpecsOCs(pw,yw,ew,thw,sw)
 			pwFilm[i+7] = filmTensorT[1][2]
 			pwFilm[i+8] = filmTensorT[2][2]
 		endif
-		
+
 		correctedMolTensor3D[][][j] = currentTensor[p][q]	//Molecular tensor after rotating ZZ/XX elements by ModTheta
 		filmTensor3D[][][j]         = filmTensorT[p][q]		//Film Tensor after tilting molecular tensor by alpha and 4-fold addition
 		r0x3D[][][j]                = RotTensor0X[p][q]
@@ -5023,7 +5126,7 @@ Function makeTensorSpecsOCs(pw,yw,ew,thw,sw)
 		r180x3D[][][j]              = RotTensor180X[p][q]
 		r270x3D[][][j]              = RotTensor270X[p][q]
 		tilt3D[][][j]               = tiltedTensorX[p][q]
-		
+
 		if(j<nTransitions)
 			if(cSpec == 1)
 				p0 = 0
@@ -5039,12 +5142,12 @@ Function makeTensorSpecsOCs(pw,yw,ew,thw,sw)
 				thetaVal = thw[p0] * (Pi/180)
 			endif
 		endif
-		
+
 		//Apply electric field to current tensor to obtain the mass absorbance
-		Make/O/D/N=(3) eField = {sin(thetaVal)*cos(phi),sin(thetaVal)*sin(phi),cos(thetaVal)}			
+		Make/O/D/N=(3) eField = {sin(thetaVal)*cos(phi),sin(thetaVal)*sin(phi),cos(thetaVal)}
 		MatrixOP/O tempMA = eField^t x filmTensor x eField
-		
-		
+
+
 		if(numtype(tempMA[0]) !=0)
 			print "Transition " + num2str(j) + " with a theta value of " + num2str(thetaVal) + " has a problem"
 			//MA[j] = 0
@@ -5068,24 +5171,24 @@ Function makeTensorSpecsOCs(pw,yw,ew,thw,sw)
 		xzSpec[p0,pf] += currentTensor[0][2] * gauss(ew,pos,wid)
 		yzSpec[p0,pf] += currentTensor[1][2] * gauss(ew,pos,wid)
 		j+=1
-		
+
 		if(j<=nTransitions)
 			if(cSpec == 1)
 				if(j==(nTransitions) && cSpec < nSpec)
 					i=nAtoms + 4 - 11
 					cSpec+=1
 					j=0
-				endif 			
+				endif
 			else
 				if(j==(nTransitions) && cSpec < nSpec)
 					i=nAtoms + 4 - 11
 					cSpec+=1
 					j=0
-				endif 
+				endif
 			endif
 		endif
 	endfor
-	
+
 	KillWaves/Z rotMat0,rotMat90,rotMat180,rotMat270,RotTensor0,RotTensor90,RotTensor180,RotTensor270,TEMPma
 	splitSpec(ew,4,"en")
 	splitSpec(xxSpec,4,"NXFS_XX")
@@ -5110,21 +5213,21 @@ Function makeTensorSpecsOCs(pw,yw,ew,thw,sw)
 End
 
 Function i0CostFunction()
-//	Optimize/A=0 
+//	Optimize/A=0
 End
 
 Function/Wave logAmpRatio(pw,yw,xw)
-	Wave pw,yw,xw		
-		
+	Wave pw,yw,xw
+
 	Variable i,n=numpnts(pw),i0 = pw[0],aIni,aFin,j=0
 	for(i=1;i<n;i+=2)
 		aIni = pw[i]
 		aFin = pw[i+1]
-		
+
 		yw[j] = i0 * log(aFin/aIni)
 		j+=1
 	endfor
-	
+
 	return yw
 End
 
@@ -5144,24 +5247,24 @@ Function logAmpRatioCost(pw0,pw1,ar)
 		amp2 = pw1[i+2]
 		amp3 = pw1[i+2]/multiplier
 		pw2[i+2] = amp3
-		
+
 		AMPS1[j] = amp1
 		AMPS2[j] = amp2
 		AMPS3[j] = amp3
 		ar2[j]   = log(amp3/amp1)
 		j+=1
-	endfor 
-	
+	endfor
+
 End
 
 Function/WAVE scaleExptoDFTStep2(stepSum,anchor1,anchor2,pi1,pi2,sig1,sig2,mol,method,nSpec,tl,alpha1,alpha2,i0,expSpecName,expEnName,eta,etadel,etaFin)
-	
+
 	Wave stepSum					//Concatenated wave containing the step edge built from DFT
 	Variable anchor1,anchor2	//Energies for experimental data used for scaling
 	Variable pi1,pi2				//Energies that define pi range
 	Variable sig1,sig2			//Energies that define sigma range
 	Variable method				//Use 1 point or 2 point scaling for spectra
-	Variable nSpec				//How many different experimental spectra are we fitting (i.e. how many different sample alignments) 
+	Variable nSpec				//How many different experimental spectra are we fitting (i.e. how many different sample alignments)
 	Variable alpha1,alpha2		//Initial alpha guess for pi and sigma range respectively
 	Variable i0					//Scale factor for alpha fits
 	Variable eta					//This parameter controls how the scaling factor will be adjusted for experiment to step will be changed. Smaller value wil increase exp intensity, larger value will decrease exp intensity. Set to 1 for default.
@@ -5171,63 +5274,63 @@ Function/WAVE scaleExptoDFTStep2(stepSum,anchor1,anchor2,pi1,pi2,sig1,sig2,mol,m
 	String tl						//Semi colon separated list containing the theta values for each spectrum
 	String expSpecName			//Base name of experimental spectra waves (i.e. if spectra set are named SP1,SP2,SP3 --> expSpecName is "SP"
 	String expEnName				//Base name for experimental energy waves. Same instruction as expSpecName
-	
+
 	//Ensure that there is at least one layer for the 3D waves
 	Variable etaDim = abs((eta - etaFin)/etaDel)
 	if(etaDim==0)
 		etaDim = 1
 	endif
-	
+
 	//Make the concatenated NEXAFS wave
 	Wave allExpSpec = makeLongSpecWave(expSpecName)
 	Wave allExpEnergy = makeLongEnWave(expEnName)
-	
+
 	Variable tol = 1e-3,expScale,pps=round(numpnts(allExpEnergy)/nSpec),k=0
-	
+
 	//Find the bare atom waves
 	//Wave mu_energy = findBAenergy()
 	//Wave mu = findBAMA(mol)
 	WaveStats/Q stepSum
-	
-	//Find the bare atom  intensity values at the energies used for scaling   
+
+	//Find the bare atom  intensity values at the energies used for scaling
 	Variable bareStepLo = findWaveValAtEergy(allExpEnergy,stepSum,anchor1)
 	Variable bareStepHi = findWaveValAtEergy(allExpEnergy,stepSum,anchor2)
-	
+
 	Duplicate/O allExpSpec,allExpSpec2
-	//Find the experimental intensity values at the energies used for scaling   
+	//Find the experimental intensity values at the energies used for scaling
 	Variable expLo = findWaveValAtEergy(allExpEnergy,allExpSpec2,anchor1)
 	Variable expHi = findWaveValAtEergy(allExpEnergy,allExpSpec2,anchor2)
-	
-	//Scale the experimental data to the bare atom absorption 
+
+	//Scale the experimental data to the bare atom absorption
 	Variable equalAlpha = 0
-	
+
 	//Find points in experiment wave that define pi and sigma manifold energy ranges
 	FindLevel/Q/R=[0,pps-1] allExpEnergy,pi1
 	Variable piPnt1 = round(V_levelX)
 	FindLevel/Q/R=[0,pps-1] allExpEnergy,pi2
 	Variable piPnt2 = round(V_levelX)
-	
+
 	FindLevel/Q/R=[0,pps-1] allExpEnergy,sig1
 	Variable sigPnt1 = round(V_levelX)
 	FindLevel/Q/R=[0,pps-1] allExpEnergy,sig2
 	Variable sigPnt2 = round(V_levelX)
-	
+
 	//Wave that will contain NEXAFS scaling results
 	Make/O/N=(pps,nSpec,etaDim) ScaledEtaNEXAFS = 0
-	//Make waves that will contain the intensities,energies,and fit uncertainties at pi and sigma manifold 
+	//Make waves that will contain the intensities,energies,and fit uncertainties at pi and sigma manifold
 	Variable nPi = piPnt2-piPnt1, nSig = sigPnt2-sigPnt1,i,j
 	Make/O/N=(nPi,nSpec+1) piIntsAlpha = 0
 	Make/O/N=(nSig,nSpec+1) sigIntsAlpha = 0
 	Make/O/N=(nSpec) thetas = 0
 	Make/O/N=(nPi)  alphasPi,energiesPi = 0,sigmasPi = 0,avgAlphaPi = 0
 	Make/O/N=(nSig) alphasSig = 0,energiesSig = 0,sigmasSig = 0,avgAlphaSig = 0
-	//3D waves for fit results 
+	//3D waves for fit results
 	Make/O/N=(nSpec,nPi,etaDim) piFitResults2D = 0,piExp2D = 0,piResiduals2D = 0
 	Make/O/N=(3,nPi,etaDim) piPW2D = 0
 	Make/O/N=(nSpec,nSig,etaDim) SigFitResults2D = 0,SigExp2D = 0,SigResiduals2D = 0
 	Make/O/N=(3,nSig,etaDim) sigPW2D = 0
 	Make/O/N=(etaDim) etaWave
-	
+
 	do
 		//Scale the experimental NEXAFS to the bare atom absorption generated from DFT
 		//----------------------------------------------------------------------------------------
@@ -5235,13 +5338,13 @@ Function/WAVE scaleExptoDFTStep2(stepSum,anchor1,anchor2,pi1,pi2,sig1,sig2,mol,m
 			expScale = expLo/bareStepLo //Try anchoring at just preedge
 			print expLo,bareStepLo,expScale
 		elseif(method == 2)
-			expScale = (expHi-expLo) / (bareStepHi-bareStepLo)//Anchor at post and preedge	
+			expScale = (expHi-expLo) / (bareStepHi-bareStepLo)//Anchor at post and preedge
 		endif
 		allExpSpec2 = allExpSpec / (eta *expScale)
 		Variable expLo_2 = findWaveValAtEergy(allExpEnergy,allExpSpec2,anchor1)
 		Variable dif = expLo_2 - bareStepLo
-		
-		if(abs(dif) > tol) 
+
+		if(abs(dif) > tol)
 			//print "Difference between experiment and step is larger than tolerance. Check."
 			if(dif > 0)
 				allExpSpec2 -= dif
@@ -5254,7 +5357,7 @@ Function/WAVE scaleExptoDFTStep2(stepSum,anchor1,anchor2,pi1,pi2,sig1,sig2,mol,m
 			endif
 			//print dif
 		endif
-		
+
 		//-----------------------------------------------------------------------------------------
 		if(eta==1)
 			break
@@ -5262,41 +5365,41 @@ Function/WAVE scaleExptoDFTStep2(stepSum,anchor1,anchor2,pi1,pi2,sig1,sig2,mol,m
 		//This loop will populate the energies for desired energy pi range
 		for(i=0;i<nPi;i+=1)
 			piIntsAlpha[i][0] = allExpSpec2[piPnt1 + i]
-			energiesPi[i]     = allExpEnergy[piPnt1 + i]		
+			energiesPi[i]     = allExpEnergy[piPnt1 + i]
 		endfor
-	
+
 		//This loop will populate the intensities for desired pi energy range for each sample theta into pw
 		for(j=0;j<nSpec;j+=1)
 			for(i=0;i<nPi;i+=1)
 				piIntsAlpha[i][j] = allExpSpec2[piPnt1 + j*pps + i]
 			endfor
 		endfor
-	
+
 		//This loop will populate the energies for desired energy pi range
 		for(i=0;i<nSig;i+=1)
 			sigIntsAlpha[i][0]  = allExpSpec2[sigPnt1 + i]
-			energiesSig[i]      = allExpEnergy[sigPnt2 + i]		
+			energiesSig[i]      = allExpEnergy[sigPnt2 + i]
 		endfor
-	
+
 		//This loop will populate the intensities for desired pi energy range for each sample theta into pw
 		for(j=0;j<nSpec;j+=1)
 			for(i=0;i<nSig;i+=1)
 				sigIntsAlpha[i][j] = allExpSpec2[sigPnt1 + j*pps + i]
 			endfor
 		endfor
-	
+
 		//This loop will populate the theta wave based on the theta list
 		for(i=0;i<nSpec;i+=1)
 			thetas[i] = str2num(StringFromList(i,tl))
 		endfor
-		
+
 		//Fit alpha in Pi Range
 		//This loop will fit alpha at each energy within the pi range
 		for(i=0;i<nPi;i+=1)
 			String namePi1 = "aPiFit_" + num2str(i)//Wave containing experimental intensities
 			String namePi2 = "aPiVal_" + num2str(i)//Parameter wave for alpha fit
 			String namePi3 = "alphaPiResultFit_" + num2str(i)//Destination wave for alpha fit
-			String namePi4 = "alphaPiEpsFit_" + num2str(i)//Epsilon wave 
+			String namePi4 = "alphaPiEpsFit_" + num2str(i)//Epsilon wave
 			String namePi5 = "alphaPiResiFit_" + num2str(i)//Residual Wave
 			String namePi6 = "alphaPiConsFit_" + num2str(i)//Constraint wave
 			Make/O/N=(nSpec) $namePi1,$namePi3,$namePi5
@@ -5315,12 +5418,12 @@ Function/WAVE scaleExptoDFTStep2(stepSum,anchor1,anchor2,pi1,pi2,sig1,sig2,mol,m
 			fitpw[0] = alpha1
 			fitpw[1] = i0
 			fitpw[2] = 0 //Only fit Pi Range
-			
+
 			//Populate this wave with the intensities for each spectrum at current energy
 			for(j=0;j<nSpec;j+=1)
 				w[j] = piIntsAlpha[i][j]
 			endfor
-			
+
 			String H = "001"
 			Variable V_FitTol = 0.00001
 			FuncFit/Q/H=H fitStohrAlpha , fitpw, w /X=thetas /D=w3 /R=res /E=eps /C=con
@@ -5335,7 +5438,7 @@ Function/WAVE scaleExptoDFTStep2(stepSum,anchor1,anchor2,pi1,pi2,sig1,sig2,mol,m
 		endfor
 		WaveStats/Q/RMD=[0,0][][k,k] piPW2D
 		Variable avgPiAlpha = V_avg
-		
+
 		//Fit alpha in Sigma Range
 		//This loop will fit alpha at each energy within the sigma range
 		for(i=0;i<nSig;i+=1)
@@ -5358,12 +5461,12 @@ Function/WAVE scaleExptoDFTStep2(stepSum,anchor1,anchor2,pi1,pi2,sig1,sig2,mol,m
 			Wave res = $nameSig5
 			Wave/T con = $nameSig6
 			con[0] = {"K0>=0","K0<=90","K1>=0"}
-			
+
 			//Populate this wave with the intensities for each spectrum at current energy
 			for(j=0;j<nSpec;j+=1)
 				w[j] = sigIntsAlpha[i][j]
 			endfor
-			
+
 			fitpw[0] = alpha2
 			fitpw[1] = i0
 			fitpw[2] = 1 //Only fit Sigma Range
@@ -5393,8 +5496,8 @@ Function/WAVE scaleExptoDFTStep2(stepSum,anchor1,anchor2,pi1,pi2,sig1,sig2,mol,m
 			endfor
 			etaWave[k] = eta
 			//Wave that will contain NEXAFS scaling results
-			Redimension/N=(pps,nSpec,k+1) ScaledEtaNEXAFS 
-			//3D waves for fit results 
+			Redimension/N=(pps,nSpec,k+1) ScaledEtaNEXAFS
+			//3D waves for fit results
 			Redimension/N=(nSpec,nPi,k+1) piFitResults2D,piExp2D,piResiduals2D
 			Redimension/N=(3,nPi,k+1) piPW2D
 			Redimension/N=(nSpec,nSig,k+1) SigFitResults2D,SigExp2D,SigResiduals2D
@@ -5416,12 +5519,12 @@ Function/WAVE scaleExptoDFTStep2(stepSum,anchor1,anchor2,pi1,pi2,sig1,sig2,mol,m
 			eta -= etaDel
 			k+=1
 		endif
-		
+
 		if(k >= etaDim)
 			break
 		endif
 	while(equalAlpha == 0 && eta > etaFin)
-	
+
 	splitSpec(stepSum,nSpec,"STEPWAVE_")
 	//print avgPiAlpha,avgSigAlpha,eta
 	return allExpSpec2
