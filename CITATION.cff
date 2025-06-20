@@ -1,0 +1,9 @@
+@misc{Murcia2025,
+  author = {Victor, M, Murcia},
+  title = {DFT Clustering (dft-learn)},
+  year = {2022},
+  publisher = {GitHub},
+  journal = {GitHub repository},
+  howpublished = {\url{https://github.com/WSU-Carbon-Lab/dft-learn/releases/tag/v1.1}},
+  commit = {6a8dceb96f9f0c834bcb547f39b6b68529f93203}
+}
