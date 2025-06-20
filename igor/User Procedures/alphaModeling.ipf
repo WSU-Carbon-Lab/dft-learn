@@ -921,25 +921,9 @@ Function simDFTfit2(pw,yw,ew,thw,sw) :FitFunc
 
 	Make/O/N=(nTransitions) MA = 0,vecAngle = 0,vecAngle2 = 0
 
-	//Wave that will populate the XX/YY and ZZ tensor elements into 2D vector
-	Make/O/N=2 vector
-	//Make rotation matrices for rotation of 90,180,and 270 degrees around z-axis
-	Make/O/D/N=(3,3) rotMat0   = {{cos(0*(Pi/180))  ,sin(0*(Pi/180)),0}  ,{-sin(0*(Pi/180))  ,cos(0*(Pi/180)),0}  ,{0,0,1}}
-	Make/O/D/N=(3,3) rotMat90  = {{cos(90*(Pi/180)) ,sin(90*(Pi/180)),0} ,{-sin(90*(Pi/180)) ,cos(90*(Pi/180)),0} ,{0,0,1}}
-	Make/O/D/N=(3,3) rotMat180 = {{cos(180*(Pi/180)),sin(180*(Pi/180)),0},{-sin(180*(Pi/180)),cos(180*(Pi/180)),0},{0,0,1}}
-	Make/O/D/N=(3,3) rotMat270 = {{cos(270*(Pi/180)),sin(270*(Pi/180)),0},{-sin(270*(Pi/180)),cos(270*(Pi/180)),0},{0,0,1}}
-
 	//Duplicated parameter wave that will contain the results of rotating the molecular tensor
 	Duplicate/O pw,pwMolAdj,pwFilm
 	Wave pwMolAdj,pwFilm
-	//*****POTENTIALLY CHANGE CLUSTERING ALGORITHM****
-	//Generate clusters based on overall/total OS instead of component OS
-	//How to open up individual tensor elements for fitting:
-	//1. Ratio of in-plane vs out-of-plane components?
-	//2. Need a second parameter to describe amplitude? Possibly related to a local alpha?
-		//*********Will need to change pWave from 10 parameters per peak to 11!*******
-	//3. Visualize tensor elements for each cluster (Tensor Element vs Cluster ID) -->Log plot
-	//4. Additive oscillator strength... How to accomplish this programatically???
 	i0         = pw[1]
 	alpha      = pw[2] * (Pi/180)
 	phi        = pw[3] * (Pi/180)
@@ -953,12 +937,6 @@ Function simDFTfit2(pw,yw,ew,thw,sw) :FitFunc
 
 
 		currentTensor = tensor3D[p][q][j]// norm3D[p][q][j]
-		vector[0] = currentTensor[0][0]
-		vector[1] = currentTensor[2][2]
-		Wave rv = vecOpsWrap(vector,amp2,"Z")
-		currentTensor[0][0] =  abs(rv[0])
-		currentTensor[1][1] =  abs(rv[0])
-		currentTensor[2][2] =  abs(rv[1])
 
 		if(WaveExists(pwMolAdj))
 			pwMolAdj[i+3] = currentTensor[0][0]
@@ -969,23 +947,13 @@ Function simDFTfit2(pw,yw,ew,thw,sw) :FitFunc
 			pwMolAdj[i+8] = currentTensor[2][2]
 		endif
 
-		Variable ang2 = atan(0.5*(tensor3D[2][2][j]/tensor3D[0][0][j])) * (180/pi)
-		Variable ang3 = atan((0.5*rv[1])/rv[0]) * (180/pi)
+		currentTensor *= i0 * amp
 
-		vecAngle[j] = ang2
-		vecAngle2[j] = ang3
-		currentTensor *= i0 * amp// * currentTensor
-		Make/O/D/N=(3,3) rotMatAlignX = {{1,0,0},{0,cos(alpha),sin(alpha)},{0,-sin(alpha),cos(alpha)}}
-
-		//Tilt the tensor by angle alpha
-		MatrixOP/O  tiltedTensorX = rotMatAlignX x currentTensor x rotMatAlignX^t
-		//Construct the film tensor by adding the azimuthal rotations
-		MatrixOP/O  RotTensor0X   =  rotMat0   x tiltedTensorX x rotMat0^t
-		MatrixOP/O  RotTensor90X  =  rotMat90  x tiltedTensorX x rotMat90^t
-		MatrixOP/O  RotTensor180X =  rotMat180 x tiltedTensorX x rotMat180^t
-		MatrixOP/O  RotTensor270X =  rotMat270 x tiltedTensorX x rotMat270^t
-		MatrixOP/O filmTensor = RotTensor0X + RotTensor90X + RotTensor180X + RotTensor270X
-
+		variable c = cos(alpha)
+		variable s = sin(alpha)
+		variable inplane_component = (currentTensor[0][0] * (1 + c^2) + currentTensor[2][2] * s^2) / 2
+		variable outofplane_component = (currentTensor[0][0] * s^2 + currentTensor[2][2] * c^2)
+		MatrixOP/O filmTensor = {{inplane_component, 0, 0}, {0, inplane_component, 0}, {0, 0, outofplane_component}}
 
 		Wave filmTensorT = truncate2D(filmTensor,targetDP)
 
