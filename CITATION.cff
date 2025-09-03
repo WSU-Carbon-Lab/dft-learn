@@ -1,0 +1,20 @@
+cff-version: 1.2.0
+message: If you use this work, please cite it as below.
+preferred-citation:
+  type: article
+  title: Quantitative and bond-traceable resonant X-ray optical tensors of organic molecules
+  authors:
+  - family-names: Murcia
+    given-names: Victor
+  - family-names: Alqahtani
+    given-names: Obaid
+  - family-names: Heilman
+    given-names: Harlan
+  - family-names: Collins
+    given-names: Brian A.
+  year: 2025
+  identifiers:
+  - type: url
+    value: https://arxiv.org/abs/2509.01734
+  - type: other
+    value: arXiv:2509.01734
