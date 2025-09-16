@@ -23,6 +23,7 @@ Usage:
 import glob
 import importlib.util
 import os
+import re
 import shutil
 import sys
 from pathlib import Path
@@ -463,8 +464,12 @@ def listFiles(aname, nAtoms):
 
     for i in range(1, nAtoms + 1):
         atom_dir = f"{aname}{i}"
+        # Create regex pattern that matches exactly the atom number followed by a non-digit
+        # Pattern: aname + number + (non-digit or end of string)
+        pattern = rf"^{re.escape(aname)}{i}(?:\D|$)"
+
         for run_file in run_files:
-            if run_file.startswith(atom_dir):
+            if re.match(pattern, run_file):
                 dest_path = os.path.join(atom_dir, run_file)
                 if os.path.exists(run_file):
                     shutil.move(run_file, dest_path)
