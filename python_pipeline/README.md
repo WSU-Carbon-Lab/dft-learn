@@ -165,3 +165,7 @@ analyze_tensor_evolution(fitter)
 # Export results
 fitter.export_results("fitted_parameters.csv")
 ```
+
+Some initial results below. Again, work in progress...
+<img width="1189" height="990" alt="image" src="https://github.com/user-attachments/assets/a1950ed7-8467-46cd-a592-3ed3175057d2" />
+
