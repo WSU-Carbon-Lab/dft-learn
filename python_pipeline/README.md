@@ -142,6 +142,10 @@ plot_bare_atom_absorption(dft_clustering_results, energy_xlim=(10, 30000))
 
 <img width="890" height="530" alt="image" src="https://github.com/user-attachments/assets/d2635b6a-100e-40b7-9a6a-9feefbfa8945" />
 
+<img width="989" height="590" alt="image" src="https://github.com/user-attachments/assets/e261ab9b-91e2-421a-88eb-61248e19cd93" />
+
+<img width="989" height="590" alt="image" src="https://github.com/user-attachments/assets/b19467a6-6904-4758-a31f-92e00946d427" />
+
 ## Section 3: Running the Simultaneous Fits
 
 (Very much a work in progress still)
