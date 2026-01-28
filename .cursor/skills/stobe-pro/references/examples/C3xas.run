@@ -1,0 +1,17 @@
+#!/bin/csh -f
+ln -s ${PWD}/C3.xas fort.1
+cat >C3xas.inp<</.
+title
+ZnPc XAS
+PRINT
+RANGE 280 320
+POINTS 2000
+WIDTH 0.5 12 288 320
+XRAY xas
+TOTAL 1
+END
+/.
+xrayspec.x <C3xas.inp>& C3xas.out
+mkdir -p ../nexafs
+mv XrayT001.out ../nexafs/C3.out
+rm fort.*

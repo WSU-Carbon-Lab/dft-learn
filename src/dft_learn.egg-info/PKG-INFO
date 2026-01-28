@@ -21,6 +21,7 @@ Requires-Dist: h5netcdf>=1.6.1
 Requires-Dist: jupyterlab>=4.4.0
 Requires-Dist: numba>=0.61.2
 Requires-Dist: matplotlib>=3.10.1
+Requires-Dist: pyarrow
 Dynamic: license-file
 
 # DFT-Clustering
