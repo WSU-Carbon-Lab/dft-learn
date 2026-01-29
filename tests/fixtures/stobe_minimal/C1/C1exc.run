@@ -1,0 +1,49 @@
+#!/bin/bash
+ln -sf /bin/stobe/Basis/baslib.new7 fort.3
+ln -sf /bin/stobe/Basis/symbasis.new fort.4
+cat >C1exc.inp<</.
+TITLE
+minimal EXC
+SYMMETRY C1
+CARTESIAN ANGSTROMS
+C        0.000000       0.000000       0.000000     6     32
+C        1.500000       0.000000       0.000000     4     32
+END
+RUNTYPE startup nooptimize
+SCFTYPE direct
+POTENTIAL nonlocal rpbe pbe
+GRID fine
+MULTIPLICITY 1
+CHARGE 0
+MAXCYCLES 300
+ECONVERGENCE 0.001
+DCONVERGENCE 0.001
+DMIXING mdens 0.05
+DIIS new 7
+ORBI 5d
+MULLIKEN on full
+VIRT all
+SPIN FULL
+FSYM scfocc excited
+ALFA 9
+BETA 8
+SYM 1
+ALFA 0 1 1 0.0
+BETA 0 0
+END
+MULLIKEN on full
+FILE molden
+END
+A-CARBON (5,2;5,2)
+A-CARBON(+4) (3,3;3,3)
+O-CARBON iii_iglo
+O-CARBON(+4) (311/211/1)
+P-CARBON(+4) (3,1:8,0)
+P-CARBON(+4) (3,1:8,0)
+X-FIRST
+END
+/.
+mkdir -p ../EXC
+StoBe.x <C1exc.inp>& ../EXC/C1exc.out
+mv Molden.molf ../EXC/C1exc.molden
+rm fort.*

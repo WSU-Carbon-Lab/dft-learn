@@ -1,0 +1,17 @@
+#!/bin/bash
+ln -sf "${PWD}/C2.xas" fort.1
+cat >C2xas.inp<</.
+title
+minimal XAS
+PRINT
+RANGE 280 320
+POINTS 2000
+WIDTH 0.6 12 288 320
+XRAY xas
+TOTAL 1
+END
+/.
+mkdir -p ../NEXAFS
+/bin/stobe/Source/xrayspec.x <C2xas.inp>& ../NEXAFS/C2xas.out
+cp XrayT001.out ../NEXAFS/C2.out
+rm fort.*

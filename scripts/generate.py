@@ -25,15 +25,11 @@ import importlib.util
 import os
 import re
 import shutil
-import sys
 from pathlib import Path
-from typing import Optional
 
 import typer
-from rich import print
 from rich.console import Console
 from rich.panel import Panel
-from rich.progress import track
 
 console = Console()
 
@@ -71,13 +67,13 @@ DEFAULT_XRAY = "XAS"
 STOBE_HOME: Path = Path(os.environ.get("STOBE_HOME", "/bin/stobe"))
 stobe_exe_path = shutil.which("StoBe.x")
 if stobe_exe_path:
-    STOBE: Path = Path(stobe_exe_path)
+    STOBE = Path(stobe_exe_path)
 else:
     STOBE: Path = STOBE_HOME / "Source/StoBe.x"
 
 xasrun_exe_path = shutil.which("xrayspec.x")
 if xasrun_exe_path:
-    XASRUN: Path = Path(xasrun_exe_path)
+    XASRUN = Path(xasrun_exe_path)
 else:
     XASRUN: Path = STOBE_HOME / "Source/xrayspec.x"
 SYMBASIS: Path = STOBE_HOME / "Basis/symbasis.new"
@@ -147,6 +143,58 @@ def auto_detect_xyz(run_directory: Path) -> Path:
         raise typer.Exit(1)
 
 
+def _basis_line(
+    group: int,
+    is_excited: bool,
+    elem1_Abasis_a: str,
+    elem1_Abasis_b: str,
+    elem2_Abasis: str,
+    elem3_Abasis: str,
+    elem4_Abasis: str,
+    elem5_Abasis: str,
+    elem6_Abasis: str,
+) -> str:
+    if group == 1:
+        return elem1_Abasis_a if is_excited else elem1_Abasis_b
+    if group == 2:
+        return elem2_Abasis
+    if group == 3:
+        return elem3_Abasis
+    if group == 4:
+        return elem4_Abasis
+    if group == 5:
+        return elem5_Abasis
+    if group == 6:
+        return elem6_Abasis
+    return ""
+
+
+def _orbital_line(
+    group: int,
+    is_excited: bool,
+    elem1_Obasis_a: str,
+    elem1_Obasis_b: str,
+    elem2_Obasis: str,
+    elem3_Obasis: str,
+    elem4_Obasis: str,
+    elem5_Obasis: str,
+    elem6_Obasis: str,
+) -> str:
+    if group == 1:
+        return elem1_Obasis_a if is_excited else elem1_Obasis_b
+    if group == 2:
+        return elem2_Obasis
+    if group == 3:
+        return elem3_Obasis
+    if group == 4:
+        return elem4_Obasis
+    if group == 5:
+        return elem5_Obasis
+    if group == 6:
+        return elem6_Obasis
+    return ""
+
+
 def makeRunFile(
     fname,
     mname,
@@ -159,6 +207,8 @@ def makeRunFile(
     element2,
     element3,
     element4,
+    element5,
+    element6,
     nElem1,
     nElem2,
     nElem3,
@@ -239,102 +289,139 @@ def makeRunFile(
         run_file = f"{aname}{i}{ftype}.run"
 
         with open(run_file, "w+", newline="\n") as f:
-            f.write("#!/bin/csh -f\n")
-            f.write(f"ln -s {BASISLIB} fort.3\n")
-            f.write(f"ln -s {SYMBASIS} fort.4\n")
+            f.write("#!/bin/bash\n")
+            f.write(f"ln -sf {BASISLIB} fort.3\n")
+            f.write(f"ln -sf {SYMBASIS} fort.4\n")
             f.write(f"cat >{aname}{i}{ftype}.inp<</.\n")
             f.write("TITLE\n")
             f.write(f"{title} {ftype.upper()}\n")
             f.write(f"SYMMETRY {sym}\n")
             f.write(f"CARTESIAN {geom}\n")
 
-        # Process geometry from XYZ file with proper element handling
         with open(f"{fname}.xyz") as xyz_file:
             xyz_lines = xyz_file.readlines()
 
-        with open(run_file, "a+", newline="\n") as f:
-            n1 = n2 = n3 = n4 = n5 = n6 = 1
+        atoms_for_basis: list[tuple[int, bool]] = []
+        n1 = n2 = n3 = n4 = n5 = n6 = 1
 
+        with open(run_file, "a+", newline="\n") as f:
             for line in xyz_lines:
                 line = line.strip()
                 if not line or len(line.split()) < 4:
                     continue
-
-                # Parse atom info from XYZ line
                 parts = line.split()
-                if len(parts) >= 4:
-                    # Handle different numbers of elements
+                if len(parts) < 4:
+                    continue
+                label = parts[0]
+
+                def wr(
+                    g: int,
+                    ex: bool,
+                    el_a: int | str,
+                    el_b: int | str,
+                    el_oth: int | str,
+                    nl: bool = True,
+                ) -> None:
+                    if g == 1:
+                        ch = el_a if ex else el_b
+                    else:
+                        ch = el_oth
+                    x, y, z = float(parts[1]), float(parts[2]), float(parts[3])
+                    x = round(x, 6)
+                    y = round(y, 6)
+                    z = round(z, 6)
+                    row = f"{label}     {x:10.6f}    {y:10.6f}    {z:10.6f}     {ch}     32"
+                    f.write(row + ("\n" if nl else ""))
+                    atoms_for_basis.append((g, ex))
+
+                def last_line() -> bool:
+                    if difElements == 1:
+                        return n1 == nElem1
+                    if difElements == 2:
+                        return n2 == nElem2
                     if difElements == 3:
-                        if n1 <= nElem1:
-                            # Element 1 (target element for calculations)
-                            if n1 == i:
-                                # This is the excited atom
-                                new_line = f"{line}     {element1a}     32\n"
-                            else:
-                                # Regular atom of same element
-                                new_line = f"{line}     {element1b}     32\n"
-                            f.write(new_line)
-                            n1 += 1
-                        elif n2 <= nElem2:
-                            # Element 2
-                            new_line = f"{line}     {element2}     32\n"
-                            f.write(new_line)
-                            n2 += 1
-                        elif n3 <= nElem3:
-                            # Element 3
-                            new_line = f"{line}     {element3}     32\n"
-                            f.write(new_line)
-                            n3 += 1
+                        return n3 == nElem3
+                    if difElements == 4:
+                        return n4 == nElem4
+                    if difElements == 5:
+                        return n5 == nElem5
+                    return difElements >= 6 and n6 == nElem6
 
-                    elif difElements == 2:
-                        if n1 <= nElem1:
-                            if n1 == i:
-                                new_line = f"{line}     {element1a}     32\n"
-                            else:
-                                new_line = f"{line}     {element1b}     32\n"
-                            f.write(new_line)
-                            n1 += 1
-                        elif n2 <= nElem2:
-                            new_line = f"{line}     {element2}     32\n"
-                            f.write(new_line)
-                            n2 += 1
+                def nl() -> bool:
+                    return not last_line()
 
-                    elif difElements == 1:
-                        if n1 <= nElem1:
-                            if n1 == i:
-                                new_line = f"{line}     {element1a}     32\n"
-                            else:
-                                new_line = f"{line}     {element1b}     32\n"
-                            f.write(new_line)
-                            n1 += 1
+                if difElements == 1:
+                    if n1 <= nElem1:
+                        wr(1, n1 == i, element1a, element1b, element1b, nl())
+                        n1 += 1
+                elif difElements == 2:
+                    if n1 <= nElem1:
+                        wr(1, n1 == i, element1a, element1b, element1b, True)
+                        n1 += 1
+                    elif n2 <= nElem2:
+                        wr(2, False, element1a, element1b, element2, nl())
+                        n2 += 1
+                elif difElements == 3:
+                    if n1 <= nElem1:
+                        wr(1, n1 == i, element1a, element1b, element1b, True)
+                        n1 += 1
+                    elif n2 <= nElem2:
+                        wr(2, False, element1a, element1b, element2, True)
+                        n2 += 1
+                    elif n3 <= nElem3:
+                        wr(3, False, element1a, element1b, element3, nl())
+                        n3 += 1
+                elif difElements == 4:
+                    if n1 <= nElem1:
+                        wr(1, n1 == i, element1a, element1b, element1b, True)
+                        n1 += 1
+                    elif n2 <= nElem2:
+                        wr(2, False, element1a, element1b, element2, True)
+                        n2 += 1
+                    elif n3 <= nElem3:
+                        wr(3, False, element1a, element1b, element3, True)
+                        n3 += 1
+                    elif n4 <= nElem4:
+                        wr(4, False, element1a, element1b, element4, nl())
+                        n4 += 1
+                elif difElements == 5:
+                    if n1 <= nElem1:
+                        wr(1, n1 == i, element1a, element1b, element1b, True)
+                        n1 += 1
+                    elif n2 <= nElem2:
+                        wr(2, False, element1a, element1b, element2, True)
+                        n2 += 1
+                    elif n3 <= nElem3:
+                        wr(3, False, element1a, element1b, element3, True)
+                        n3 += 1
+                    elif n4 <= nElem4:
+                        wr(4, False, element1a, element1b, element4, True)
+                        n4 += 1
+                    elif n5 <= nElem5:
+                        wr(5, False, element1a, element1b, element5, nl())
+                        n5 += 1
+                elif difElements >= 6:
+                    if n1 <= nElem1:
+                        wr(1, n1 == i, element1a, element1b, element1b, True)
+                        n1 += 1
+                    elif n2 <= nElem2:
+                        wr(2, False, element1a, element1b, element2, True)
+                        n2 += 1
+                    elif n3 <= nElem3:
+                        wr(3, False, element1a, element1b, element3, True)
+                        n3 += 1
+                    elif n4 <= nElem4:
+                        wr(4, False, element1a, element1b, element4, True)
+                        n4 += 1
+                    elif n5 <= nElem5:
+                        wr(5, False, element1a, element1b, element5, True)
+                        n5 += 1
+                    elif n6 <= nElem6:
+                        wr(6, False, element1a, element1b, element6, nl())
+                        n6 += 1
 
-                    # Add support for more elements if needed
-                    elif difElements >= 4:
-                        if n1 <= nElem1:
-                            if n1 == i:
-                                new_line = f"{line}     {element1a}     32\n"
-                            else:
-                                new_line = f"{line}     {element1b}     32\n"
-                            f.write(new_line)
-                            n1 += 1
-                        elif n2 <= nElem2:
-                            new_line = f"{line}     {element2}     32\n"
-                            f.write(new_line)
-                            n2 += 1
-                        elif n3 <= nElem3:
-                            new_line = f"{line}     {element3}     32\n"
-                            f.write(new_line)
-                            n3 += 1
-                        elif n4 <= nElem4:
-                            new_line = f"{line}     {element4}     32\n"
-                            f.write(new_line)
-                            n4 += 1
-
-        # Continue with run file
         with open(run_file, "a", newline="\n") as f:
             f.write("\nEND\n")
-
-            # Write calculation parameters
             f.write(f"RUNTYPE {runtype}\n")
             f.write(f"SCFTYPE {scftype}\n")
             f.write(f"POTENTIAL {potential}\n")
@@ -349,8 +436,8 @@ def makeRunFile(
             f.write(f"ORBI {orbi}\n")
             f.write(f"MULLIKEN {mulliken}\n")
             f.write(f"VIRT {virt}\n")
+            f.write(f"SPIN {spin}\n")
 
-            # File type specific sections
             if ftype == "gnd":
                 f.write(f"FSYM {fsymGND}\n")
                 f.write(f"ALFA {alphaGND}\n")
@@ -382,14 +469,28 @@ def makeRunFile(
                 f.write("END\n")
                 f.write("END\n")
 
-            # Add basis set sections (simplified - could be expanded)
-            # Auxiliary basis sets
+            for g, ex in atoms_for_basis:
+                s = _basis_line(g, ex, elem1_Abasis_a, elem1_Abasis_b, elem2_Abasis, elem3_Abasis, elem4_Abasis, elem5_Abasis, elem6_Abasis)
+                if s:
+                    f.write(s + "\n")
+            for g, ex in atoms_for_basis:
+                s = _orbital_line(g, ex, elem1_Obasis_a, elem1_Obasis_b, elem2_Obasis, elem3_Obasis, elem4_Obasis, elem5_Obasis, elem6_Obasis)
+                if s:
+                    f.write(s + "\n")
+            n_elem1 = sum(1 for g, _ in atoms_for_basis if g == 1)
+            if elem1_MCPbasis and n_elem1:
+                for _ in range(n_elem1):
+                    f.write(elem1_MCPbasis + "\n")
+            for g, ex in atoms_for_basis:
+                if g == 1 and ex:
+                    f.write("X-FIRST\n")
+                    break
             f.write("END\n")
-
-            # Finalize run file
             f.write("/.\n")
-            f.write(f"StoBe.x <{aname}{i}{ftype}.inp>& {aname}{i}{ftype}.out\n")
-            f.write(f"mv Molden.molf {aname}{i}{ftype}.molden\n")
+            out_dir = {"gnd": "GND", "exc": "EXC", "tp": "TP"}[ftype]
+            f.write(f"mkdir -p ../{out_dir}\n")
+            f.write(f"StoBe.x <{aname}{i}{ftype}.inp>& ../{out_dir}/{aname}{i}{ftype}.out\n")
+            f.write(f"mv Molden.molf ../{out_dir}/{aname}{i}{ftype}.molden\n")
             if ftype == "tp":
                 f.write(f"mv fort.11 {aname}{i}.xas\n")
             f.write("rm fort.*\n")
@@ -415,8 +516,8 @@ def makeXASrun(mname, aname, nAtoms, title):
     for i in range(1, nAtoms + 1):
         run_file = f"{aname}{i}xas.run"
         with open(run_file, "w+", newline="\n") as f:
-            f.write("#!/bin/csh -f\n")
-            f.write(f"ln -s ~/{mname}/{aname}{i}/{aname}{i}.xas fort.1\n")
+            f.write("#!/bin/bash\n")
+            f.write(f"ln -sf \"${{PWD}}/{aname}{i}.xas\" fort.1\n")
             f.write(f"cat >{aname}{i}xas.inp<</.\n")
             f.write("title\n")
             f.write(f"{title} XAS\n")
@@ -428,8 +529,9 @@ def makeXASrun(mname, aname, nAtoms, title):
             f.write("TOTAL 1\n")
             f.write("END\n")
             f.write("/.\n")
-            f.write(f"{XASRUN} <{aname}{i}xas.inp>& {aname}{i}xas.out\n")
-            f.write(f"cp XrayT001.out {aname}{i}.out\n")
+            f.write("mkdir -p ../NEXAFS\n")
+            f.write(f"{XASRUN} <{aname}{i}xas.inp>& ../NEXAFS/{aname}{i}xas.out\n")
+            f.write(f"cp XrayT001.out ../NEXAFS/{aname}{i}.out\n")
             f.write("rm fort.*\n")
 
 
@@ -478,19 +580,19 @@ def listFiles(aname, nAtoms):
 @app.command()
 def main(
     run_directory: str = typer.Argument(..., help="Directory containing molConfig.py"),
-    xyz_file: Optional[str] = typer.Argument(None, help="Path to XYZ geometry file"),
-    xyz: Optional[str] = typer.Option(None, "--xyz", help="Alternative way to specify XYZ file"),
+    xyz_file: str | None = typer.Argument(None, help="Path to XYZ geometry file"),
+    xyz: str | None = typer.Option(None, "--xyz", help="Alternative way to specify XYZ file"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Verbose output"),
 ):
     """
     Generate StoBe DFT calculation input files.
 
-    Examples:
+    Examples
+    --------
         uv run generate.py tcta_flat                              # Auto-detect XYZ
         uv run generate.py tcta_flat tcta_flat.xyz                # Explicit XYZ
         uv run generate.py tcta_flat --xyz another_file.xyz       # Using --xyz flag
     """
-
     console.print(Panel(
         "[bold blue]StoBe Input Generator[/bold blue]\n"
         "Generating DFT calculation input files...",
@@ -542,6 +644,8 @@ def main(
         element2 = getattr(mol_config, 'element2', 0)
         element3 = getattr(mol_config, 'element3', 0)
         element4 = getattr(mol_config, 'element4', 0)
+        element5 = getattr(mol_config, 'element5', 0)
+        element6 = getattr(mol_config, 'element6', 0)
 
         # Element counts
         nElem1 = mol_config.nElem1
@@ -606,6 +710,7 @@ def main(
             makeRunFile(
                 fname, mname, aname, nFiles, alpha, beta,
                 element1a, element1b, element2, element3, element4,
+                element5, element6,
                 nElem1, nElem2, nElem3, nElem4, nElem5, nElem6, difElems,
                 elem1_Abasis_a, elem1_Abasis_b, elem2_Abasis, elem3_Abasis,
                 elem4_Abasis, elem5_Abasis, elem6_Abasis,
