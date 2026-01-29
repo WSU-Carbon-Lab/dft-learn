@@ -10,7 +10,19 @@ This program takes the output of DFT calculations carried out in the the computa
 Install and run the StoBe input generator and scheduler:
 
 ```bash
-uv tool install . && uvx dftrun --help
+uv tool install .
+```
+
+Or from GitHub:
+
+```bash
+uv tool install 'git+https://github.com/WSU-Carbon-Lab/dft-learn'
+```
+
+Verify installation:
+
+```bash
+dftrun --help
 ```
 
 See [scripts/README.md](scripts/README.md) for installation, usage, `dftrun.toml` config, and logging.

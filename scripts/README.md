@@ -5,7 +5,7 @@ Build and run StoBe DFT (transition-potential) workflows. Replaces the legacy `g
 ## Installation
 
 ```bash
-uv tool install --from 'git+https://github.com/<org>/dft-learn' dftrun
+uv tool install 'git+https://github.com/WSU-Carbon-Lab/dft-learn'
 ```
 
 Or from a clone:
@@ -18,7 +18,7 @@ uv tool install .
 Verify:
 
 ```bash
-uvx dftrun --help
+dftrun --help
 ```
 
 ## Usage
@@ -28,27 +28,27 @@ uvx dftrun --help
 Generate StoBe run files from a directory containing `molConfig.py` and an XYZ geometry:
 
 ```bash
-uvx dftrun build /path/to/molecule
-uvx dftrun build /path/to/molecule /path/to/molecule.xyz
-uvx dftrun build /path/to/molecule --xyz /path/to/other.xyz
-uvx dftrun build /path/to/molecule -v
+dftrun build /path/to/molecule
+dftrun build /path/to/molecule /path/to/molecule.xyz
+dftrun build /path/to/molecule --xyz /path/to/other.xyz
+dftrun build /path/to/molecule -v
 ```
 
 ### Run (execute calculations)
 
 ```bash
-uvx dftrun run gnd /path/to/molecule
-uvx dftrun run exc /path/to/molecule
-uvx dftrun run tp /path/to/molecule
-uvx dftrun run xas /path/to/molecule
-uvx dftrun run all /path/to/molecule
-uvx dftrun run all /path/to/molecule --quiet
-uvx dftrun run gnd /path/to/molecule --atom C1 --atom C2
-uvx dftrun run -v all /path/to/molecule
-uvx dftrun run --workers 4 gnd /path/to/molecule
-uvx dftrun run explore /path/to/molecule
-uvx dftrun run organize /path/to/molecule
-uvx dftrun run package /path/to/molecule
+dftrun run gnd /path/to/molecule
+dftrun run exc /path/to/molecule
+dftrun run tp /path/to/molecule
+dftrun run xas /path/to/molecule
+dftrun run all /path/to/molecule
+dftrun run all /path/to/molecule --quiet
+dftrun run gnd /path/to/molecule --atom C1 --atom C2
+dftrun run -v all /path/to/molecule
+dftrun run --workers 4 gnd /path/to/molecule
+dftrun run explore /path/to/molecule
+dftrun run organize /path/to/molecule
+dftrun run package /path/to/molecule
 ```
 
 ## Config: `dftrun.toml`
