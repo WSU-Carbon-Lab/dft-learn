@@ -5,6 +5,16 @@ This program takes the output of DFT calculations carried out in the the computa
   <img src="docs/images/ovps.png" />
 </p>
 
+# dftrun CLI (StoBe build/run)
+
+Install and run the StoBe input generator and scheduler:
+
+```bash
+uv tool install . && uvx dftrun --help
+```
+
+See [scripts/README.md](scripts/README.md) for installation, usage, `dftrun.toml` config, and logging.
+
 # Build Requirements
 > [!NOTE]
 > This software is developed to be used by the [STOBE](https://www.fhi.mpg.de/1022673/StoBe) dft calculation platform. Calculations must be compleated using STOBE.

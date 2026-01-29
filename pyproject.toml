@@ -39,6 +39,9 @@ dependencies = [
     "rdkit>=2025.9.3",
 ]
 
+[project.scripts]
+dftrun = "dftlearn.cli:app"
+
 [project.optional-dependencies]
 # GPU support - OPTIONAL but recommended for large datasets
 gpu = [
@@ -87,6 +90,7 @@ exclude = [
   "scripts",
   "tests",
   "python_pipeline",
+  "src/dftlearn/cli/_deprecated",
 ]
 fix = true
 line-length = 88
@@ -101,6 +105,7 @@ exclude = [
   "scripts",
   "tests",
   "python_pipeline",
+  "src/dftlearn/cli/_deprecated",
 ]
 
 [tool.ruff.lint]
@@ -138,6 +143,32 @@ ban-relative-imports = "all"
 
 [tool.ruff.lint.flake8-type-checking]
 strict = true
+
+[tool.ruff.lint.per-file-ignores]
+"src/dftlearn/cli/*.py" = [
+  "B008",
+  "B904",
+  "D100",
+  "D101",
+  "D102",
+  "D103",
+  "D104",
+  "E501",
+  "EM101",
+  "EM102",
+  "FBT001",
+  "PIE810",
+  "PTH103",
+  "PTH109",
+  "PTH118",
+  "PTH123",
+  "PTH207",
+  "RUF005",
+  "SIM105",
+  "TC003",
+  "TRY003",
+  "UP031",
+]
 
 [tool.ruff.format]
 docstring-code-format = true

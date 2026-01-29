@@ -1,0 +1,3 @@
+atom	calc_type	start_time	end_time	duration_s	status
+C2	gnd	2026-01-29T13:18:03.779197	2026-01-29T13:18:04.779536	1.00	completed
+C1	gnd	2026-01-29T13:18:03.879576	2026-01-29T13:18:04.879817	1.00	completed

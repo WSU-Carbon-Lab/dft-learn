@@ -20,10 +20,14 @@ Usage:
     uv run schedule.py --workers 8 gnd .         # Use 8 parallel workers
 """
 
+import atexit
 import multiprocessing
+import os
 import queue
 import shutil
+import signal
 import subprocess
+import sys
 import tarfile
 import threading
 import time
@@ -47,31 +51,29 @@ from rich.progress import (
 console = Console()
 
 
-def calculate_optimal_workers(scan_dir: str, calc_types: list[str], atoms: list[str] | None = None) -> int:
-    """Calculate optimal number of workers based on available directories and CPU cores"""
+def _count_atoms(scan_dir: str, calc_types: list[str], atoms: list[str] | None = None) -> int:
     scan_path = Path(scan_dir)
-    directories = set()
-
+    directories: set[str] = set()
     for calc_type in calc_types:
         if atoms:
-            # Specific atoms
             for atom in atoms:
-                pattern = f"**/{atom}{calc_type}.run"
-                run_files = list(scan_path.glob(pattern))
-                for run_file in run_files:
+                for run_file in scan_path.glob(f"**/{atom}{calc_type}.run"):
                     directories.add(run_file.parent.name)
         else:
-            # All atoms
-            pattern = f"**/*{calc_type}.run"
-            run_files = list(scan_path.glob(pattern))
-            for run_file in run_files:
+            for run_file in scan_path.glob(f"**/*{calc_type}.run"):
                 directories.add(run_file.parent.name)
+    return len(directories)
 
-    num_directories = len(directories)
-    cpu_cores = multiprocessing.cpu_count()
-    optimal_workers = min(num_directories, max(1, cpu_cores - 1))
 
-    return optimal_workers
+def calculate_optimal_workers(
+    scan_dir: str,
+    calc_types: list[str],
+    atoms: list[str] | None = None,
+    max_workers: int | None = None,
+) -> int:
+    num_atoms = _count_atoms(scan_dir, calc_types, atoms)
+    cap = max_workers if max_workers is not None else max(1, multiprocessing.cpu_count() - 1)
+    return min(num_atoms, cap) if num_atoms else 0
 
 
 @dataclass
@@ -380,46 +382,143 @@ class TyperSchedulerRunner:
 app = typer.Typer(help="StoBe DFT Calculation Scheduler - Schedule and run StoBe DFT calculations with parallel execution.")
 
 # Global state for CLI options
-state = {"verbose": False, "workers": 4, "auto_workers": True}
+state = {
+    "verbose": False,
+    "workers": None,
+    "auto_workers": True,
+    "max_workers": max(1, multiprocessing.cpu_count() - 1),
+    "quiet": False,
+    "log_file": None,
+    "scan_dir": None,
+}
+
+
+def _cleanup_fort_files(scan_dir: Path) -> None:
+    root = Path(scan_dir).resolve()
+    for f in root.rglob("fort.*"):
+        if f.is_file():
+            try:
+                f.unlink()
+            except OSError:
+                pass
+
+
+def _atexit_cleanup() -> None:
+    if state.get("quiet"):
+        return
+    scan = state.get("scan_dir")
+    if scan is not None:
+        _cleanup_fort_files(Path(scan))
+
+
+def _signal_cleanup(signum: int | None, frame: object | None) -> None:
+    _atexit_cleanup()
+    sys.exit(128 + (signum if signum is not None else 0))
+
+
+atexit.register(_atexit_cleanup)
+signal.signal(signal.SIGINT, _signal_cleanup)
+try:
+    signal.signal(signal.SIGTERM, _signal_cleanup)
+except (ValueError, OSError):
+    pass
+
+
+def _argv_without_quiet_and_log() -> list[str]:
+    skip = {"--quiet", "-q", "--log-file", "-l"}
+    out: list[str] = []
+    i = 0
+    argv = sys.argv[1:]
+    while i < len(argv):
+        a = argv[i]
+        if a in skip:
+            if a in ("--log-file", "-l") and i + 1 < len(argv):
+                i += 1
+            i += 1
+            continue
+        out.append(a)
+        i += 1
+    return out
+
+
+def _create_package(root: Path, output: Path | None = None) -> Path:
+    root = Path(root).resolve()
+    out = Path(output).resolve() if output else root / "packaged_output.tar.gz"
+    subdirs = [root / d for d in ("GND", "EXC", "TP", "NEXAFS") if (root / d).is_dir()]
+    if not subdirs:
+        raise FileNotFoundError("No GND/, EXC/, TP/, or NEXAFS/ found")
+    with tarfile.open(out, "w:gz") as tf:
+        for d in subdirs:
+            for f in d.rglob("*"):
+                if f.is_file():
+                    tf.add(f, arcname=f.relative_to(root))
+    return out
+
+
+def _spawn_quiet_background(log_file_override: Path | None = None) -> None:
+    log_path = log_file_override or state["log_file"] or Path.cwd() / "output.log"
+    log_path = Path(log_path).resolve()
+    uv = shutil.which("uv") or "uv"
+    script = Path(__file__).resolve()
+    child_argv = [uv, "run", str(script)] + _argv_without_quiet_and_log()
+    with log_path.open("w") as lf:
+        proc = subprocess.Popen(
+            child_argv,
+            stdout=lf,
+            stderr=subprocess.STDOUT,
+            cwd=os.getcwd(),
+            start_new_session=True,
+        )
+    typer.echo(f"Started in background (PID {proc.pid}), logging to {log_path}")
+    raise typer.Exit(0)
 
 
 @app.callback()
 def main(
-    workers: int = typer.Option(4, "--workers", "-w", help="Number of parallel workers (default: auto-calculated)"),
+    workers: int | None = typer.Option(None, "--workers", "-w", help="Number of workers (default: one per atom, capped by --max-workers)"),
+    max_workers: int | None = typer.Option(None, "--max-workers", "-m", help="Max workers when auto (default: CPU count - 1)"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Verbose output"),
+    quiet: bool = typer.Option(False, "--quiet", "-q", help="Run in background and log to output.log"),
+    log_file: Path | None = typer.Option(None, "--log-file", "-l", help="Log file when --quiet (default: output.log)"),
 ):
     """StoBe DFT Calculation Scheduler
 
     Schedule and run StoBe DFT calculations with parallel execution and progress bars.
     """
-    # Check if user explicitly set workers (different from default)
-    state["auto_workers"] = workers == 4  # Default value means auto-calculate
+    state["quiet"] = quiet
+    state["log_file"] = log_file.resolve() if log_file else None
+    state["auto_workers"] = workers is None
     state["workers"] = workers
+    state["max_workers"] = max_workers if max_workers is not None else max(1, multiprocessing.cpu_count() - 1)
     state["verbose"] = verbose
 
-    if verbose:
+    if verbose and not quiet:
         if state["auto_workers"]:
-            typer.echo("🔧 Worker count will be auto-calculated per directory")
+            typer.echo("Workers: one per atom, max %s" % state["max_workers"])
         else:
-            typer.echo(f"🔧 Using {workers} workers")
+            typer.echo("Using %s workers" % workers)
 
 
 @app.command()
 def gnd(
     directory: Path = typer.Argument(..., exists=True, help="Directory containing run files"),
     atom: list[str] | None = typer.Option(None, "--atom", "-a", help="Specific atom(s) to calculate (e.g., C1, C2)"),
+    quiet: bool = typer.Option(False, "--quiet", "-q", help="Run in background and log to output.log"),
+    log_file: Path | None = typer.Option(None, "--log-file", "-l", help="Log file when --quiet (default: output.log)"),
 ):
     """Run ground state calculations"""
-    typer.echo(f"🎯 Starting ground state calculations in {directory}")
+    if quiet or state.get("quiet"):
+        _spawn_quiet_background(log_file)
+    state["scan_dir"] = str(directory)
+    typer.echo(f"Starting ground state calculations in {directory}")
     if atom:
-        typer.echo(f"⚛️  Target atoms: {atom}")
+        typer.echo(f"Target atoms: {atom}")
 
-    # Calculate optimal workers if auto mode is enabled
     workers = state["workers"]
     if state["auto_workers"]:
-        workers = calculate_optimal_workers(str(directory), ["gnd"], atom)
+        workers = calculate_optimal_workers(str(directory), ["gnd"], atom, state["max_workers"])
         if state["verbose"]:
-            typer.echo(f"Auto-calculated {workers} workers for this directory")
+            typer.echo(f"Workers: {workers} (one per atom, max %s)" % state["max_workers"])
 
     runner = TyperSchedulerRunner()
     results = runner.run_calculations_with_progress(str(directory), ["gnd"], workers, atom)
@@ -435,16 +534,20 @@ def gnd(
 def exc(
     directory: Path = typer.Argument(..., exists=True, help="Directory containing run files"),
     atom: list[str] | None = typer.Option(None, "--atom", "-a", help="Specific atom(s) to calculate"),
+    quiet: bool = typer.Option(False, "--quiet", "-q", help="Run in background and log to output.log"),
+    log_file: Path | None = typer.Option(None, "--log-file", "-l", help="Log file when --quiet (default: output.log)"),
 ):
     """Run excited state calculations"""
-    typer.echo(f"🎯 Starting excited state calculations in {directory}")
+    if quiet or state.get("quiet"):
+        _spawn_quiet_background(log_file)
+    state["scan_dir"] = str(directory)
+    typer.echo(f"Starting excited state calculations in {directory}")
 
-    # Calculate optimal workers if auto mode is enabled
     workers = state["workers"]
     if state["auto_workers"]:
-        workers = calculate_optimal_workers(str(directory), ["exc"], atom)
+        workers = calculate_optimal_workers(str(directory), ["exc"], atom, state["max_workers"])
         if state["verbose"]:
-            typer.echo(f"Auto-calculated {workers} workers for this directory")
+            typer.echo(f"Workers: {workers} (one per atom, max %s)" % state["max_workers"])
 
     runner = TyperSchedulerRunner()
     results = runner.run_calculations_with_progress(str(directory), ["exc"], workers, atom)
@@ -460,16 +563,20 @@ def exc(
 def tp(
     directory: Path = typer.Argument(..., exists=True, help="Directory containing run files"),
     atom: list[str] | None = typer.Option(None, "--atom", "-a", help="Specific atom(s) to calculate"),
+    quiet: bool = typer.Option(False, "--quiet", "-q", help="Run in background and log to output.log"),
+    log_file: Path | None = typer.Option(None, "--log-file", "-l", help="Log file when --quiet (default: output.log)"),
 ):
     """Run transition potential calculations"""
-    typer.echo(f"🎯 Starting transition potential calculations in {directory}")
+    if quiet or state.get("quiet"):
+        _spawn_quiet_background(log_file)
+    state["scan_dir"] = str(directory)
+    typer.echo(f"Starting transition potential calculations in {directory}")
 
-    # Calculate optimal workers if auto mode is enabled
     workers = state["workers"]
     if state["auto_workers"]:
-        workers = calculate_optimal_workers(str(directory), ["tp"], atom)
+        workers = calculate_optimal_workers(str(directory), ["tp"], atom, state["max_workers"])
         if state["verbose"]:
-            typer.echo(f"Auto-calculated {workers} workers for this directory")
+            typer.echo(f"Workers: {workers} (one per atom, max %s)" % state["max_workers"])
 
     runner = TyperSchedulerRunner()
     results = runner.run_calculations_with_progress(str(directory), ["tp"], workers, atom)
@@ -485,16 +592,20 @@ def tp(
 def xas(
     directory: Path = typer.Argument(..., exists=True, help="Directory containing run files"),
     atom: list[str] | None = typer.Option(None, "--atom", "-a", help="Specific atom(s) to calculate"),
+    quiet: bool = typer.Option(False, "--quiet", "-q", help="Run in background and log to output.log"),
+    log_file: Path | None = typer.Option(None, "--log-file", "-l", help="Log file when --quiet (default: output.log)"),
 ):
     """Run XAS calculations"""
-    typer.echo(f"🎯 Starting XAS calculations in {directory}")
+    if quiet or state.get("quiet"):
+        _spawn_quiet_background(log_file)
+    state["scan_dir"] = str(directory)
+    typer.echo(f"Starting XAS calculations in {directory}")
 
-    # Calculate optimal workers if auto mode is enabled
     workers = state["workers"]
     if state["auto_workers"]:
-        workers = calculate_optimal_workers(str(directory), ["xas"], atom)
+        workers = calculate_optimal_workers(str(directory), ["xas"], atom, state["max_workers"])
         if state["verbose"]:
-            typer.echo(f"Auto-calculated {workers} workers for this directory")
+            typer.echo(f"Workers: {workers} (one per atom, max %s)" % state["max_workers"])
 
     runner = TyperSchedulerRunner()
     results = runner.run_calculations_with_progress(str(directory), ["xas"], workers, atom)
@@ -510,16 +621,20 @@ def xas(
 def seq(
     directory: Path = typer.Argument(..., exists=True, help="Directory containing run files"),
     atom: list[str] | None = typer.Option(None, "--atom", "-a", help="Specific atom(s) to calculate"),
+    quiet: bool = typer.Option(False, "--quiet", "-q", help="Run in background and log to output.log"),
+    log_file: Path | None = typer.Option(None, "--log-file", "-l", help="Log file when --quiet (default: output.log)"),
 ):
     """Run sequential calculations"""
-    typer.echo(f"🎯 Starting sequential calculations in {directory}")
+    if quiet or state.get("quiet"):
+        _spawn_quiet_background(log_file)
+    state["scan_dir"] = str(directory)
+    typer.echo(f"Starting sequential calculations in {directory}")
 
-    # Calculate optimal workers if auto mode is enabled
     workers = state["workers"]
     if state["auto_workers"]:
-        workers = calculate_optimal_workers(str(directory), ["seq"], atom)
+        workers = calculate_optimal_workers(str(directory), ["seq"], atom, state["max_workers"])
         if state["verbose"]:
-            typer.echo(f"Auto-calculated {workers} workers for this directory")
+            typer.echo(f"Workers: {workers} (one per atom, max %s)" % state["max_workers"])
 
     runner = TyperSchedulerRunner()
     results = runner.run_calculations_with_progress(str(directory), ["seq"], workers, atom)
@@ -535,38 +650,48 @@ def seq(
 def all(
     directory: Path = typer.Argument(..., exists=True, help="Directory containing run files"),
     atom: list[str] | None = typer.Option(None, "--atom", "-a", help="Specific atom(s) to calculate"),
+    quiet: bool = typer.Option(False, "--quiet", "-q", help="Run in background and log to output.log"),
+    log_file: Path | None = typer.Option(None, "--log-file", "-l", help="Log file when --quiet (default: output.log)"),
 ):
     """Run all calculation types sequentially (gnd -> exc -> tp -> xas)"""
+    if quiet or state.get("quiet"):
+        _spawn_quiet_background(log_file)
+    state["scan_dir"] = str(directory)
     calc_types = ["gnd", "exc", "tp", "xas"]
     all_results = []
 
-    # Calculate optimal workers if auto mode is enabled
     workers = state["workers"]
     if state["auto_workers"]:
-        workers = calculate_optimal_workers(str(directory), calc_types, atom)
+        workers = calculate_optimal_workers(str(directory), calc_types, atom, state["max_workers"])
         if state["verbose"]:
-            typer.echo(f"Auto-calculated {workers} workers for this directory")
+            typer.echo(f"Workers: {workers} (one per atom, max %s)" % state["max_workers"])
 
     typer.echo(f"Starting all calculations in {directory}")
     typer.echo(f"Sequence: {' -> '.join(calc_types)}")
 
     for calc_type in calc_types:
-        typer.echo(f"\n🎯 Starting {calc_type.upper()} calculations")
+        typer.echo(f"\nStarting {calc_type.upper()} calculations")
 
         runner = TyperSchedulerRunner()
         results = runner.run_calculations_with_progress(str(directory), [calc_type], workers, atom)
         all_results.extend(results)
 
-        if calc_type != calc_types[-1]:  # Not the last calculation
-            typer.echo("⏸️  Pausing 2 seconds before next calculation type...")
+        if calc_type != calc_types[-1]:
+            typer.echo("Pausing 2 seconds before next calculation type...")
             time.sleep(2)
 
     completed = sum(1 for r in all_results if r["status"] == "completed")
     failed = sum(1 for r in all_results if r["status"] == "failed")
 
-    typer.echo("\n🎉 All calculations completed!")
-    typer.echo(f"📊 Total processed: {len(all_results)} calculations")
-    typer.echo(f"✅ Completed: {completed}, ❌ Failed: {failed}")
+    typer.echo("\nAll calculations completed!")
+    typer.echo(f"Total processed: {len(all_results)} calculations")
+    typer.echo(f"Completed: {completed}, Failed: {failed}")
+
+    try:
+        out = _create_package(Path(directory))
+        typer.echo(f"Created {out}")
+    except FileNotFoundError:
+        pass
 
 
 @app.command()
@@ -650,18 +775,12 @@ def package(
     output: Path | None = typer.Option(None, "--output", "-o", help="Output tarball path (default: packaged_output.tar.gz in directory)"),
 ):
     """Create packaged_output.tar.gz from GND/, EXC/, TP/, NEXAFS/"""
-    root = Path(directory).resolve()
-    out = Path(output).resolve() if output else root / "packaged_output.tar.gz"
-    subdirs = [root / d for d in ("GND", "EXC", "TP", "NEXAFS") if (root / d).is_dir()]
-    if not subdirs:
-        typer.echo("No GND/, EXC/, TP/, or NEXAFS/ found")
+    try:
+        out = _create_package(Path(directory), output)
+        typer.echo(f"Created {out}")
+    except FileNotFoundError as e:
+        typer.echo(str(e))
         raise typer.Exit(1)
-    with tarfile.open(out, "w:gz") as tf:
-        for d in subdirs:
-            for f in d.rglob("*"):
-                if f.is_file():
-                    tf.add(f, arcname=f.relative_to(root))
-    typer.echo(f"Created {out}")
 
 
 if __name__ == "__main__":

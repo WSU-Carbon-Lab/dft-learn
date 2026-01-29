@@ -1,0 +1,25 @@
+Starting all calculations in tests/fixtures/stobe_minimal
+Sequence: gnd -> exc -> tp -> xas
+
+🎯 Starting GND calculations
+  Processing 2 calculations | completed C1 gnd (1.0s) ━━━━━━━━━━━ 100% • 0:00:01
+
+⏸️  Pausing 2 seconds before next calculation type...
+
+🎯 Starting EXC calculations
+  Processing 2 calculations | completed C1 exc (1.0s) ━━━━━━━━━━━ 100% • 0:00:01
+
+⏸️  Pausing 2 seconds before next calculation type...
+
+🎯 Starting TP calculations
+  Processing 2 calculations | completed C1 1tp (1.0s) ━━━━━━━━━━━ 100% • 0:00:01
+
+⏸️  Pausing 2 seconds before next calculation type...
+
+🎯 Starting XAS calculations
+  Processing 2 calculations | completed C1 xas (1.0s) ━━━━━━━━━━━ 100% • 0:00:01
+
+
+🎉 All calculations completed!
+📊 Total processed: 8 calculations
+✅ Completed: 8, ❌ Failed: 0

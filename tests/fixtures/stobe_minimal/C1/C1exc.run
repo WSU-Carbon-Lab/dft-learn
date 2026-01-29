@@ -6,8 +6,8 @@ TITLE
 minimal EXC
 SYMMETRY C1
 CARTESIAN ANGSTROMS
-C        0.000000       0.000000       0.000000     6     32
-C        1.500000       0.000000       0.000000     4     32
+C       0.000000      0.000000      0.000000     6     32
+C       1.500000      0.000000      0.000000     4     32
 END
 RUNTYPE startup nooptimize
 SCFTYPE direct

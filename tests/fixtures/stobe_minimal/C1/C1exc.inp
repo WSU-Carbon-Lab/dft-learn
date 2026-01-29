@@ -1,9 +1,5 @@
-#!/bin/bash
-ln -sf /bin/stobe/Basis/baslib.new7 fort.3
-ln -sf /bin/stobe/Basis/symbasis.new fort.4
-cat >C1tp.inp<</.
 TITLE
-minimal TP
+minimal EXC
 SYMMETRY C1
 CARTESIAN ANGSTROMS
 C       0.000000      0.000000      0.000000     6     32
@@ -25,16 +21,14 @@ MULLIKEN on full
 VIRT all
 SPIN FULL
 FSYM scfocc excited
-ALFA 8
+ALFA 9
 BETA 8
 SYM 1
-ALFA 0 1 1 0.5
+ALFA 0 1 1 0.0
 BETA 0 0
 END
 MULLIKEN on full
 FILE molden
-XRAY xas
-END
 END
 A-CARBON (5,2;5,2)
 A-CARBON(+4) (3,3;3,3)
@@ -44,9 +38,3 @@ P-CARBON(+4) (3,1:8,0)
 P-CARBON(+4) (3,1:8,0)
 X-FIRST
 END
-/.
-mkdir -p ../TP
-StoBe.x <C1tp.inp>& ../TP/C1tp.out
-mv Molden.molf ../TP/C1tp.molden
-mv fort.11 C1.xas
-rm fort.*

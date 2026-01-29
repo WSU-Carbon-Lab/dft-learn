@@ -1,7 +1,3 @@
-#!/bin/bash
-ln -sf /bin/stobe/Basis/baslib.new7 fort.3
-ln -sf /bin/stobe/Basis/symbasis.new fort.4
-cat >C2gnd.inp<</.
 TITLE
 minimal GND
 SYMMETRY C1
@@ -37,8 +33,3 @@ P-CARBON(+4) (3,1:8,0)
 P-CARBON(+4) (3,1:8,0)
 X-FIRST
 END
-/.
-mkdir -p ../GND
-StoBe.x <C2gnd.inp>& ../GND/C2gnd.out
-mv Molden.molf ../GND/C2gnd.molden
-rm fort.*
