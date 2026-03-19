@@ -22,6 +22,7 @@ _DEFAULT_SYM = "C1"
 _DEFAULT_MULT = "1"
 _DEFAULT_GEOUNITS = "ANGSTROMS"
 _DEFAULT_RUNTYPE = "startup nooptimize"
+_DEFAULT_RUNTYPE_GND = "startup optimize"
 _DEFAULT_SCFTYPE = "direct"
 _DEFAULT_POTENTIAL = "nonlocal rpbe pbe"
 _DEFAULT_GRID = "fine"
@@ -188,7 +189,8 @@ def _make_run_file(
 ) -> None:
     sym = sym or _DEFAULT_SYM
     geom = geom or _DEFAULT_GEOUNITS
-    runtype = runtype or _DEFAULT_RUNTYPE
+    if runtype is None or "startup" in runtype:
+        runtype = _DEFAULT_RUNTYPE_GND if ftype == "gnd" else _DEFAULT_RUNTYPE
     scftype = scftype or _DEFAULT_SCFTYPE
     potential = potential or _DEFAULT_POTENTIAL
     grid = grid or _DEFAULT_GRID
