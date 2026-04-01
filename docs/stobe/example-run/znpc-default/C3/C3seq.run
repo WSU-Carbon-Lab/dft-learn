@@ -1,0 +1,11 @@
+chmod +x ./C3gnd.run
+./C3gnd.run
+
+chmod +x ./C3exc.run
+./C3exc.run
+
+chmod +x ./C3tp.run
+./C3tp.run
+
+chmod +x ./C3xas.run
+./C3xas.run

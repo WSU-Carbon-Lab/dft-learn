@@ -1,0 +1,17 @@
+#!/bin/bash
+ln -sf "${PWD}/C3.xas" fort.1
+cat >C3xas.inp<</.
+title
+znpc-defualt XAS
+PRINT
+RANGE 280 320
+POINTS 2000
+WIDTH 0.6 12 288 320
+XRAY xas
+TOTAL 1
+END
+/.
+mkdir -p ../NEXAFS
+/bin/stobe/Source/xrayspec.x <C3xas.inp>& ../NEXAFS/C3xas.out
+cp XrayT001.out ../NEXAFS/C3.out
+rm fort.*

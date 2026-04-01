@@ -1,0 +1,11 @@
+chmod +x ./C2gnd.run
+./C2gnd.run
+
+chmod +x ./C2exc.run
+./C2exc.run
+
+chmod +x ./C2tp.run
+./C2tp.run
+
+chmod +x ./C2xas.run
+./C2xas.run

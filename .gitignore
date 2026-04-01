@@ -1,3 +1,21 @@
 output/*
 **/*.svg
 **/*.csv
+.dotagent/stacks.json
+.venv/
+
+# Python things
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pyw
+*.pyz
+*.pywz
+*.pyzw
+
+# Jupyter things
+*checkpoint.ipynb
+
+# misc things
+.DS_Store

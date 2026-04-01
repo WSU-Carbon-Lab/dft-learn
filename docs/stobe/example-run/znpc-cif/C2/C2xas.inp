@@ -1,0 +1,9 @@
+title
+znpc_default XAS 
+PRINT
+RANGE 280 320
+POINTS 2000
+WIDTH 0.5 12 288 320
+XRAY xas
+TOTAL 1
+END

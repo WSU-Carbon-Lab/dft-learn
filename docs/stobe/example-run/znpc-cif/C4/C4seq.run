@@ -1,0 +1,11 @@
+chmod +x ./C4gnd.run
+./C4gnd.run
+
+chmod +x ./C4exc.run
+./C4exc.run
+
+chmod +x ./C4tp.run
+./C4tp.run
+
+chmod +x ./C4xas.run
+./C4xas.run

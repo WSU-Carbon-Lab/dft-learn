@@ -1,0 +1,16 @@
+#!/bin/csh -f
+ln -s ~/projects/dft/znpc_default/C1/C1.xas fort.1
+cat >C1xas.inp<</.
+title
+znpc_default XAS 
+PRINT
+RANGE 280 320
+POINTS 2000
+WIDTH 0.5 12 288 320
+XRAY xas
+TOTAL 1
+END
+/.
+xrayspec.x <C1xas.inp>& C1xas.out
+cp XrayT001.out C1.out
+rm fort.*

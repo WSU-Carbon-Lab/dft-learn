@@ -1,15 +1,5 @@
-"""Learning from DFT calculations."""
+"""dftlearn: analysis helpers for DFT and StoBe-style spectroscopy workflows."""
 
-from dftlearn.io import (
-    load_data,
-    process_calculation_type,
-    process_directory,
-    process_file,
-)
+from __future__ import annotations
 
-__all__ = [
-    "load_data",
-    "process_calculation_type",
-    "process_directory",
-    "process_file",
-]
+__all__: list[str] = []
