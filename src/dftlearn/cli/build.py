@@ -424,10 +424,10 @@ def _make_run_file(
 
 def _make_xas_run(mname: str, aname: str, n_atoms: int, title: str) -> None:
     energy_ranges: dict[str, tuple[str, str]] = {
-        "C": ("280 320", "0.6 12 288 320"),
-        "N": ("400 450", "0.6 12 418 450"),
-        "O": ("530 580", "0.6 12 535 560"),
-        "Ni": ("830 880", "0.6 12 830 880"),
+        "C": ("280 320", "0.5 12 288 320"),
+        "N": ("400 450", "0.5 12 418 450"),
+        "O": ("530 580", "0.5 12 535 560"),
+        "Ni": ("830 880", "0.5 12 830 880"),
     }
     elem = aname.upper()
     if elem not in energy_ranges:
