@@ -1,4 +1,4 @@
-"""Post-process a finished StoBe run directory: spectra CSV and XAS figures."""
+"""Post-process a finished StoBe run directory: spectra CSV, XAS figures, SCF diagnostics."""
 
 from __future__ import annotations
 
@@ -8,6 +8,7 @@ import typer
 from rich.console import Console
 
 from dftlearn.cli.build import _auto_detect_xyz
+from dftlearn.visualization.scf_diagnostics_figure import write_scf_diagnostics_bundle
 from dftlearn.visualization.xas_site_figure import write_xas_site_report
 
 _CONSOLE = Console()
@@ -41,7 +42,7 @@ def postprocess_cmd(
     ),
     dpi: int = typer.Option(150, "--dpi", min=72, max=600, help="PNG resolution."),
 ) -> None:
-    """Extract site X-ray tables, write one CSV, and save a summary PNG figure."""
+    """Extract site X-ray tables, write CSVs, XAS summary PNG, and SCF diagnostics."""
     run_root = Path(run_root).resolve()
     packaged = Path(out).resolve() if out else (run_root / "packaged_output")
     xyz_path = Path(xyz).resolve() if xyz else _auto_detect_xyz(run_root).resolve()
@@ -58,3 +59,14 @@ def postprocess_cmd(
         raise typer.Exit(1) from exc
     _CONSOLE.print(f"[green]Wrote[/green] {csv_p}")
     _CONSOLE.print(f"[green]Wrote[/green] {fig_p}")
+    diag = write_scf_diagnostics_bundle(run_root, packaged, dpi=dpi)
+    if diag is not None:
+        long_csv, metrics_csv, diag_png = diag
+        _CONSOLE.print(f"[green]Wrote[/green] {long_csv}")
+        _CONSOLE.print(f"[green]Wrote[/green] {metrics_csv}")
+        _CONSOLE.print(f"[green]Wrote[/green] {diag_png}")
+    else:
+        _CONSOLE.print(
+            "[yellow]No SCF convergence tables found (skipped scf_convergence_*.csv "
+            "and scf_diagnostics.png).[/yellow]"
+        )

@@ -2,6 +2,12 @@
 
 from __future__ import annotations
 
+from dftlearn.io.stobe_scf_convergence import (
+    collect_scf_convergence_long,
+    discover_site_stobe_out,
+    parse_stobe_scf_convergence_table,
+    scf_convergence_auc_metrics,
+)
 from dftlearn.io.xray_out import (
     collect_site_xray_spectra,
     parse_xray_out_table,
@@ -17,10 +23,14 @@ from dftlearn.io.xyz_structure import (
 )
 
 __all__ = [
+    "collect_scf_convergence_long",
     "collect_site_xray_spectra",
+    "discover_site_stobe_out",
     "element_symbol_from_xyz_label",
     "mol_from_xyz_file",
+    "parse_stobe_scf_convergence_table",
     "parse_xray_out_table",
+    "scf_convergence_auc_metrics",
     "site_label_to_atom_index",
     "site_label_to_atom_index_from_rows",
     "site_spectra_to_long_frame",
