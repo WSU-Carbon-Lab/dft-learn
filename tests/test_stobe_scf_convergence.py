@@ -12,8 +12,10 @@ if TYPE_CHECKING:
 
 from dftlearn.io.stobe_scf_convergence import (
     collect_scf_convergence_long,
+    discover_site_stobe_out,
     parse_stobe_scf_convergence_table,
     scf_convergence_auc_metrics,
+    site_tag_from_stobe_out_filename,
 )
 
 MINIMAL_SCF_TAIL = """
@@ -59,6 +61,51 @@ def test_collect_and_metrics(tmp_path: Path) -> None:
     assert m["diis_start_iter"].iloc[0] == 3.0
     assert m["energy_auc"].iloc[0] > 0
     assert m["density_auc"].iloc[0] > 0
+
+
+def test_site_tag_from_stobe_out_filename() -> None:
+    """Parse ``SITE`` from StoBe-style basenames."""
+    assert site_tag_from_stobe_out_filename("C1gnd.out", "gnd") == "C1"
+    assert site_tag_from_stobe_out_filename("C12exc.out", "exc") == "C12"
+    assert site_tag_from_stobe_out_filename("Zn1tp.out", "tp") == "Zn1"
+    assert site_tag_from_stobe_out_filename("wrong.txt", "gnd") is None
+
+
+def test_discover_site_stobe_out_gnd_folder_only(tmp_path: Path) -> None:
+    """``dftrun organize`` layout: flat files under ``GND``/``EXC``/``TP``."""
+    gnd = tmp_path / "GND"
+    gnd.mkdir()
+    (gnd / "C1gnd.out").write_text(MINIMAL_SCF_TAIL, encoding="utf-8")
+    found = discover_site_stobe_out(tmp_path, "gnd")
+    assert found == [("C1", (gnd / "C1gnd.out").resolve())]
+
+
+def test_discover_site_stobe_out_legacy_beats_category(tmp_path: Path) -> None:
+    """Per-site folder wins over ``GND/`` when both exist."""
+    c1 = tmp_path / "C1"
+    c1.mkdir()
+    gnd = tmp_path / "GND"
+    gnd.mkdir()
+    (c1 / "C1gnd.out").write_text(MINIMAL_SCF_TAIL, encoding="utf-8")
+    (gnd / "C1gnd.out").write_text("stale\n", encoding="utf-8")
+    found = discover_site_stobe_out(tmp_path, "gnd")
+    assert found[0][0] == "C1"
+    assert found[0][1] == (c1 / "C1gnd.out").resolve()
+
+
+def test_discover_site_stobe_out_rglob_nested_gnd(tmp_path: Path) -> None:
+    """Recursive discovery finds ``**/GND/*gnd.out`` when not at run root."""
+    nested = tmp_path / "batch1" / "GND"
+    nested.mkdir(parents=True)
+    (nested / "C2gnd.out").write_text(MINIMAL_SCF_TAIL, encoding="utf-8")
+    found = discover_site_stobe_out(tmp_path, "gnd")
+    assert found == [("C2", (nested / "C2gnd.out").resolve())]
+
+
+def test_discover_site_stobe_out_invalid_suffix(tmp_path: Path) -> None:
+    """Invalid calculation suffix raises ``ValueError``."""
+    with pytest.raises(ValueError, match="calc_suffix"):
+        discover_site_stobe_out(tmp_path, "xas")
 
 
 def test_collect_raises_when_no_data(tmp_path: Path) -> None:

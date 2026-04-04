@@ -7,6 +7,7 @@ from dftlearn.io.stobe_scf_convergence import (
     discover_site_stobe_out,
     parse_stobe_scf_convergence_table,
     scf_convergence_auc_metrics,
+    site_tag_from_stobe_out_filename,
 )
 from dftlearn.io.xray_out import (
     collect_site_xray_spectra,
@@ -34,6 +35,7 @@ __all__ = [
     "site_label_to_atom_index",
     "site_label_to_atom_index_from_rows",
     "site_spectra_to_long_frame",
+    "site_tag_from_stobe_out_filename",
     "site_xray_paths",
     "xyz_rows_from_file",
 ]

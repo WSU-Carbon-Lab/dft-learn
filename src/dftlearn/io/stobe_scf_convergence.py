@@ -1,4 +1,10 @@
-"""Parse StoBe SCF iteration tables from ``*gnd.out``, ``*exc.out``, and ``*tp.out``."""
+"""Parse StoBe SCF iteration tables from ``*gnd.out``, ``*exc.out``, and ``*tp.out``.
+
+Output discovery follows the same layouts as ``dftrun run organize``: (1) legacy
+per-site directories ``SITE/SITE{gnd|exc|tp}.out``, (2) flat category trees
+``GND/``, ``EXC/``, ``TP/`` at the run root, (3) a filtered recursive search for
+``*{gnd|exc|tp}.out`` when files live elsewhere.
+"""
 
 from __future__ import annotations
 
@@ -7,6 +13,64 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from natsort import natsorted
+
+_CALC_SUFFIX_TO_CATEGORY: dict[str, str] = {"gnd": "GND", "exc": "EXC", "tp": "TP"}
+
+_LEGACY_SKIP_SITE_DIR_NAMES: frozenset[str] = frozenset(
+    {
+        "GND",
+        "EXC",
+        "TP",
+        "NEXAFS",
+        "packaged_output",
+    }
+)
+
+_RGLOB_SKIP_DIR_NAMES: frozenset[str] = frozenset(
+    {
+        "packaged_output",
+        ".git",
+        "__pycache__",
+        ".venv",
+        "node_modules",
+        "build",
+        "dist",
+    }
+)
+
+
+def site_tag_from_stobe_out_filename(filename: str, calc_suffix: str) -> str | None:
+    """Return the site label embedded in a StoBe ``.out`` name, or ``None``.
+
+    StoBe names are ``{site}{gnd|exc|tp}.out`` (e.g. ``C1gnd.out`` -> ``C1``).
+
+    Parameters
+    ----------
+    filename : str
+        Basename only (no path).
+    calc_suffix : str
+        One of ``gnd``, ``exc``, ``tp``.
+
+    Returns
+    -------
+    str | None
+        Site tag when ``filename`` ends with ``{calc_suffix}.out`` with a
+        non-empty prefix; otherwise ``None``.
+    """
+    tail = f"{calc_suffix}.out"
+    if not filename.endswith(tail):
+        return None
+    tag = filename[: -len(tail)]
+    return tag or None
+
+
+def _rglob_path_is_skipped(path: Path, run_root: Path) -> bool:
+    """Exclude tooling trees; do not skip ``GND``/``EXC``/``TP`` (organized outs)."""
+    try:
+        rel = path.relative_to(run_root)
+    except ValueError:
+        return True
+    return any(p in _RGLOB_SKIP_DIR_NAMES or p.startswith(".") for p in rel.parts)
 
 
 def parse_stobe_scf_convergence_table(path: Path) -> pd.DataFrame:
@@ -95,30 +159,80 @@ def discover_site_stobe_out(
     run_root: Path,
     calc_suffix: str,
 ) -> list[tuple[str, Path]]:
-    """Find ``site / site{calc_suffix}.out`` under ``run_root``.
+    """Find ``*`` ``{site}{calc_suffix}.out`` files for one calculation type.
+
+    Resolution order (first path wins per ``site`` tag):
+
+    (1) **Per-site folders** (legacy): ``run_root/SITE/SITE{calc}.out`` for each
+    immediate subdirectory ``SITE`` that is not a reserved name (so ``GND`` is
+    not treated as a site folder).
+
+    (2) **Category folders** (after ``dftrun run organize``): ``run_root/GND``,
+    ``EXC``, or ``TP`` containing flat ``SITE{calc}.out`` files.
+
+    (3) **Recursive fallback**: ``run_root/**/SITE{calc}.out``, skipping only
+    non-chemistry trees (``packaged_output``, ``.git``, ``__pycache__``, etc.);
+    ``GND``/``EXC``/``TP`` segments are still searched.
 
     Parameters
     ----------
     run_root : pathlib.Path
-        StoBe run directory with per-site subfolders.
+        StoBe run directory (the folder passed to ``dftrun postprocess``).
     calc_suffix : str
-        One of ``gnd``, ``exc``, ``tp`` (appended to site name, before ``.out``).
+        One of ``gnd``, ``exc``, ``tp``.
 
     Returns
     -------
     list[tuple[str, pathlib.Path]]
         Pairs ``(site_tag, path)`` sorted naturally by site tag.
+
+    Raises
+    ------
+    ValueError
+        If ``calc_suffix`` is not ``gnd``, ``exc``, or ``tp``.
     """
+    if calc_suffix not in _CALC_SUFFIX_TO_CATEGORY:
+        allowed = ", ".join(sorted(_CALC_SUFFIX_TO_CATEGORY))
+        msg = f"calc_suffix must be one of {allowed}, got {calc_suffix!r}"
+        raise ValueError(msg)
+
     run_root = Path(run_root).resolve()
-    found: list[tuple[str, Path]] = []
-    for child in run_root.iterdir():
+    ordered: dict[str, Path] = {}
+
+    def add_if_missing(site: str, path: Path) -> None:
+        if site not in ordered:
+            ordered[site] = path.resolve()
+
+    for child in sorted(run_root.iterdir(), key=lambda p: p.name):
         if not child.is_dir():
+            continue
+        if child.name in _LEGACY_SKIP_SITE_DIR_NAMES or child.name.startswith("."):
             continue
         site = child.name
         candidate = child / f"{site}{calc_suffix}.out"
         if candidate.is_file():
-            found.append((site, candidate.resolve()))
-    return natsorted(found, key=lambda p: p[0])
+            add_if_missing(site, candidate)
+
+    cat_dir = run_root / _CALC_SUFFIX_TO_CATEGORY[calc_suffix]
+    if cat_dir.is_dir():
+        for f in sorted(cat_dir.glob(f"*{calc_suffix}.out")):
+            if not f.is_file():
+                continue
+            site = site_tag_from_stobe_out_filename(f.name, calc_suffix)
+            if site is not None:
+                add_if_missing(site, f)
+
+    pattern = f"*{calc_suffix}.out"
+    for f in sorted(run_root.rglob(pattern)):
+        if not f.is_file():
+            continue
+        if _rglob_path_is_skipped(f, run_root):
+            continue
+        site = site_tag_from_stobe_out_filename(f.name, calc_suffix)
+        if site is not None:
+            add_if_missing(site, f)
+
+    return natsorted(ordered.items(), key=lambda p: p[0])
 
 
 def collect_scf_convergence_long(
@@ -133,7 +247,9 @@ def collect_scf_convergence_long(
     Parameters
     ----------
     run_root : pathlib.Path
-        Run root containing ``C1/``, ``C2/``, etc.
+        StoBe run root: either per-site ``C1/``, ``C2/``, … and/or ``GND/``,
+        ``EXC/``, ``TP/`` after ``dftrun run organize`` (see
+        :func:`discover_site_stobe_out`).
     calc_types : tuple[str, ...], optional
         StoBe run-type suffixes to scan.
 
