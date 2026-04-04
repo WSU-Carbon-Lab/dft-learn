@@ -2,6 +2,15 @@
 
 from __future__ import annotations
 
+from dftlearn.io.stobe_final_energy import (
+    HA_TO_EV,
+    collect_delta_ks_site_table,
+    collect_final_energies_long,
+    enrich_final_energies_delta_vs_gnd,
+    final_energy_site_summary,
+    parse_stobe_final_energy_tables,
+    parse_stobe_tp_lumo_alpha_ev,
+)
 from dftlearn.io.stobe_scf_convergence import (
     collect_scf_convergence_long,
     discover_site_stobe_out,
@@ -24,11 +33,18 @@ from dftlearn.io.xyz_structure import (
 )
 
 __all__ = [
+    "HA_TO_EV",
+    "collect_delta_ks_site_table",
+    "collect_final_energies_long",
     "collect_scf_convergence_long",
     "collect_site_xray_spectra",
     "discover_site_stobe_out",
     "element_symbol_from_xyz_label",
+    "enrich_final_energies_delta_vs_gnd",
+    "final_energy_site_summary",
     "mol_from_xyz_file",
+    "parse_stobe_final_energy_tables",
+    "parse_stobe_tp_lumo_alpha_ev",
     "parse_stobe_scf_convergence_table",
     "parse_xray_out_table",
     "scf_convergence_auc_metrics",
