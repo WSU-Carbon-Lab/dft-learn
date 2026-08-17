@@ -14,6 +14,7 @@ The project is an attempt to solidify and expand uppon the work of [@victormurci
 
 The project is organized into the following folders:
 
+- **.agents/**: Canonical project **skills**, **subagents**, and **rules**. **`.cursor/`** and **`.claude/`** expose the same trees via symlinks so Cursor and Claude Code load them without duplicating files. See **[CLAUDE.md](CLAUDE.md)** for Claude-specific discovery.
 - **docs/**: This folder contains some simple documentation for the project. For now it is mostly just a placeholder, but will be expanded uppon in the future to contain a properly generated documentation for the project.
 - **igor/**: Legacy Igor Pro implementation of the clustering and refinement tool (not the active development target). See **Igor Pro Implementation** below for WaveMetrics folder roles, file map, and a suggested reading order when tracing the pipeline.
 - **notebooks/**: This folder contains the Jupyter notebooks for the project. These notebooks are used to explore the data and the algorithms, and to test and validate the code.
@@ -230,7 +231,7 @@ If a **`uv`** subcommand differs by version, use **`uv --help`** or the [uv docs
 
 ### Cursor: skills
 
-Load these **skills** by **name** when the task matches (each skill’s own `SKILL.md` and references hold the full detail). Installed skills usually live under `.cursor/skills/` (or your editor’s equivalent).
+Load these **skills** by **name** when the task matches (each skill’s own `SKILL.md` and references hold the full detail). Canonical copies live under **`.agents/skills/`**, with the same tree linked as **`.cursor/skills/`** and **`.claude/skills/`**.
 
 | Skill | Use it for |
 |-------|------------|
@@ -243,7 +244,7 @@ Load these **skills** by **name** when the task matches (each skill’s own `SKI
 
 ### Cursor: subagents
 
-Delegate by **subagent name** when a focused pass is better than inline editing. Subagents usually live under `.cursor/agents/` (or your editor’s equivalent).
+Delegate by **subagent name** when a focused pass is better than inline editing. Canonical copies live under **`.agents/agents/`**, with the same tree linked as **`.cursor/agents/`** and **`.claude/agents/`**.
 
 | Subagent | Use it for |
 |----------|------------|
@@ -298,4 +299,5 @@ It is important to note that these notebooks are designed to be robust. These sh
 ## Learned Workspace Facts
 
 - `dftrun postprocess` accepts a StoBe run root directory and writes `packaged_output/xray_spectra_long.csv` (long-form spectra with columns `energy_ev`, `abs`, and `site`) plus `xas_site_summary.png` by aggregating per-site `XrayT*.out` tables together with geometry from an XYZ file resolved like `dftrun build`.
+- When those outputs exist, `dftrun postprocess` writes `packaged_output/stobe_final_energies.csv` (one row per site, energies in eV) and a single `packaged_output/stobe_orbital_energy_summary.png` (SCF totals, alpha-level dumbbells vs ground, and Delta-KS shifts for all sites). Totals come from `FINAL ENERGY` blocks; TP alpha LUMO (eV) comes from `ORBITAL ENERGIES (ALL VIRTUALS INCLUDED)` in `*tp.out`. The Delta-KS alignment shift is `E^c = E^e - E^g - E^l` with SCF totals converted Ha to eV and `E^l` the TP LUMO eigenvalue in eV.
 - XYZ parsing in `dftlearn` supports optional standard two-line XYZ headers or headerless StoBe-style coordinate lines; row order defines atom indices for site labels such as `C1` and `C2`, while tokens such as `C01` encode element type without relying on the comment line.
