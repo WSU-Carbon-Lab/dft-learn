@@ -1,4 +1,4 @@
-"""Post-process a StoBe run: X-ray CSV, XAS PNG, SCF diagnostics, final energies."""
+"""Post-process a StoBe run: X-ray CSV, TP XAS reconstruction, SCF, final energies."""
 
 from __future__ import annotations
 
@@ -11,6 +11,9 @@ from dftlearn.cli.build import _auto_detect_xyz
 from dftlearn.visualization.scf_diagnostics_figure import write_scf_diagnostics_bundle
 from dftlearn.visualization.stobe_final_energy_figure import (
     write_stobe_final_energy_bundle,
+)
+from dftlearn.visualization.xas_reconstruction_figure import (
+    write_xas_reconstruction_report,
 )
 from dftlearn.visualization.xas_site_figure import write_xas_site_report
 
@@ -62,6 +65,26 @@ def postprocess_cmd(
         raise typer.Exit(1) from exc
     _CONSOLE.print(f"[green]Wrote[/green] {csv_p}")
     _CONSOLE.print(f"[green]Wrote[/green] {fig_p}")
+    rec = write_xas_reconstruction_report(
+        run_root,
+        packaged,
+        xray_filename=xray_file,
+        xyz_path=xyz_path,
+        dpi=dpi,
+    )
+    if rec is not None:
+        rec_csv, rec_metrics, rec_sticks, rec_tensor, rec_tensor_mean, rec_summary = rec
+        _CONSOLE.print(f"[green]Wrote[/green] {rec_csv}")
+        _CONSOLE.print(f"[green]Wrote[/green] {rec_metrics}")
+        _CONSOLE.print(f"[green]Wrote[/green] {rec_sticks}")
+        _CONSOLE.print(f"[green]Wrote[/green] {rec_tensor}")
+        _CONSOLE.print(f"[green]Wrote[/green] {rec_tensor_mean}")
+        _CONSOLE.print(f"[green]Wrote[/green] {rec_summary}")
+    else:
+        _CONSOLE.print(
+            "[yellow]No {site}.xas stick files found "
+            "(skipped TP XAS reconstruction).[/yellow]"
+        )
     diag = write_scf_diagnostics_bundle(run_root, packaged, dpi=dpi)
     if diag is not None:
         long_csv, metrics_csv, diag_png = diag

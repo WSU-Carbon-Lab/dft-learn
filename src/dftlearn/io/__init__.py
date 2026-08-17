@@ -1,4 +1,4 @@
-"""Parsers and loaders for calculation outputs (StoBe X-ray tables, XYZ geometry)."""
+"""Parsers and loaders for StoBe X-ray tables, TP sticks, and XYZ geometry."""
 
 from __future__ import annotations
 
@@ -18,6 +18,15 @@ from dftlearn.io.stobe_scf_convergence import (
     scf_convergence_auc_metrics,
     site_tag_from_stobe_out_filename,
 )
+from dftlearn.io.stobe_xas_sticks import (
+    CARBON_XAS_SPEC,
+    XasSpecSettings,
+    parse_stobe_xas_dipole_sticks,
+    parse_stobe_xas_inp,
+    parse_stobe_xas_sticks,
+    site_xas_inp_path,
+    site_xas_stick_paths,
+)
 from dftlearn.io.xray_out import (
     collect_site_xray_spectra,
     parse_xray_out_table,
@@ -33,7 +42,9 @@ from dftlearn.io.xyz_structure import (
 )
 
 __all__ = [
+    "CARBON_XAS_SPEC",
     "HA_TO_EV",
+    "XasSpecSettings",
     "collect_delta_ks_site_table",
     "collect_final_energies_long",
     "collect_scf_convergence_long",
@@ -44,14 +55,19 @@ __all__ = [
     "final_energy_site_summary",
     "mol_from_xyz_file",
     "parse_stobe_final_energy_tables",
-    "parse_stobe_tp_lumo_alpha_ev",
     "parse_stobe_scf_convergence_table",
+    "parse_stobe_tp_lumo_alpha_ev",
+    "parse_stobe_xas_dipole_sticks",
+    "parse_stobe_xas_inp",
+    "parse_stobe_xas_sticks",
     "parse_xray_out_table",
     "scf_convergence_auc_metrics",
     "site_label_to_atom_index",
     "site_label_to_atom_index_from_rows",
     "site_spectra_to_long_frame",
     "site_tag_from_stobe_out_filename",
+    "site_xas_inp_path",
+    "site_xas_stick_paths",
     "site_xray_paths",
     "xyz_rows_from_file",
 ]
