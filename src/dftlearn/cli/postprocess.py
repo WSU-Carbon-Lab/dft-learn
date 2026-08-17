@@ -1,4 +1,4 @@
-"""Post-process a StoBe run: X-ray CSV, TP XAS reconstruction, SCF, final energies."""
+"""Post-process a StoBe run: X-ray CSV, TP XAS, clustering, SCF, energies."""
 
 from __future__ import annotations
 
@@ -12,6 +12,7 @@ from dftlearn.visualization.scf_diagnostics_figure import write_scf_diagnostics_
 from dftlearn.visualization.stobe_final_energy_figure import (
     write_stobe_final_energy_bundle,
 )
+from dftlearn.visualization.xas_cluster_figure import write_xas_cluster_report
 from dftlearn.visualization.xas_reconstruction_figure import (
     write_xas_reconstruction_report,
 )
@@ -47,6 +48,13 @@ def postprocess_cmd(
         help="Spectrum file name inside each site directory.",
     ),
     dpi: int = typer.Option(150, "--dpi", min=72, max=600, help="PNG resolution."),
+    os_percent: float | None = typer.Option(
+        None,
+        "--os-percent",
+        min=0.0,
+        max=100.0,
+        help="OS cutoff as percent of windowed max OS (default: elbow).",
+    ),
 ) -> None:
     """Extract X-ray tables, CSVs, XAS figure, SCF diagnostics, and final energies."""
     run_root = Path(run_root).resolve()
@@ -84,6 +92,21 @@ def postprocess_cmd(
         _CONSOLE.print(
             "[yellow]No {site}.xas stick files found "
             "(skipped TP XAS reconstruction).[/yellow]"
+        )
+    clus = write_xas_cluster_report(
+        run_root,
+        packaged,
+        xray_filename=xray_file,
+        os_percent=os_percent,
+        dpi=dpi,
+    )
+    if clus is not None:
+        for p in clus:
+            _CONSOLE.print(f"[green]Wrote[/green] {p}")
+    else:
+        _CONSOLE.print(
+            "[yellow]No {site}.xas stick files found "
+            "(skipped overlap clustering).[/yellow]"
         )
     diag = write_scf_diagnostics_bundle(run_root, packaged, dpi=dpi)
     if diag is not None:
