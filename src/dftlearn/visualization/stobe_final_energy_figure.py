@@ -12,7 +12,10 @@ from matplotlib.lines import Line2D
 from matplotlib.ticker import AutoMinorLocator
 from natsort import natsorted
 
-from dftlearn.io.stobe_final_energy import collect_delta_ks_site_table
+from dftlearn.io.stobe_final_energy import (
+    collect_delta_ks_site_table,
+    ionization_energies_table,
+)
 from dftlearn.io.stobe_orbital_table import (
     analyze_exc_orbitals,
     analyze_gnd_orbitals,
@@ -21,6 +24,9 @@ from dftlearn.io.stobe_orbital_table import (
     format_final_energy_text,
     parse_stobe_orbital_energies_table,
     reference_k_shell_binding_ev,
+)
+from dftlearn.visualization.stobe_orbital_energy_summary_figure import (
+    write_stobe_orbital_energy_summary_figure,
 )
 
 if TYPE_CHECKING:
@@ -514,7 +520,11 @@ def write_stobe_final_energy_bundle(
     packaged_output_dir: Path,
     dpi: int = 150,
 ) -> tuple[Path, list[Path]] | None:
-    """Write CSV and one orbital/SCF energy summary PNG (all sites)."""
+    """Write CSV and one orbital/SCF energy summary PNG (all sites).
+
+    Also writes ``stobe_ionization_energies.csv`` (per-site TP ionization
+    potentials from StoBe ``*tp.out``) beside ``stobe_final_energies.csv``.
+    """
     packaged_output_dir = Path(packaged_output_dir).resolve()
     packaged_output_dir.mkdir(parents=True, exist_ok=True)
     try:
@@ -525,11 +535,9 @@ def write_stobe_final_energy_bundle(
         return None
     csv_path = packaged_output_dir / "stobe_final_energies.csv"
     wide.to_csv(csv_path, index=False)
+    ip_path = packaged_output_dir / "stobe_ionization_energies.csv"
+    ionization_energies_table(wide).to_csv(ip_path, index=False)
     rr = Path(run_root).resolve()
-    from dftlearn.visualization.stobe_orbital_energy_summary_figure import (
-        write_stobe_orbital_energy_summary_figure,
-    )
-
     summary = write_stobe_orbital_energy_summary_figure(
         rr,
         packaged_output_dir,
@@ -538,5 +546,4 @@ def write_stobe_final_energy_bundle(
     )
     if summary is None:
         return None
-    return (csv_path, [summary])
-
+    return (csv_path, [ip_path, summary])

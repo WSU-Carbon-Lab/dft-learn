@@ -40,6 +40,7 @@ _DEFAULT_RADIUS = 0.75
 
 _METALS = frozenset(
     {
+        "Al",
         "Zn",
         "Cu",
         "Fe",

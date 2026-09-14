@@ -71,6 +71,8 @@ def write_xas_cluster_report(
     packaged_output_dir: Path,
     *,
     xray_filename: str = "XrayT001.out",
+    xyz_path: Path | None = None,
+    c3_symmetrize: bool = False,
     os_percent: float | None = None,
     n_samples: int = 16,
     lhs_seed: int = 0,
@@ -87,6 +89,9 @@ def write_xas_cluster_report(
     skylines use OS-weighted site mixture colors keyed on the isotropic panel;
     effective-cluster lines follow the tensor component palette.
 
+    When ``c3_symmetrize`` is True, Cartesian OS components are C3-folded in
+    the Al-N/O molecular frame before filtering and overlap clustering.
+
     Parameters
     ----------
     run_root : pathlib.Path
@@ -95,6 +100,10 @@ def write_xas_cluster_report(
         Output folder (created if missing).
     xray_filename : str, optional
         StoBe table used only to assemble the stick catalog.
+    xyz_path : pathlib.Path, optional
+        Geometry required when ``c3_symmetrize`` is True.
+    c3_symmetrize : bool, optional
+        Fold Cartesian dipoles under C3 before clustering.
     os_percent : float, optional
         If given, this OS% of windowed max OS is used instead of the elbow.
     n_samples : int, optional
@@ -119,9 +128,11 @@ def write_xas_cluster_report(
     run_root = Path(run_root).resolve()
     packaged_output_dir = Path(packaged_output_dir).resolve()
     try:
-        _energy, _spectra, _metrics, sticks_df = collect_site_tp_xas(
+        _energy, _spectra, _metrics, sticks_df, _c3_frame = collect_site_tp_xas(
             run_root,
             xray_filename=xray_filename,
+            xyz_path=xyz_path,
+            c3_symmetrize=c3_symmetrize,
         )
     except FileNotFoundError:
         return None

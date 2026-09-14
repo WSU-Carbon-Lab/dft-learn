@@ -206,10 +206,19 @@ class GndOrbitalReport:
 
 
 def analyze_gnd_orbitals(df: pd.DataFrame, binding_ref_ev: float) -> GndOrbitalReport:
-    """Locate core level nearest ``-binding_ref_ev`` and alpha HOMO/LUMO."""
+    """Locate the occupied KS level nearest ``-binding_ref_ev`` and alpha HOMO/LUMO.
+
+    The core assignment uses only fully occupied alpha orbitals so the match is
+    a Koopmans ionization energy, not a virtual. Spectator MCP 1s electrons are
+    absent from this table; the remaining absorber 1s is the K-edge target.
+    """
+    occ = df[df["alpha_occ"] >= _OCC_FULL]
+    if occ.empty:
+        msg = "Core level requires at least one fully occupied alpha orbital"
+        raise ValueError(msg)
     target_ev = -float(binding_ref_ev)
-    idx = (df["alpha_ev"] - target_ev).abs().idxmin()
-    core = df.loc[idx]
+    idx = (occ["alpha_ev"] - target_ev).abs().idxmin()
+    core = occ.loc[idx]
     homo, lumo = _alpha_homo_lumo(df, excited=False)
     return GndOrbitalReport(
         binding_ref_ev=float(binding_ref_ev),

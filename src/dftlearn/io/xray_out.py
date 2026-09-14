@@ -2,11 +2,57 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 from natsort import natsorted
+
+
+def _site_directory_names(run_root: Path) -> list[str]:
+    """Return sorted site folder names such as ``C1`` directly under ``run_root``."""
+    names: list[str] = []
+    for child in run_root.iterdir():
+        if child.is_dir() and re.fullmatch(r"[A-Z]+\d+", child.name):
+            names.append(child.name)
+    return natsorted(names)
+
+
+def resolve_site_xray_path(
+    run_root: Path,
+    site: str,
+    xray_filename: str = "XrayT001.out",
+) -> Path | None:
+    """Resolve the spectrum table path for one site using conventional layouts.
+
+    Checks, in order: ``SITE/XrayT001.out``, ``SITE/SITExas.out``, and
+    ``NEXAFS/SITExas.out`` under ``run_root``.
+
+    Parameters
+    ----------
+    run_root
+        StoBe run directory.
+    site
+        Site tag such as ``C1``.
+    xray_filename
+        Preferred spectrum file name inside the site directory.
+
+    Returns
+    -------
+    pathlib.Path | None
+        Resolved spectrum path when found; otherwise ``None``.
+    """
+    run_root = Path(run_root).resolve()
+    candidates = (
+        run_root / site / xray_filename,
+        run_root / site / f"{site}xas.out",
+        run_root / "NEXAFS" / f"{site}xas.out",
+    )
+    for candidate in candidates:
+        if candidate.is_file():
+            return candidate.resolve()
+    return None
 
 
 def parse_xray_out_table(path: Path) -> np.ndarray:
@@ -83,16 +129,17 @@ def site_xray_paths(
     """
     run_root = Path(run_root).resolve()
     found: list[tuple[str, Path]] = []
-    for child in run_root.iterdir():
-        if not child.is_dir():
-            continue
-        candidate = child / xray_filename
-        if candidate.is_file():
-            found.append((child.name, candidate.resolve()))
+    for site in _site_directory_names(run_root):
+        resolved = resolve_site_xray_path(run_root, site, xray_filename=xray_filename)
+        if resolved is not None:
+            found.append((site, resolved))
     if not found:
-        msg = f"No {xray_filename!r} under immediate subdirectories of {run_root}"
+        msg = (
+            f"No {xray_filename!r} or site xas tables under immediate subdirectories "
+            f"of {run_root} (also checked NEXAFS/SITExas.out)"
+        )
         raise FileNotFoundError(msg)
-    return natsorted(found, key=lambda pair: pair[0])
+    return found
 
 
 def collect_site_xray_spectra(

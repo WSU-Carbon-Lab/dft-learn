@@ -14,6 +14,8 @@ import numpy as np
 import pandas as pd
 from natsort import natsorted
 
+_TRAPZ = getattr(np, "trapezoid", None) or np.trapz
+
 _CALC_SUFFIX_TO_CATEGORY: dict[str, str] = {"gnd": "GND", "exc": "EXC", "tp": "TP"}
 
 _LEGACY_SKIP_SITE_DIR_NAMES: frozenset[str] = frozenset(
@@ -302,19 +304,25 @@ def scf_convergence_auc_metrics(long_df: pd.DataFrame) -> pd.DataFrame:
         ``diis_start_iter``, ``n_iterations``.
     """
     out_rows: list[dict[str, object]] = []
-    for (site, calc), grp in long_df.groupby(["site", "calc_type"], sort=False):
+    grouped = long_df.groupby(["site", "calc_type"], sort=False)
+    for key, grp in grouped:
+        if not isinstance(key, tuple) or len(key) != 2:
+            msg = f"unexpected groupby key: {key!r}"
+            raise TypeError(msg)
+        site_s = str(key[0])
+        calc_s = str(key[1])
         grp = grp.sort_values("iteration")
         it = grp["iteration"].to_numpy(dtype=np.float64)
         dec = np.abs(grp["decrease_h"].to_numpy(dtype=np.float64))
         mxd = grp["max_density"].to_numpy(dtype=np.float64)
-        energy_auc = float(np.trapz(dec, it))
-        density_auc = float(np.trapz(mxd, it))
+        energy_auc = float(_TRAPZ(dec, it))
+        density_auc = float(_TRAPZ(mxd, it))
         diis_sub = grp.loc[grp["diis_active"], "iteration"]
         diis_start = float(diis_sub.min()) if len(diis_sub) else float("nan")
         out_rows.append(
             {
-                "site": site,
-                "calc_type": calc,
+                "site": site_s,
+                "calc_type": calc_s,
                 "energy_auc": energy_auc,
                 "density_auc": density_auc,
                 "diis_start_iter": diis_start,

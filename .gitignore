@@ -3,6 +3,8 @@ output/*
 **/*.csv
 .dotagent/stacks.json
 .venv/
+.env
+.env.*
 
 # Python things
 __pycache__/
@@ -19,3 +21,12 @@ __pycache__/
 
 # misc things
 .DS_Store
+
+# Local StoBe run trees (keep curated znpc-* fixtures only)
+docs/stobe/example-run/als3-001/
+docs/stobe/example-run/alq3/
+docs/stobe/example-run/alq3-*/
+docs/stobe/example-run/**/logs/
+docs/stobe/example-run/**/*.out
+docs/stobe/example-run/**/*.molden
+docs/stobe/example-run/**/*.plt

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import itertools
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -19,6 +20,7 @@ from dftlearn.io.xyz_structure import (
     xyz_rows_from_file,
 )
 from dftlearn.visualization.xyz_wireframe import draw_xyz_wireframe_on_ax
+from dftlearn.xas.c3_symmetry import write_c3_frame_json
 from dftlearn.xas.spectrum import aligned_dipole_tensor_tables, collect_site_tp_xas
 
 if TYPE_CHECKING:
@@ -39,6 +41,7 @@ def write_xas_reconstruction_report(
     *,
     xray_filename: str = "XrayT001.out",
     xyz_path: Path | None = None,
+    c3_symmetrize: bool = False,
     dpi: int = 150,
 ) -> tuple[Path, Path, Path, Path, Path, Path] | None:
     r"""Write TP XAS tables, Delta-KS aligned dipole tensors, and a summary figure.
@@ -50,6 +53,9 @@ def write_xas_reconstruction_report(
     figure compares StoBe and TP after that shift, with per-site stick skylines
     under each absorption trace and site-mean tensor components.
 
+    When ``c3_symmetrize`` is True, Cartesian OS and tensor spectra use the
+    Al-N/O C3-folded frame and ``c3_frame.json`` is written beside the CSVs.
+
     Parameters
     ----------
     run_root : pathlib.Path
@@ -59,8 +65,11 @@ def write_xas_reconstruction_report(
     xray_filename : str, optional
         StoBe broadened table name inside each site directory.
     xyz_path : pathlib.Path, optional
-        Geometry for the summary structure panel. When omitted or unreadable,
-        that panel is dropped and the overview spans the top row.
+        Geometry for the summary structure panel and for C3 frame construction.
+        When omitted or unreadable for drawing, that panel is dropped and the
+        overview spans the top row.
+    c3_symmetrize : bool, optional
+        Fold Cartesian dipoles under C3 in the Al-N/O molecular frame.
     dpi : int, optional
         PNG resolution.
 
@@ -79,13 +88,17 @@ def write_xas_reconstruction_report(
     run_root = Path(run_root).resolve()
     packaged_output_dir = Path(packaged_output_dir).resolve()
     try:
-        _energy, spectra, metrics, sticks = collect_site_tp_xas(
+        _energy, spectra, metrics, sticks, c3_frame = collect_site_tp_xas(
             run_root,
             xray_filename=xray_filename,
+            xyz_path=xyz_path,
+            c3_symmetrize=c3_symmetrize,
         )
     except FileNotFoundError:
         return None
     packaged_output_dir.mkdir(parents=True, exist_ok=True)
+    if c3_frame is not None:
+        write_c3_frame_json(c3_frame, packaged_output_dir / "c3_frame.json")
     long_path = packaged_output_dir / "xas_tp_reconstructed_long.csv"
     metrics_path = packaged_output_dir / "xas_tp_reconstruction_metrics.csv"
     sticks_path = packaged_output_dir / "xas_tp_sticks_long.csv"
@@ -270,7 +283,7 @@ def _write_summary_figure(
         layout_engine.set(h_pad=0.03, w_pad=0.04, hspace=0.05, wspace=0.08)
     for key in pad_keys:
         axd[key].set_visible(False)
-    letters = iter("abcdefghijklmnopqrstuvwxyz")
+    letters = _panel_label_letters()
     if xyz_rows is not None:
         _draw_structure_panel(axd["mol"], xyz_rows, sites, site_color)
         _panel_label(axd["mol"], next(letters))
@@ -327,7 +340,21 @@ def _load_xyz_rows(
         return None
 
 
+def _panel_label_letters() -> itertools.chain[str]:
+    """Yield panel labels ``a``..``z``, then ``a1``, ``b1``, for many sites."""
+    first = (chr(ord("a") + i) for i in range(26))
+
+    def _suffix() -> itertools.chain[str]:
+        for n in itertools.count(1):
+            for i in range(26):
+                yield f"{chr(ord('a') + i)}{n}"
+
+    return itertools.chain(first, _suffix())
+
+
 def _panel_label(ax: Axes, letter: str) -> None:
+    if not letter:
+        return
     ax.annotate(
         f"({letter})",
         xy=(0.0, 1.0),

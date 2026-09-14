@@ -30,6 +30,24 @@ from rich.progress import (
 )
 
 from dftlearn.cli.config import load_config
+from dftlearn.io.run_diagnostics import (
+    expected_stobe_output_path,
+    reset_run_directory,
+    sniff_stobe_output,
+    write_run_diagnostic_report,
+)
+from dftlearn.setup.core_hole import assign_core_holes_from_gnd
+from dftlearn.setup.remote import (
+    DEFAULT_REMOTE_ROOT,
+    KNOWN_REMOTE_HOSTS,
+    pull_run_artifacts,
+    remote_run_directory,
+    remote_run_has_postprocess_inputs,
+    resolve_ssh_host,
+    run_remote_dftrun,
+    run_remote_diagnose,
+    run_remote_postprocess,
+)
 
 _CONSOLE = Console()
 
@@ -165,11 +183,33 @@ class StoBeJobManager:
                         or getattr(result, "stdout", None)
                         or "Unknown error"
                     )
+                else:
+                    _apply_stobe_output_validation(run_file, job_info)
         except Exception as e:
             job_info["status"] = "error"
             job_info["error"] = str(e)
             job_info["end_time"] = datetime.now()
         return job_info
+
+
+def _apply_stobe_output_validation(run_file: Path, job_info: dict) -> None:
+    """Mark a zero-exit bash job failed when expected StoBe outputs are missing."""
+    expected = expected_stobe_output_path(run_file)
+    if expected is None:
+        return
+    sniff = sniff_stobe_output(expected)
+    if not bool(sniff["exists"]):
+        job_info["status"] = "failed"
+        job_info["error"] = f"Missing expected output: {expected}"
+        return
+    if int(sniff["size"]) < 200:
+        job_info["status"] = "failed"
+        job_info["error"] = f"Output too small ({sniff['size']} bytes): {expected}"
+        return
+    error_line = sniff.get("error_line")
+    if isinstance(error_line, str) and error_line:
+        job_info["status"] = "failed"
+        job_info["error"] = error_line
 
 
 class TyperSchedulerRunner:
@@ -476,6 +516,12 @@ _state: dict = {
     "quiet": False,
     "log_file": None,
     "scan_dir": None,
+    "remote": None,
+    "remote_root": DEFAULT_REMOTE_ROOT,
+    "no_sync": False,
+    "no_pull": False,
+    "no_postprocess": False,
+    "detach": False,
 }
 
 
@@ -501,6 +547,43 @@ except (ValueError, OSError):
 
 run_app = typer.Typer(help="Schedule and run StoBe DFT calculations.")
 
+_REMOTE_HELP = f"Sync and run on SSH host ({', '.join(sorted(KNOWN_REMOTE_HOSTS))})."
+
+
+def _apply_remote_options(
+    remote: str | None,
+    remote_root: str,
+    no_sync: bool,
+    no_pull: bool = False,
+    no_postprocess: bool = False,
+) -> None:
+    """Merge subcommand ``--remote`` flags into the shared run state."""
+    if remote is not None:
+        stripped = remote.strip()
+        _state["remote"] = stripped or None
+    _state["remote_root"] = remote_root
+    _state["no_sync"] = no_sync
+    _state["no_pull"] = no_pull
+    _state["no_postprocess"] = no_postprocess
+
+
+def _warn_if_no_packaged_outputs(run_root: Path) -> None:
+    """Warn when expected packaged artifacts are missing after a remote pull."""
+    run_root = Path(run_root).resolve()
+    packaged = run_root / "packaged_output"
+    expected = (
+        packaged / "xray_spectra_long.csv",
+        packaged / "xas_site_summary.png",
+    )
+    if any(path.is_file() for path in expected):
+        return
+    typer.echo(
+        "Warning: packaged_output is missing expected postprocess files after pull. "
+        "StoBe calculations may have failed on the remote host, or remote postprocess "
+        "did not run. Check logs/ on the workstation and verify STOBE / StoBe.x.",
+        err=True,
+    )
+
 
 @run_app.callback()
 def _run_callback(
@@ -512,10 +595,43 @@ def _run_callback(
     ),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Verbose output"),
     quiet: bool = typer.Option(
-        False, "--quiet", "-q", help="Run in background, log to file"
+        False,
+        "--quiet",
+        "-q",
+        help="Run in background, log to file. With --remote, detach on the host.",
     ),
     log_file: Path | None = typer.Option(
         None, "--log-file", "-l", help="Log file when --quiet"
+    ),
+    remote: str | None = typer.Option(
+        None,
+        "--remote",
+        help=f"Sync and run on SSH host ({', '.join(sorted(KNOWN_REMOTE_HOSTS))}).",
+    ),
+    remote_root: str = typer.Option(
+        DEFAULT_REMOTE_ROOT,
+        "--remote-root",
+        help="Remote base directory when --remote is set.",
+    ),
+    no_sync: bool = typer.Option(
+        False,
+        "--no-sync",
+        help="Skip rsync before a remote run (inputs already on the host).",
+    ),
+    no_pull: bool = typer.Option(
+        False,
+        "--no-pull",
+        help="Skip pulling logs and packaged_output after a remote run.",
+    ),
+    no_postprocess: bool = typer.Option(
+        False,
+        "--no-postprocess",
+        help="Skip remote postprocess before pulling packaged artifacts.",
+    ),
+    detach: bool = typer.Option(
+        False,
+        "--detach",
+        help="On --remote, start the job with nohup and return immediately.",
     ),
 ) -> None:
     cfg = load_config()
@@ -529,11 +645,166 @@ def _run_callback(
         if max_workers is not None
         else int(cfg.get("max_workers", max(1, multiprocessing.cpu_count() - 1)))
     )
+    _state["remote"] = remote.strip() if remote else None
+    _state["remote_root"] = remote_root
+    _state["no_sync"] = no_sync
+    _state["no_pull"] = no_pull
+    _state["no_postprocess"] = no_postprocess
+    _state["detach"] = detach
     if verbose and not quiet:
         if _state["auto_workers"]:
             typer.echo("Workers: one per atom, max %s" % _state["max_workers"])
         else:
             typer.echo("Using %s workers" % workers)
+    if _state["remote"] and verbose and not quiet:
+        typer.echo(
+            f"Remote host: {_state['remote']} "
+            f"(root {_state['remote_root']}, sync={not no_sync})"
+        )
+
+
+def _forward_run_cli_args(atom: list[str] | None) -> tuple[list[str], list[str]]:
+    """Build callback and subcommand flags for a remote ``dftrun run`` invocation."""
+    callback_args: list[str] = []
+    subcommand_args: list[str] = []
+    if not _state["auto_workers"] and _state["workers"] is not None:
+        callback_args.extend(["--workers", str(_state["workers"])])
+    callback_args.extend(["--max-workers", str(_state["max_workers"])])
+    if _state["verbose"]:
+        callback_args.append("--verbose")
+    if atom:
+        for spec in atom:
+            subcommand_args.extend(["--atom", spec])
+    return callback_args, subcommand_args
+
+
+def _try_remote_run(
+    subcommand: str,
+    directory: Path,
+    atom: list[str] | None,
+) -> None:
+    """Sync and run on a remote host when ``--remote`` was passed to ``dftrun run``."""
+    alias = _state.get("remote")
+    if alias is None:
+        return
+    try:
+        host = resolve_ssh_host(alias)
+    except KeyError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(1) from exc
+
+    remote_dir = remote_run_directory(host, directory.name, _state["remote_root"])
+    detach = bool(_state.get("detach") or _state.get("quiet"))
+    if not _state.get("no_sync"):
+        typer.echo(f"Syncing {directory.resolve()} -> {host}:{remote_dir}/")
+    if detach:
+        typer.echo(f"Starting detached dftrun run {subcommand} on {host}")
+    else:
+        typer.echo(f"Running dftrun run {subcommand} on {host}")
+    try:
+        callback_args, subcommand_args = _forward_run_cli_args(atom)
+        code = run_remote_dftrun(
+            directory,
+            host=host,
+            remote_root=_state["remote_root"],
+            subcommand=subcommand,
+            forward_args=callback_args,
+            subcommand_args=subcommand_args,
+            sync_first=not _state.get("no_sync", False),
+            detach=detach,
+            postprocess=not _state.get("no_postprocess", False),
+        )
+    except (RuntimeError, OSError) as exc:
+        typer.echo(f"remote run failed: {exc}", err=True)
+        raise typer.Exit(1) from exc
+
+    if detach:
+        typer.echo(
+            f"Detached on {host}:{remote_dir}/\n"
+            f"  log: {remote_dir}/logs/remote_job.log\n"
+            f"Collect later:\n"
+            f"  dftrun remote collect {directory} --remote {_state['remote']}"
+        )
+        raise typer.Exit(code)
+
+    if code != 0:
+        raise typer.Exit(code)
+
+    if not remote_run_has_postprocess_inputs(host, remote_dir):
+        typer.echo(
+            "Remote run finished but no StoBe spectrum files were found "
+            f"under {host}:{remote_dir}.",
+            err=True,
+        )
+        typer.echo(f"Running diagnostics on {host}:{remote_dir}", err=True)
+        diag_code = run_remote_diagnose(host, remote_dir)
+        if not _state.get("no_pull", False):
+            typer.echo(
+                f"Pulling logs and diagnostics "
+                f"{host}:{remote_dir}/ -> {directory.resolve()}"
+            )
+            try:
+                pull_run_artifacts(
+                    directory.resolve(),
+                    host=host,
+                    remote_dir=remote_dir,
+                )
+            except (RuntimeError, OSError) as exc:
+                typer.echo(f"remote pull failed: {exc}", err=True)
+        local_report = directory.resolve() / "packaged_output" / "run_diagnostics.txt"
+        if local_report.is_file():
+            typer.echo(f"Diagnostics: {local_report}", err=True)
+        elif diag_code != 0:
+            typer.echo("Remote diagnostics command failed.", err=True)
+        raise typer.Exit(1 if diag_code == 0 else diag_code)
+
+    if not _state.get("no_postprocess", False):
+        typer.echo(f"Post-processing on {host}:{remote_dir}")
+        post_code = run_remote_postprocess(host, remote_dir)
+        if post_code != 0:
+            typer.echo(
+                f"remote postprocess failed with exit code {post_code}",
+                err=True,
+            )
+            raise typer.Exit(post_code)
+
+    if not _state.get("no_pull", False):
+        typer.echo(
+            f"Pulling logs and packaged_output "
+            f"{host}:{remote_dir}/ -> {directory.resolve()}"
+        )
+        try:
+            pull_run_artifacts(
+                directory.resolve(),
+                host=host,
+                remote_dir=remote_dir,
+            )
+        except (RuntimeError, OSError) as exc:
+            typer.echo(f"remote pull failed: {exc}", err=True)
+            raise typer.Exit(1) from exc
+        _warn_if_no_packaged_outputs(directory)
+        typer.echo(f"Packaged output: {directory.resolve() / 'packaged_output'}")
+
+    raise typer.Exit(code)
+
+
+def _assign_core_holes_or_exit(directory: Path, atom: list[str] | None) -> None:
+    """Patch EXC/TP occupations from GND C 1s ionization energies, or exit."""
+    try:
+        rows = assign_core_holes_from_gnd(
+            directory.resolve(),
+            sites=list(atom) if atom else None,
+        )
+    except (FileNotFoundError, ValueError) as exc:
+        typer.echo(f"Core-hole assignment failed: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    typer.echo(f"Assigned absorber 1s occupations for {len(rows)} site(s):")
+    for row in rows:
+        typer.echo(
+            f"  {row.site}: MO {row.core_level}  "
+            f"IP = {row.ionization_energy_ev:.2f} eV  "
+            f"(KS {row.core_energy_ev:.2f} eV)"
+        )
 
 
 def _run_calc_type(
@@ -541,6 +812,9 @@ def _run_calc_type(
     directory: Path,
     atom: list[str] | None,
 ) -> list[dict]:
+    _try_remote_run(calc_type, directory, atom)
+    if calc_type in {"exc", "tp"}:
+        _assign_core_holes_or_exit(directory, atom)
     if _state.get("quiet"):
         _spawn_quiet_background(None, _state)
     _state["scan_dir"] = str(directory)
@@ -572,7 +846,19 @@ def _gnd(
     ),
     quiet: bool = typer.Option(False, "--quiet", "-q"),
     log_file: Path | None = typer.Option(None, "--log-file", "-l"),
+    remote: str | None = typer.Option(None, "--remote", help=_REMOTE_HELP),
+    remote_root: str = typer.Option(
+        DEFAULT_REMOTE_ROOT,
+        "--remote-root",
+        help="Remote base directory when --remote is set.",
+    ),
+    no_sync: bool = typer.Option(
+        False,
+        "--no-sync",
+        help="Skip rsync before a remote run (inputs already on the host).",
+    ),
 ) -> None:
+    _apply_remote_options(remote, remote_root, no_sync)
     if quiet:
         _state["quiet"] = True
     if log_file:
@@ -584,13 +870,38 @@ def _gnd(
     typer.echo(f"Completed: {c}, Failed: {f}")
 
 
+@run_app.command("corehole")
+def _corehole(
+    directory: Path = typer.Argument(
+        ..., exists=True, help="Directory containing GND outputs and EXC/TP run files"
+    ),
+    atom: list[str] | None = typer.Option(
+        None, "--atom", "-a", help="Specific atom(s)"
+    ),
+) -> None:
+    """Set EXC/TP core-hole occupations from GND 1s ionization energies."""
+    _assign_core_holes_or_exit(directory, atom)
+
+
 @run_app.command("exc")
 def _exc(
     directory: Path = typer.Argument(..., exists=True),
     atom: list[str] | None = typer.Option(None, "--atom", "-a"),
     quiet: bool = typer.Option(False, "--quiet", "-q"),
     log_file: Path | None = typer.Option(None, "--log-file", "-l"),
+    remote: str | None = typer.Option(None, "--remote", help=_REMOTE_HELP),
+    remote_root: str = typer.Option(
+        DEFAULT_REMOTE_ROOT,
+        "--remote-root",
+        help="Remote base directory when --remote is set.",
+    ),
+    no_sync: bool = typer.Option(
+        False,
+        "--no-sync",
+        help="Skip rsync before a remote run (inputs already on the host).",
+    ),
 ) -> None:
+    _apply_remote_options(remote, remote_root, no_sync)
     if quiet:
         _state["quiet"] = True
     if log_file:
@@ -608,7 +919,19 @@ def _tp(
     atom: list[str] | None = typer.Option(None, "--atom", "-a"),
     quiet: bool = typer.Option(False, "--quiet", "-q"),
     log_file: Path | None = typer.Option(None, "--log-file", "-l"),
+    remote: str | None = typer.Option(None, "--remote", help=_REMOTE_HELP),
+    remote_root: str = typer.Option(
+        DEFAULT_REMOTE_ROOT,
+        "--remote-root",
+        help="Remote base directory when --remote is set.",
+    ),
+    no_sync: bool = typer.Option(
+        False,
+        "--no-sync",
+        help="Skip rsync before a remote run (inputs already on the host).",
+    ),
 ) -> None:
+    _apply_remote_options(remote, remote_root, no_sync)
     if quiet:
         _state["quiet"] = True
     if log_file:
@@ -626,7 +949,19 @@ def _xas(
     atom: list[str] | None = typer.Option(None, "--atom", "-a"),
     quiet: bool = typer.Option(False, "--quiet", "-q"),
     log_file: Path | None = typer.Option(None, "--log-file", "-l"),
+    remote: str | None = typer.Option(None, "--remote", help=_REMOTE_HELP),
+    remote_root: str = typer.Option(
+        DEFAULT_REMOTE_ROOT,
+        "--remote-root",
+        help="Remote base directory when --remote is set.",
+    ),
+    no_sync: bool = typer.Option(
+        False,
+        "--no-sync",
+        help="Skip rsync before a remote run (inputs already on the host).",
+    ),
 ) -> None:
+    _apply_remote_options(remote, remote_root, no_sync)
     if quiet:
         _state["quiet"] = True
     if log_file:
@@ -644,7 +979,19 @@ def _seq(
     atom: list[str] | None = typer.Option(None, "--atom", "-a"),
     quiet: bool = typer.Option(False, "--quiet", "-q"),
     log_file: Path | None = typer.Option(None, "--log-file", "-l"),
+    remote: str | None = typer.Option(None, "--remote", help=_REMOTE_HELP),
+    remote_root: str = typer.Option(
+        DEFAULT_REMOTE_ROOT,
+        "--remote-root",
+        help="Remote base directory when --remote is set.",
+    ),
+    no_sync: bool = typer.Option(
+        False,
+        "--no-sync",
+        help="Skip rsync before a remote run (inputs already on the host).",
+    ),
 ) -> None:
+    _apply_remote_options(remote, remote_root, no_sync)
     if quiet:
         _state["quiet"] = True
     if log_file:
@@ -662,11 +1009,24 @@ def _all(
     atom: list[str] | None = typer.Option(None, "--atom", "-a"),
     quiet: bool = typer.Option(False, "--quiet", "-q"),
     log_file: Path | None = typer.Option(None, "--log-file", "-l"),
+    remote: str | None = typer.Option(None, "--remote", help=_REMOTE_HELP),
+    remote_root: str = typer.Option(
+        DEFAULT_REMOTE_ROOT,
+        "--remote-root",
+        help="Remote base directory when --remote is set.",
+    ),
+    no_sync: bool = typer.Option(
+        False,
+        "--no-sync",
+        help="Skip rsync before a remote run (inputs already on the host).",
+    ),
 ) -> None:
+    _apply_remote_options(remote, remote_root, no_sync)
     if quiet:
         _state["quiet"] = True
     if log_file:
         _state["log_file"] = log_file.resolve()
+    _try_remote_run("all", directory, atom)
     if _state.get("quiet"):
         _spawn_quiet_background(log_file, _state)
     _state["scan_dir"] = str(directory)
@@ -689,7 +1049,22 @@ def _all(
     run_ts = datetime.now().strftime("%Y%m%d%H%M%S")
     logs_dir.mkdir(parents=True, exist_ok=True)
     all_results: list[dict] = []
+    core_holes_assigned = False
     for ct in calc_types:
+        if ct in {"exc", "tp"} and not core_holes_assigned:
+            gnd_failed = [
+                r
+                for r in all_results
+                if r.get("calc_type") == "gnd" and r.get("status") != "completed"
+            ]
+            if gnd_failed:
+                typer.echo(
+                    "Aborting EXC/TP: GND did not complete for all sites.",
+                    err=True,
+                )
+                raise typer.Exit(1)
+            _assign_core_holes_or_exit(directory, atom)
+            core_holes_assigned = True
         typer.echo(f"\nStarting {ct.upper()} calculations")
         runner = TyperSchedulerRunner()
         res = runner.run_calculations_with_progress(
@@ -730,6 +1105,44 @@ def _all(
         typer.echo(f"Created {out}")
     except FileNotFoundError:
         pass
+
+
+@run_app.command("diagnose")
+def _diagnose(
+    directory: Path = typer.Argument(..., exists=True, help="Run directory to inspect"),
+) -> None:
+    """Write run diagnostics for StoBe toolchain, logs, and missing outputs."""
+    text_path, json_path, report = write_run_diagnostic_report(directory.resolve())
+    _CONSOLE.print(text_path.read_text(encoding="utf-8"))
+    _CONSOLE.print(f"[green]Wrote[/green] {text_path}")
+    _CONSOLE.print(f"[green]Wrote[/green] {json_path}")
+    if not report.ready_for_postprocess:
+        raise typer.Exit(1)
+
+
+@run_app.command("reset")
+def _reset(
+    directory: Path = typer.Argument(..., exists=True, help="Run directory to reset"),
+    yes: bool = typer.Option(
+        False,
+        "--yes",
+        "-y",
+        help="Confirm deletion of calculation outputs and packaged artifacts.",
+    ),
+) -> None:
+    """Clear StoBe outputs, logs, and packaged files while keeping run inputs."""
+    if not yes:
+        typer.echo("Refusing to reset without --yes.", err=True)
+        raise typer.Exit(1)
+    removed = reset_run_directory(directory.resolve())
+    if removed:
+        typer.echo(f"Reset {directory.resolve()} ({len(removed)} paths removed)")
+        for entry in removed[:20]:
+            typer.echo(f"  removed {entry}")
+        if len(removed) > 20:
+            typer.echo(f"  ... and {len(removed) - 20} more")
+    else:
+        typer.echo(f"No calculation outputs to remove under {directory.resolve()}")
 
 
 @run_app.command("explore")

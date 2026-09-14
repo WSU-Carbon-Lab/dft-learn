@@ -7,7 +7,12 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from dftlearn.io.xray_out import parse_xray_out_table, site_spectra_to_long_frame
+from dftlearn.io.xray_out import (
+    parse_xray_out_table,
+    resolve_site_xray_path,
+    site_spectra_to_long_frame,
+    site_xray_paths,
+)
 
 
 def test_parse_xray_out_table_fortran_d(tmp_path: Path) -> None:
@@ -35,3 +40,19 @@ def test_site_spectra_to_long_frame_orders_sites() -> None:
 def test_parse_missing_file(tmp_path: Path) -> None:
     with pytest.raises(FileNotFoundError):
         parse_xray_out_table(tmp_path / "missing.out")
+
+
+def test_site_xray_paths_finds_nexafs_copy(tmp_path: Path) -> None:
+    """Postprocess resolves spectra copied to NEXAFS/SITExas.out by build."""
+    (tmp_path / "C1").mkdir()
+    (tmp_path / "NEXAFS").mkdir()
+    spectrum = (
+        "        280.00000000      0.10000000D+01\n"
+        "        281.00000000      0.20000000D+01\n"
+    )
+    (tmp_path / "NEXAFS" / "C1xas.out").write_text(spectrum, encoding="utf-8")
+    pairs = site_xray_paths(tmp_path)
+    assert pairs == [("C1", (tmp_path / "NEXAFS" / "C1xas.out").resolve())]
+    assert resolve_site_xray_path(tmp_path, "C1") == (
+        tmp_path / "NEXAFS" / "C1xas.out"
+    ).resolve()

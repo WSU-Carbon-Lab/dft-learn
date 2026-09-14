@@ -13,7 +13,10 @@ from dftlearn.io.stobe_final_energy import (
     collect_final_energies_long,
     enrich_final_energies_delta_vs_gnd,
     final_energy_site_summary,
+    ionization_energies_table,
     parse_stobe_final_energy_tables,
+    parse_stobe_tp_core_hole_orbital_ev,
+    parse_stobe_tp_ionization_potential_ev,
     parse_stobe_tp_lumo_alpha_ev,
 )
 
@@ -50,6 +53,11 @@ MINIMAL_ORBITAL_TABLE = """
          Occup.    Energy(eV)    Sym  (pos.)     Occup.    Energy(eV)    Sym  (pos.)
     1    1.0000    -10.0000    1A   (   1)     1.0000    -10.0000    1A   (   1)
     2    0.0000     -2.5000    2A   (   2)     0.0000     -2.6000    2A   (   2)
+"""
+
+MINIMAL_TP_IP_TAIL = """
+ Orbital energy core hole =    -10.70906 H   (  -291.41063 eV)
+ Ionization potential     =    291.41063 eV
 """
 
 
@@ -122,6 +130,14 @@ def test_parse_stobe_tp_lumo_alpha_ev(tmp_path: Path) -> None:
     assert np.isclose(parse_stobe_tp_lumo_alpha_ev(path), -2.5)
 
 
+def test_parse_stobe_tp_ionization_potential_ev(tmp_path: Path) -> None:
+    """TP ionization potential line is returned in eV."""
+    path = tmp_path / "C1tp.out"
+    path.write_text(MINIMAL_TP_IP_TAIL, encoding="utf-8")
+    assert np.isclose(parse_stobe_tp_ionization_potential_ev(path), 291.41063)
+    assert np.isclose(parse_stobe_tp_core_hole_orbital_ev(path), -291.41063)
+
+
 def test_collect_delta_ks_site_table(tmp_path: Path) -> None:
     """Wide table matches :math:`E^c = E^e - E^g - E^l` in eV."""
     c1 = tmp_path / "C1"
@@ -130,6 +146,7 @@ def test_collect_delta_ks_site_table(tmp_path: Path) -> None:
     exc_ha = -9.0
     tp_ha = -9.5
     lumo_ev = -2.5
+    ip_ev = 291.41063
 
     def block(e: float) -> str:
         return MINIMAL_FINAL_TAIL.replace("-2438.6024592313", f"{e:.10f}")
@@ -137,11 +154,23 @@ def test_collect_delta_ks_site_table(tmp_path: Path) -> None:
     (c1 / "C1gnd.out").write_text(block(gnd_ha), encoding="utf-8")
     (c1 / "C1exc.out").write_text(block(exc_ha), encoding="utf-8")
     (c1 / "C1tp.out").write_text(
-        block(tp_ha) + MINIMAL_ORBITAL_TABLE,
+        block(tp_ha) + MINIMAL_ORBITAL_TABLE + MINIMAL_TP_IP_TAIL,
         encoding="utf-8",
     )
     df = collect_delta_ks_site_table(tmp_path)
     assert len(df) == 1
     eg = gnd_ha * HA_TO_EV
     ee = exc_ha * HA_TO_EV
-    assert np.isclose(float(df["E_c_deltaKS_ev"].iloc[0]), ee - eg - lumo_ev)
+    e_c = ee - eg - lumo_ev
+    assert np.isclose(float(df["E_c_deltaKS_ev"].iloc[0]), e_c)
+    assert np.isclose(float(df["ionization_potential_ev"].iloc[0]), ip_ev)
+    assert np.isclose(float(df["core_hole_orbital_ev"].iloc[0]), -ip_ev)
+    ip_df = ionization_energies_table(df)
+    assert list(ip_df.columns) == [
+        "site",
+        "ionization_potential_ev",
+        "core_hole_orbital_ev",
+        "E_c_deltaKS_ev",
+        "source_tp",
+    ]
+    assert ip_df["site"].iloc[0] == "C1"
