@@ -124,7 +124,7 @@ def test_shift_xas_spectrum_samples_unshifted_curve() -> None:
 
 @pytest.mark.skipif(not _EXAMPLE.is_dir(), reason="example ZnPc run not present")
 def test_reconstructed_tp_xas_matches_stobe_xrayt() -> None:
-    energy, spectra, metrics, sticks = collect_site_tp_xas(_EXAMPLE)
+    energy, spectra, metrics, sticks, _frame = collect_site_tp_xas(_EXAMPLE)
     assert energy.shape[0] == 2000
     assert set(metrics["site"]) == {"C1", "C2", "C3", "C4"}
     assert set(sticks["site"].unique()) == {"C1", "C2", "C3", "C4"}
@@ -159,7 +159,7 @@ def test_aligned_spectrum_uses_delta_ks_not_ks_lumo(tmp_path: Path) -> None:
         _FINAL_BLOCK.format(energy=exc_ha), encoding="utf-8"
     )
     (site / "C1tp.out").write_text(_FINAL_BLOCK.format(energy=-9.5), encoding="utf-8")
-    _energy, spectra, metrics, sticks = collect_site_tp_xas(tmp_path)
+    _energy, spectra, metrics, sticks, _frame = collect_site_tp_xas(tmp_path)
     e_c = float(metrics["E_c_ev"].iloc[0])
     np.testing.assert_allclose(e_c, target_shift, atol=1e-6)
     aligned = spectra["abs_aligned"].to_numpy(dtype=np.float64)
@@ -223,7 +223,7 @@ def test_padded_shift_keeps_high_energy_tail() -> None:
 
 @pytest.mark.skipif(not _EXAMPLE.is_dir(), reason="example ZnPc run not present")
 def test_znpc_aligned_spectrum_has_no_range_cliff() -> None:
-    _energy, spectra, _metrics, sticks = collect_site_tp_xas(_EXAMPLE)
+    _energy, spectra, _metrics, sticks, _frame = collect_site_tp_xas(_EXAMPLE)
     c1 = spectra.loc[spectra["site"] == "C1"]
     y_al = c1["abs_aligned"].to_numpy(dtype=np.float64)
     y_tp = c1["abs_tp"].to_numpy(dtype=np.float64)

@@ -30,6 +30,15 @@ _UNOCC_EPS = 1e-6
 
 _FLOAT = r"-?\d+(?:\.\d+)?(?:[Ee][+-]?\d+)?"
 
+_IONIZATION_POTENTIAL = re.compile(
+    rf"Ionization potential\s*=\s*({_FLOAT})\s*eV",
+    re.IGNORECASE,
+)
+
+_CORE_HOLE_ORBITAL = re.compile(
+    rf"Orbital energy core hole\s*=\s*({_FLOAT})\s*H\s*\(\s*({_FLOAT})\s*eV\s*\)",
+    re.IGNORECASE,
+)
 _LINE_PATTERNS: tuple[tuple[re.Pattern[str], str], ...] = (
     (re.compile(rf"Total energy\s+\(H\)\s*=\s*({_FLOAT})"), "total_energy_h"),
     (re.compile(rf"Nuc-nuc energy\s+\(H\)\s*=\s*({_FLOAT})"), "nuc_nuc_energy_h"),
@@ -223,6 +232,80 @@ def parse_stobe_tp_lumo_alpha_ev(path: Path) -> float:
     raise ValueError(msg)
 
 
+def parse_stobe_tp_ionization_potential_ev(path: Path) -> float:
+    """Return the transition-potential ionization potential (eV) from a ``*tp.out``.
+
+    Reads StoBe's ``Ionization potential = ... eV`` line (Koopmans-style core
+    IP from the half-core-hole calculation). This is the same quantity Igor
+    loads as ``IP_`` and the pipeline uses for step-edge construction.
+
+    Parameters
+    ----------
+    path : pathlib.Path
+        Path to a ``C1tp.out``-style transition-potential output.
+
+    Returns
+    -------
+    float
+        Ionization potential in eV.
+
+    Raises
+    ------
+    FileNotFoundError
+        If ``path`` is missing.
+    ValueError
+        If no ionization-potential line is found.
+    """
+    path = Path(path)
+    if not path.is_file():
+        msg = f"StoBe output not found: {path}"
+        raise FileNotFoundError(msg)
+    with path.open(encoding="utf-8", errors="replace") as handle:
+        for raw in handle:
+            m = _IONIZATION_POTENTIAL.search(raw)
+            if m:
+                return float(m.group(1))
+    msg = f"No ionization potential line parsed from {path}"
+    raise ValueError(msg)
+
+
+def parse_stobe_tp_core_hole_orbital_ev(path: Path) -> float:
+    """Return the core-hole orbital energy (eV) from a StoBe ``*tp.out``.
+
+    Reads ``Orbital energy core hole = ... H ( ... eV )``. The eV value matches
+    the ionization potential magnitude with opposite sign convention on the
+    Hartree eigenvalue.
+
+    Parameters
+    ----------
+    path : pathlib.Path
+        Path to a ``C1tp.out``-style transition-potential output.
+
+    Returns
+    -------
+    float
+        Core-hole orbital energy in eV (typically negative).
+
+    Raises
+    ------
+    FileNotFoundError
+        If ``path`` is missing.
+    ValueError
+        If the core-hole orbital line is not found.
+    """
+    path = Path(path)
+    if not path.is_file():
+        msg = f"StoBe output not found: {path}"
+        raise FileNotFoundError(msg)
+    with path.open(encoding="utf-8", errors="replace") as handle:
+        for raw in handle:
+            m = _CORE_HOLE_ORBITAL.search(raw)
+            if m:
+                return float(m.group(2))
+    msg = f"No core-hole orbital energy line parsed from {path}"
+    raise ValueError(msg)
+
+
 def enrich_final_energies_delta_vs_gnd(df: pd.DataFrame) -> pd.DataFrame:
     """Add ``delta_vs_gnd_h`` and ``delta_vs_gnd_ev`` from same-site ground totals.
 
@@ -344,12 +427,15 @@ def _first_total_energy_h(parsed: pd.DataFrame) -> float:
 
 
 def collect_delta_ks_site_table(run_root: Path) -> pd.DataFrame:
-    """Build one row per site: SCF totals and Delta-KS alignment (eV).
+    """Build one row per site: SCF totals, TP ionization potential, and Delta-KS.
 
     Uses ``FINAL ENERGY`` totals from ``*gnd.out``, ``*exc.out``, ``*tp.out`` (first
     block only) and alpha LUMO (eV) from the TP orbital table. Computes
     ``E_c_deltaKS_ev = E_e_ev - E_g_ev - lumo_tp_alpha_ev`` with SCF totals converted
     from Ha to eV and ``E^l`` the alpha LUMO eigenvalue (eV) from the TP output.
+    Reads the TP ``Ionization potential`` line as ``ionization_potential_ev``
+    (Igor ``IP_``; not shifted by ``E_c``, matching the default StoBe import path
+    where ``correctIPEnergy`` is left unused).
 
     Parameters
     ----------
@@ -360,6 +446,7 @@ def collect_delta_ks_site_table(run_root: Path) -> pd.DataFrame:
     -------
     pandas.DataFrame
         Columns ``site``, ``E_g_ev``, ``E_e_ev``, ``E_tp_ev``, ``lumo_tp_alpha_ev``,
+        ``ionization_potential_ev``, ``core_hole_orbital_ev``,
         ``delta_exc_vs_gnd_ev``, ``delta_tp_vs_gnd_ev``, ``E_c_deltaKS_ev``, and
         ``source_*`` paths for gnd, exc, tp.
 
@@ -423,10 +510,24 @@ def collect_delta_ks_site_table(run_root: Path) -> pd.DataFrame:
                 row["lumo_tp_alpha_ev"] = parse_stobe_tp_lumo_alpha_ev(t_path)
             except ValueError:
                 row["lumo_tp_alpha_ev"] = float("nan")
+            try:
+                row["ionization_potential_ev"] = parse_stobe_tp_ionization_potential_ev(
+                    t_path
+                )
+            except ValueError:
+                row["ionization_potential_ev"] = float("nan")
+            try:
+                row["core_hole_orbital_ev"] = parse_stobe_tp_core_hole_orbital_ev(
+                    t_path
+                )
+            except ValueError:
+                row["core_hole_orbital_ev"] = float("nan")
         else:
             row["source_tp"] = ""
             row["E_tp_ev"] = float("nan")
             row["lumo_tp_alpha_ev"] = float("nan")
+            row["ionization_potential_ev"] = float("nan")
+            row["core_hole_orbital_ev"] = float("nan")
 
         eg = row.get("E_g_ev", float("nan"))
         ee = row.get("E_e_ev", float("nan"))
@@ -462,3 +563,37 @@ def collect_delta_ks_site_table(run_root: Path) -> pd.DataFrame:
         msg = f"No sites assembled under {run_root}"
         raise ValueError(msg)
     return pd.DataFrame(rows)
+
+
+def ionization_energies_table(wide: pd.DataFrame) -> pd.DataFrame:
+    """Build a per-site ionization-energy table from a Delta-KS site summary.
+
+    Parameters
+    ----------
+    wide : pandas.DataFrame
+        Output of :func:`collect_delta_ks_site_table`.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Columns ``site``, ``ionization_potential_ev``, ``core_hole_orbital_ev``,
+        ``E_c_deltaKS_ev``, and ``source_tp`` when present.
+
+    Raises
+    ------
+    ValueError
+        If ``site`` is missing from ``wide``.
+    """
+    if "site" not in wide.columns:
+        msg = "wide must include a site column"
+        raise ValueError(msg)
+    cols = [
+        "site",
+        "ionization_potential_ev",
+        "core_hole_orbital_ev",
+        "E_c_deltaKS_ev",
+        "source_tp",
+    ]
+    present = [c for c in cols if c in wide.columns]
+    out = wide.loc[:, present].copy()
+    return out.reset_index(drop=True)

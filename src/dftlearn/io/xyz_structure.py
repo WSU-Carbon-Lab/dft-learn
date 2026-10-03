@@ -259,7 +259,8 @@ def site_highlight_geometry(
         msg = f"atom_index {atom_index} out of range for mol with {n} atoms"
         raise ValueError(msg)
     mol = Chem.Mol(mol)
-    AllChem.Compute2DCoords(mol)
+    compute_2d = getattr(AllChem, "Compute2DCoords")  # noqa: B009
+    compute_2d(mol)
     img = Draw.MolToImage(
         mol,
         size=size,

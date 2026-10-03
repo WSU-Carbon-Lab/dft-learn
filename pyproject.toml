@@ -38,6 +38,7 @@ dependencies = [
     "rich>=14.3.1",
     "rdkit>=2025.9.3",
     "py3dmol>=2.5.2",
+    "gemmi>=0.7.5",
 ]
 
 [project.scripts]
@@ -74,6 +75,9 @@ viz = [
 all = [
     "dft-learn[gpu,torch,full,viz]",
 ]
+setup = [
+    "streamlit>=1.61.1",
+]
 
 [[tool.uv.index]]
 name = "pytorch-cu124"
@@ -92,6 +96,7 @@ exclude = [
   "tests",
   "python_pipeline",
   "src/dftlearn/cli/_deprecated",
+  "src/dftlearn/cli/_old",
 ]
 fix = true
 line-length = 88
@@ -107,6 +112,7 @@ exclude = [
   "tests",
   "python_pipeline",
   "src/dftlearn/cli/_deprecated",
+  "src/dftlearn/cli/_old",
 ]
 
 [tool.ruff.lint]

@@ -30,9 +30,15 @@ from dftlearn.io.stobe_xas_sticks import (
     site_xas_stick_paths,
 )
 from dftlearn.io.xray_out import parse_xray_out_table, site_xray_paths
+from dftlearn.xas.c3_symmetry import (
+    build_c3_frame_from_xyz,
+    fold_dipoles_c3,
+    oscillator_strengths_from_tensors,
+)
 
 if TYPE_CHECKING:
     from dftlearn.io.stobe_xas_sticks import XasSpecSettings
+    from dftlearn.xas.c3_symmetry import C3Frame
 
 STOBE_XAS_HA_TO_EV = 27.2116
 XAS_INTENSITY_SCALE = 1000.0
@@ -395,13 +401,21 @@ def _align_reconstructed_spectrum(
     return shift_and_resample_xas_spectrum(pad, y_pad, energy_ev, shift_ev)
 
 
-def _site_stick_arrays(path: Path) -> tuple[np.ndarray, np.ndarray | None]:
+def _site_stick_arrays(
+    path: Path,
+    *,
+    c3_frame: C3Frame | None = None,
+) -> tuple[np.ndarray, np.ndarray | None]:
     """Return ``(m, 2)`` total-OS sticks and optional Cartesian OS ``(m, 3)``."""
     try:
         dipole = parse_stobe_xas_dipole_sticks(path)
     except ValueError:
         return parse_stobe_xas_sticks(path), None
-    cart = dipole_cartesian_oscillator_strengths(dipole[:, 0], dipole[:, 2:5])
+    if c3_frame is not None:
+        tensors = fold_dipoles_c3(dipole[:, 2:5], c3_frame.rotation)
+        cart = oscillator_strengths_from_tensors(dipole[:, 0], tensors)
+    else:
+        cart = dipole_cartesian_oscillator_strengths(dipole[:, 0], dipole[:, 2:5])
     return dipole[:, :2], cart
 
 
@@ -462,7 +476,9 @@ def collect_site_tp_xas(
     xray_filename: str = "XrayT001.out",
     ha_to_ev: float = STOBE_XAS_HA_TO_EV,
     intensity_scale: float = XAS_INTENSITY_SCALE,
-) -> tuple[np.ndarray, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    xyz_path: Path | None = None,
+    c3_symmetrize: bool = False,
+) -> tuple[np.ndarray, pd.DataFrame, pd.DataFrame, pd.DataFrame, C3Frame | None]:
     r"""Reconstruct per-site XAS from TP sticks and compare to ``XrayT*.out``.
 
     Broadening matches ``xrayspec.x`` with no energy shift. When ground and
@@ -471,6 +487,10 @@ def collect_site_tp_xas(
     not clip at the high-energy end of ``RANGE``. Cartesian dipole components
     are broadened the same way when ``C*.xas`` provides :math:`\\mu_x,\\mu_y,\\mu_z`.
     Stick tables keep both the unshifted and aligned transition energies.
+
+    When ``c3_symmetrize`` is True, dipoles are rotated into the Al-N/O
+    coordination triangle frame and folded under C3 about molecular z before
+    Cartesian oscillator strengths are formed.
 
     Parameters
     ----------
@@ -482,6 +502,10 @@ def collect_site_tp_xas(
         fort.11 Hartree conversion.
     intensity_scale : float, optional
         xrayspec intensity scale.
+    xyz_path : pathlib.Path, optional
+        Geometry used to build the C3 frame when ``c3_symmetrize`` is True.
+    c3_symmetrize : bool, optional
+        When True, fold Cartesian OS under C3 in the Al-N/O frame.
 
     Returns
     -------
@@ -500,18 +524,28 @@ def collect_site_tp_xas(
         One row per dipole transition: ``site``, ``energy_ev``,
         ``energy_aligned_ev``, ``oscillator_strength``, and Cartesian
         ``os_xx``, ``os_yy``, ``os_zz`` when dipole components are present.
+    c3_frame : C3Frame or None
+        Molecular frame used for folding, or ``None`` when not symmetrizing.
 
     Raises
     ------
     FileNotFoundError
         If no ``{site}.xas`` files are found.
     ValueError
-        If a stick file cannot be parsed or site energy axes disagree.
+        If a stick file cannot be parsed, site energy axes disagree, or
+        ``c3_symmetrize`` is True without a usable ``xyz_path``.
     """
     run_root = Path(run_root).resolve()
     stick_pairs = site_xas_stick_paths(run_root)
     xray_map = dict(_optional_xray_paths(run_root, xray_filename))
     delta_ks = _delta_ks_by_site(run_root)
+
+    c3_frame: C3Frame | None = None
+    if c3_symmetrize:
+        if xyz_path is None:
+            msg = "c3_symmetrize requires xyz_path for the Al-N/O coordination frame"
+            raise ValueError(msg)
+        c3_frame = build_c3_frame_from_xyz(Path(xyz_path))
 
     energy: np.ndarray | None = None
     spec_rows: list[pd.DataFrame] = []
@@ -519,7 +553,7 @@ def collect_site_tp_xas(
     stick_rows: list[pd.DataFrame] = []
 
     for site, stick_path in stick_pairs:
-        sticks, cart = _site_stick_arrays(stick_path)
+        sticks, cart = _site_stick_arrays(stick_path, c3_frame=c3_frame)
         settings = _settings_for_site(stick_path.parent, site)
         xray_path = xray_map.get(site)
         if xray_path is not None:
@@ -695,7 +729,7 @@ def collect_site_tp_xas(
     metrics = metrics.set_index("site").loc[site_order].reset_index()
     sticks_df = pd.concat(stick_rows, ignore_index=True)
     sticks_df = sticks_df.set_index("site").loc[site_order].reset_index()
-    return energy, spectra, metrics, sticks_df
+    return energy, spectra, metrics, sticks_df, c3_frame
 
 
 def aligned_dipole_tensor_tables(

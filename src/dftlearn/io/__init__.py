@@ -8,7 +8,10 @@ from dftlearn.io.stobe_final_energy import (
     collect_final_energies_long,
     enrich_final_energies_delta_vs_gnd,
     final_energy_site_summary,
+    ionization_energies_table,
     parse_stobe_final_energy_tables,
+    parse_stobe_tp_core_hole_orbital_ev,
+    parse_stobe_tp_ionization_potential_ev,
     parse_stobe_tp_lumo_alpha_ev,
 )
 from dftlearn.io.stobe_scf_convergence import (
@@ -53,9 +56,12 @@ __all__ = [
     "element_symbol_from_xyz_label",
     "enrich_final_energies_delta_vs_gnd",
     "final_energy_site_summary",
+    "ionization_energies_table",
     "mol_from_xyz_file",
     "parse_stobe_final_energy_tables",
     "parse_stobe_scf_convergence_table",
+    "parse_stobe_tp_core_hole_orbital_ev",
+    "parse_stobe_tp_ionization_potential_ev",
     "parse_stobe_tp_lumo_alpha_ev",
     "parse_stobe_xas_dipole_sticks",
     "parse_stobe_xas_inp",
