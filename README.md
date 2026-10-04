@@ -106,6 +106,57 @@ CI runs on every push / PR. Publishing uses
 The [Release](https://github.com/WSU-Carbon-Lab/dft-learn/actions/workflows/release.yml)
 workflow builds the sdist/wheel, uploads to PyPI, and creates a GitHub Release.
 
+<details>
+<summary><strong>Igor → Python conversion</strong></summary>
+
+Port status for the [`igor/`](igor/) clustering pipeline → `dftlearn`.
+See also [#1](https://github.com/WSU-Carbon-Lab/dft-learn/issues/1) ·
+[#2](https://github.com/WSU-Carbon-Lab/dft-learn/issues/2) ·
+[#3](https://github.com/WSU-Carbon-Lab/dft-learn/issues/3).
+
+`✅` tested &nbsp;·&nbsp; `☑️` implemented &nbsp;·&nbsp; `🔄` in progress &nbsp;·&nbsp; `⬜` not started &nbsp;·&nbsp; `➖` out of scope
+
+#### Ingest
+
+| | Capability | Python | Track |
+|:-:|---|---|---|
+| ✅ | `XrayT*.out` / XAS sticks | `io.xray_out`, `io.stobe_xas_sticks` | [#4](https://github.com/WSU-Carbon-Lab/dft-learn/pull/4) |
+| ✅ | XYZ geometry & site labels | `io.xyz_structure` | |
+| ☑️ | Aligned reconstruction tables | `xas.spectrum`, `dftrun postprocess` | [#4](https://github.com/WSU-Carbon-Lab/dft-learn/pull/4) |
+| 🔄 | Full ground / excited / TP load | `python_pipeline.stobeLoader` | [#2](https://github.com/WSU-Carbon-Lab/dft-learn/issues/2) |
+
+#### Clustering & filtering
+
+| | Capability | Python | Track |
+|:-:|---|---|---|
+| ✅ | Peak-overlap matrices | `clustering.overlap` | [#4](https://github.com/WSU-Carbon-Lab/dft-learn/pull/4) |
+| ✅ | Iterative overlap merge | `clustering` | [#4](https://github.com/WSU-Carbon-Lab/dft-learn/pull/4) |
+| ✅ | OS% elbow cutoff | `clustering.os_elbow` | [#4](https://github.com/WSU-Carbon-Lab/dft-learn/pull/4) |
+| ✅ | Overlap-threshold selection | `clustering.selection` | [#4](https://github.com/WSU-Carbon-Lab/dft-learn/pull/4) |
+| 🔄 | `filterDFT` orchestration | — | [#1](https://github.com/WSU-Carbon-Lab/dft-learn/issues/1) |
+| 🔄 | OS × OVP parameter grids | `clustering.selection` | |
+| ⬜ | Amplitude refit (pre-merge) | — | [#1](https://github.com/WSU-Carbon-Lab/dft-learn/issues/1) |
+
+#### Symmetry, tensors & experiment
+
+| | Capability | Python | Track |
+|:-:|---|---|---|
+| ✅ | C3 dipole fold / site OS | `xas.c3_symmetry` | |
+| 🔄 | General TDM symmetry classes | — | [#1](https://github.com/WSU-Carbon-Lab/dft-learn/issues/1) |
+| 🔄 | Film tensors / `simDFT` / tilt | `python_pipeline.multiSpecFitProcs` | [#3](https://github.com/WSU-Carbon-Lab/dft-learn/issues/3) |
+| 🔄 | Bare-atom / Henke step edge | `python_pipeline.stepEdgeProcs` | [#3](https://github.com/WSU-Carbon-Lab/dft-learn/issues/3) |
+| 🔄 | Multi-spectrum experiment fit | `python_pipeline.multiSpecFitProcs` | [#3](https://github.com/WSU-Carbon-Lab/dft-learn/issues/3) |
+| ☑️ | Cluster / site / orbital figures | `visualization` | |
+
+#### UI
+
+| | Capability | Python | Track |
+|:-:|---|---|---|
+| ⬜ | Interactive clustering panel | HF Space / demos | [#5](https://github.com/WSU-Carbon-Lab/dft-learn/pull/5) |
+| ➖ | Chem3D viewer | — | |
+
+</details>
+
 ## Citation
 
 ```bibtex
