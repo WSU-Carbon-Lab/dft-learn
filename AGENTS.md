@@ -14,7 +14,7 @@ The project is an attempt to solidify and expand uppon the work of [@victormurci
 
 The project is organized into the following folders:
 
-- **.agents/**: Canonical project **skills**, **subagents**, and **rules**. **`.cursor/`** and **`.claude/`** expose the same trees via symlinks so Cursor and Claude Code load them without duplicating files. See **[CLAUDE.md](CLAUDE.md)** for Claude-specific discovery.
+- **.agents/**: Canonical project **skills**, **subagents**, and **rules**. **`.claude/`** symlinks the same trees for Claude Code discovery (`AGENTS.md` is the single project spec for all agents).
 - **docs/**: This folder contains some simple documentation for the project. For now it is mostly just a placeholder, but will be expanded uppon in the future to contain a properly generated documentation for the project.
 - **igor/**: Legacy Igor Pro implementation of the clustering and refinement tool (not the active development target). See **Igor Pro Implementation** below for WaveMetrics folder roles, file map, and a suggested reading order when tracing the pipeline.
 - **notebooks/**: This folder contains the Jupyter notebooks for the project. These notebooks are used to explore the data and the algorithms, and to test and validate the code.
@@ -202,7 +202,7 @@ You are assisting someone who holds a physics PhD and has extensive experience w
 
 ## Python
 
-The following applies to **Python** work in this repository: scientific and general-purpose code, with emphasis on clear structure, reproducible tooling, and documentation that matches how the team uses Cursor (skills, subagents, and editor rules).
+The following applies to **Python** work in this repository: scientific and general-purpose code, with emphasis on clear structure, reproducible tooling, and documentation that matches project skills, subagents, and editor rules.
 
 ### Conventions
 
@@ -229,22 +229,23 @@ If a **`uv`** subcommand differs by version, use **`uv --help`** or the [uv docs
 - Prefer **fast, deterministic** unit tests; isolate I/O and timing-sensitive checks when the team uses markers or separate jobs.
 - **Regression tests** for fixed bugs; for numerics, assert **shapes**, **dtypes**, and stability expectations when science or reproducibility requires it.
 
-### Cursor: skills
+### Agent skills
 
-Load these **skills** by **name** when the task matches (each skill’s own `SKILL.md` and references hold the full detail). Canonical copies live under **`.agents/skills/`**, with the same tree linked as **`.cursor/skills/`** and **`.claude/skills/`**.
+Load the matching skill **before** implementing when the task matches. Canonical copies live under **`.agents/skills/`** (also linked as **`.claude/skills/`**). Each skill’s `SKILL.md` plus `references/` is the long-form contract.
 
 | Skill | Use it for |
 |-------|------------|
-| **general-python** | Hub: **uv** / **ruff** / **ty** workflow, builtins and collections, functions and classes, **dataclasses**, typing boundaries, **pytest**, scientific defaults, and pointers to the other skills. |
-| **numpy-scientific** | **NumPy**: dtypes, views vs copies, broadcasting, ufuncs and reductions, **linalg** / **einsum**, **`Generator`**, I/O, interop with tables and plotting. |
-| **dataframes** | **pandas** and **Polars**: when to use which, indexing, joins, lazy execution, I/O, nulls, Arrow interop. |
-| **numpy-docstrings** | **Numpydoc**-style docstrings: section order, semantics (what belongs in docstrings vs types vs tests), anti-patterns, **Parameters** / **Returns** / **Examples** / classes / modules. |
-| **matplotlib-scientific** | Publication-style **Matplotlib**: OO API, axes and legends, layout, export, journal widths, optional **SciencePlots**. |
-| **lab-instrumentation** | **PyVISA** / VISA sessions, **sockets** vs VISA, **hardware abstraction**, **input validation** before I/O, **testing** without hardware, **PDF** extraction for datasheets and manuals. |
+| [`general-python`](.agents/skills/general-python/SKILL.md) | Hub: **uv** / **ruff** / **ty** workflow, builtins and collections, functions and classes, **dataclasses**, typing boundaries, **pytest**, scientific defaults, and pointers to the other skills. |
+| [`numpy-scientific`](.agents/skills/numpy-scientific/SKILL.md) | **NumPy**: dtypes, views vs copies, broadcasting, ufuncs and reductions, **linalg** / **einsum**, **`Generator`**, I/O, interop with tables and plotting. |
+| [`dataframes`](.agents/skills/dataframes/SKILL.md) | **pandas** and **Polars**: when to use which, indexing, joins, lazy execution, I/O, nulls, Arrow interop. |
+| [`numpy-docstrings`](.agents/skills/numpy-docstrings/SKILL.md) | **Numpydoc**-style docstrings: section order, semantics (what belongs in docstrings vs types vs tests), anti-patterns, **Parameters** / **Returns** / **Examples** / classes / modules. |
+| [`matplotlib-scientific`](.agents/skills/matplotlib-scientific/SKILL.md) | Publication-style **Matplotlib**: OO API, axes and legends, layout, export, journal widths, optional **SciencePlots**. |
+| [`lab-instrumentation`](.agents/skills/lab-instrumentation/SKILL.md) | **PyVISA** / VISA sessions, **sockets** vs VISA, **hardware abstraction**, **input validation** before I/O, **testing** without hardware, **PDF** extraction for datasheets and manuals. |
+| [`general`](.agents/skills/general/SKILL.md) | Completeness, public contracts, no placeholder code. |
 
-### Cursor: subagents
+### Agent subagents
 
-Delegate by **subagent name** when a focused pass is better than inline editing. Canonical copies live under **`.agents/agents/`**, with the same tree linked as **`.cursor/agents/`** and **`.claude/agents/`**.
+Delegate by **subagent name** when a focused pass is better than inline editing. Canonical copies live under **`.agents/agents/`** (also linked as **`.claude/agents/`**): `python-reviewer`, `python-types`, `python-refactor`, `dotagent-general-standards-auditor`.
 
 | Subagent | Use it for |
 |----------|------------|
@@ -252,9 +253,10 @@ Delegate by **subagent name** when a focused pass is better than inline editing.
 | **python-types** | Deep **typing** for **ty**: annotations, PEP 695-style generics, exhaustive **`match`**, fixing checker output. |
 | **python-refactor** | **Structure**: unclear multi-value returns, composition vs inheritance, oversized functions or classes, deterministic boundaries. |
 
-### Cursor: rules
+### Agent rules
 
-- A **Python** Cursor **rule** applies to Python sources (typically `**/*.py` when the rule is configured for those globs). It restates **interpreter preference**, **uv** usage, **ruff** / **ty** expectations, numerics and docstring defaults, and points to **general-python**, domain skills such as **lab-instrumentation** when editing drivers or lab I/O, and the subagents above.
+Always-on editor rules live under **`.agents/rules/`** (also linked as **`.claude/rules/`**). The Python rule applies to `**/*.py`: interpreter preference, **uv**, **ruff** / **ty**, numerics, and NumPy docstrings; it points at **general-python**, domain skills such as **lab-instrumentation** when editing drivers or lab I/O, and the subagents above.
+
 - **Rule text is authoritative for “always on” editor hints**; **skills** carry the long-form patterns and examples. When the two differ on a detail, follow **this spec** and **`pyproject.toml`**, then the **rule**, then skill nuance.
 
 ### External references

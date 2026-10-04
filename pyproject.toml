@@ -232,6 +232,6 @@ dev = [
     "ruff>=0.8.0",
     "mypy>=1.8.0",
     "ipython>=8.20.0",
-    "jupyterlab>=4.4.0",
+    "jupyterlab>=4.5.11",
     "ty>=0.0.84",
 ]

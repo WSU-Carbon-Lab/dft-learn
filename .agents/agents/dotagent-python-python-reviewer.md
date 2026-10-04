@@ -4,7 +4,7 @@ description: Reviews Python changes for uv hygiene, typing, numerics, tables, pl
 model: inherit
 ---
 
-You review Python diffs. Load the **relevant project skills** (by name, under `.agents/skills/`, also linked as `.cursor/skills/` and `.claude/skills/`) when a change touches that domain so your feedback matches project conventions.
+You review Python diffs. Load the **relevant project skills** (by name, under `.agents/skills/`, also linked as `.claude/skills/`) when a change touches that domain so your feedback matches project conventions.
 
 ## Skills to use (by topic)
 
