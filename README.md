@@ -111,6 +111,7 @@ Status of the [`igor/`](igor/) clustering pipeline in `dftlearn`
 ([#1](https://github.com/WSU-Carbon-Lab/dft-learn/issues/1) ·
 [#2](https://github.com/WSU-Carbon-Lab/dft-learn/issues/2) ·
 [#3](https://github.com/WSU-Carbon-Lab/dft-learn/issues/3)).
+Audited against `FilteringMain` / `filterDFT` and current library + `python_pipeline/` staging.
 
 Summaries show one box per capability and **done / total**
 (done = tested or done-untested; out of scope omitted from the total).
@@ -122,56 +123,72 @@ Summaries show one box per capability and **done / total**
 <img src="docs/readme/box-skip.svg" alt="■" width="12" height="12"> out of scope
 
 <details>
-<summary><strong>Ingest</strong> · <img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"><img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"><img src="docs/readme/box-done.svg" alt="■" width="12" height="12"><img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"> 3/4</summary>
+<summary><strong>Ingest</strong> · <img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"><img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"><img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"><img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"> 3/4</summary>
 
 | | Capability | Completion | Location | Track |
 |:-:|---|---|---|---|
-| <img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"> | `XrayT*.out` / XAS sticks | tested | `dftlearn.io` | [#4](https://github.com/WSU-Carbon-Lab/dft-learn/pull/4) |
-| <img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"> | XYZ geometry & site labels | tested | `dftlearn.io` | |
-| <img src="docs/readme/box-done.svg" alt="■" width="12" height="12"> | Aligned reconstruction tables | done | `dftlearn.xas`, `dftrun postprocess` | [#4](https://github.com/WSU-Carbon-Lab/dft-learn/pull/4) |
-| <img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"> | Full ground / excited / TP load | in progress | `python_pipeline/` | [#2](https://github.com/WSU-Carbon-Lab/dft-learn/issues/2) |
+| <img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"> | `XrayT*.out` / TP `*.xas` sticks | tested | `dftlearn.io` | [#4](https://github.com/WSU-Carbon-Lab/dft-learn/pull/4) |
+| <img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"> | XYZ geometry & site labels | tested | `dftlearn.io` |  |
+| <img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"> | Delta-KS / FINAL ENERGY / TP LUMO (`E^c`) | tested | `dftlearn.io` |  |
+| <img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"> | Full ground / excited / TP directory load | in progress | `python_pipeline/stobeLoader` | [#2](https://github.com/WSU-Carbon-Lab/dft-learn/issues/2) |
 
 </details>
 
 <details>
-<summary><strong>Clustering</strong> · <img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"><img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"><img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"><img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"><img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"><img src="docs/readme/box-todo.svg" alt="☐" width="12" height="12"> 3/6</summary>
+<summary><strong>Filter & cluster</strong> · <img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"><img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"><img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"><img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"><img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"><img src="docs/readme/box-todo.svg" alt="☐" width="12" height="12"><img src="docs/readme/box-todo.svg" alt="☐" width="12" height="12"><img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"><img src="docs/readme/box-skip.svg" alt="■" width="12" height="12"> 5/8</summary>
 
 | | Capability | Completion | Location | Track |
 |:-:|---|---|---|---|
-| <img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"> | Peak-overlap matrices | tested | `dftlearn.clustering` | [#4](https://github.com/WSU-Carbon-Lab/dft-learn/pull/4) |
-| <img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"> | Iterative overlap merge | tested | `dftlearn.clustering` | [#4](https://github.com/WSU-Carbon-Lab/dft-learn/pull/4) |
-| <img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"> | OS% elbow & threshold selection | tested | `dftlearn.clustering` | [#4](https://github.com/WSU-Carbon-Lab/dft-learn/pull/4) |
-| <img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"> | `filterDFT` orchestration | in progress | — | [#1](https://github.com/WSU-Carbon-Lab/dft-learn/issues/1) |
-| <img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"> | OS × OVP parameter grids | in progress | `dftlearn.clustering` | |
-| <img src="docs/readme/box-todo.svg" alt="☐" width="12" height="12"> | Amplitude refit (pre-merge) | not started | — | [#1](https://github.com/WSU-Carbon-Lab/dft-learn/issues/1) |
+| <img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"> | Energy window + OS% cull | tested | `dftlearn.clustering` | [#4](https://github.com/WSU-Carbon-Lab/dft-learn/pull/4) |
+| <img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"> | Gaussian peak-overlap matrices | tested | `dftlearn.clustering` | [#4](https://github.com/WSU-Carbon-Lab/dft-learn/pull/4) |
+| <img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"> | Iterative overlap merge (`simpleCluster3`) | tested | `dftlearn.clustering` | [#4](https://github.com/WSU-Carbon-Lab/dft-learn/pull/4) |
+| <img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"> | OS% elbow cutoff | tested | `dftlearn.clustering` | [#4](https://github.com/WSU-Carbon-Lab/dft-learn/pull/4) |
+| <img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"> | OVP threshold selection (BIC / GP) | tested | `dftlearn.clustering` | [#4](https://github.com/WSU-Carbon-Lab/dft-learn/pull/4) |
+| <img src="docs/readme/box-todo.svg" alt="☐" width="12" height="12"> | OS × OVP sequential grids (`seqThresholds`) | not started | — |  |
+| <img src="docs/readme/box-todo.svg" alt="☐" width="12" height="12"> | Amplitude refit to pre-merge DFT NEXAFS | not started | — | [#1](https://github.com/WSU-Carbon-Lab/dft-learn/issues/1) |
+| <img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"> | `filterDFT`-style end-to-end orchestration | in progress | `dftrun postprocess` (partial) | [#1](https://github.com/WSU-Carbon-Lab/dft-learn/issues/1) |
+| <img src="docs/readme/box-skip.svg" alt="■" width="12" height="12"> | Alternate %-difference clusterer (`pDiff`) | out of scope | — |  |
 
 </details>
 
 <details>
-<summary><strong>Tensors & experiment</strong> · <img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"><img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"><img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"><img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"><img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"><img src="docs/readme/box-done.svg" alt="■" width="12" height="12"> 2/6</summary>
+<summary><strong>Symmetry</strong> · <img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"><img src="docs/readme/box-todo.svg" alt="☐" width="12" height="12"><img src="docs/readme/box-todo.svg" alt="☐" width="12" height="12"> 1/3</summary>
 
 | | Capability | Completion | Location | Track |
 |:-:|---|---|---|---|
-| <img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"> | C3 dipole fold / site OS | tested | `dftlearn.xas` | |
-| <img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"> | General TDM symmetry classes | in progress | — | [#1](https://github.com/WSU-Carbon-Lab/dft-learn/issues/1) |
-| <img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"> | Film tensors / `simDFT` / tilt | in progress | `python_pipeline/` | [#3](https://github.com/WSU-Carbon-Lab/dft-learn/issues/3) |
-| <img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"> | Bare-atom / Henke step edge | in progress | `python_pipeline/` | [#3](https://github.com/WSU-Carbon-Lab/dft-learn/issues/3) |
-| <img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"> | Multi-spectrum experiment fit | in progress | `python_pipeline/` | [#3](https://github.com/WSU-Carbon-Lab/dft-learn/issues/3) |
-| <img src="docs/readme/box-done.svg" alt="■" width="12" height="12"> | Cluster / site / orbital figures | done | `dftlearn.visualization` | |
+| <img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"> | C3 dipole fold / site OS from tensors | tested | `dftlearn.xas` |  |
+| <img src="docs/readme/box-todo.svg" alt="☐" width="12" height="12"> | General n-fold TDM symmetry (iso / uni / bi / tri) | not started | — | [#1](https://github.com/WSU-Carbon-Lab/dft-learn/issues/1) |
+| <img src="docs/readme/box-todo.svg" alt="☐" width="12" height="12"> | TDM frame reorientation (Euler on transitions) | not started | — |  |
 
 </details>
 
 <details>
-<summary><strong>UI</strong> · <img src="docs/readme/box-todo.svg" alt="☐" width="12" height="12"><img src="docs/readme/box-skip.svg" alt="■" width="12" height="12"> 0/1</summary>
+<summary><strong>Tensors & experiment</strong> · <img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"><img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"><img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"><img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"><img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"> 2/5</summary>
 
 | | Capability | Completion | Location | Track |
 |:-:|---|---|---|---|
-| <img src="docs/readme/box-todo.svg" alt="☐" width="12" height="12"> | Interactive clustering panel | not started | HF Space / demos | [#5](https://github.com/WSU-Carbon-Lab/dft-learn/pull/5) |
-| <img src="docs/readme/box-skip.svg" alt="■" width="12" height="12"> | Chem3D viewer | out of scope | — | |
+| <img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"> | TP XAS reconstruction & broadening schedule | tested | `dftlearn.xas` | [#4](https://github.com/WSU-Carbon-Lab/dft-learn/pull/4) |
+| <img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"> | Molecular dipole / Cartesian OS tables | tested | `dftlearn.xas` | [#4](https://github.com/WSU-Carbon-Lab/dft-learn/pull/4) |
+| <img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"> | Film tilt / `simDFT` / angle-resolved model | in progress | `python_pipeline/multiSpecFitProcs` | [#3](https://github.com/WSU-Carbon-Lab/dft-learn/issues/3) |
+| <img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"> | Bare-atom / Henke step edge | in progress | `python_pipeline/stepEdgeProcs` | [#3](https://github.com/WSU-Carbon-Lab/dft-learn/issues/3) |
+| <img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"> | Multi-spectrum experiment fit | in progress | `python_pipeline/multiSpecFitProcs` | [#3](https://github.com/WSU-Carbon-Lab/dft-learn/issues/3) |
 
 </details>
 
-Overall: <img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"><img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"><img src="docs/readme/box-done.svg" alt="■" width="12" height="12"><img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"><img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"><img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"><img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"><img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"><img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"><img src="docs/readme/box-todo.svg" alt="☐" width="12" height="12"><img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"><img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"><img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"><img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"><img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"><img src="docs/readme/box-done.svg" alt="■" width="12" height="12"><img src="docs/readme/box-todo.svg" alt="☐" width="12" height="12"><img src="docs/readme/box-skip.svg" alt="■" width="12" height="12"> **8/17**
+<details>
+<summary><strong>Visualization & UI</strong> · <img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"><img src="docs/readme/box-done.svg" alt="■" width="12" height="12"><img src="docs/readme/box-todo.svg" alt="☐" width="12" height="12"><img src="docs/readme/box-skip.svg" alt="■" width="12" height="12"><img src="docs/readme/box-skip.svg" alt="■" width="12" height="12"> 2/3</summary>
+
+| | Capability | Completion | Location | Track |
+|:-:|---|---|---|---|
+| <img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"> | Cluster & reconstruction report figures | tested | `dftlearn.visualization` | [#4](https://github.com/WSU-Carbon-Lab/dft-learn/pull/4) |
+| <img src="docs/readme/box-done.svg" alt="■" width="12" height="12"> | Site / SCF / orbital summary figures | done | `dftlearn.visualization` |  |
+| <img src="docs/readme/box-todo.svg" alt="☐" width="12" height="12"> | Interactive clustering panel parity | not started | HF Space / demos | [#5](https://github.com/WSU-Carbon-Lab/dft-learn/pull/5) |
+| <img src="docs/readme/box-skip.svg" alt="■" width="12" height="12"> | Chem3D molecular viewer | out of scope | — |  |
+| <img src="docs/readme/box-skip.svg" alt="■" width="12" height="12"> | Igor panel chrome / wave selectors | out of scope | — |  |
+
+</details>
+
+Overall: <img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"><img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"><img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"><img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"><img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"><img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"><img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"><img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"><img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"><img src="docs/readme/box-todo.svg" alt="☐" width="12" height="12"><img src="docs/readme/box-todo.svg" alt="☐" width="12" height="12"><img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"><img src="docs/readme/box-skip.svg" alt="■" width="12" height="12"><img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"><img src="docs/readme/box-todo.svg" alt="☐" width="12" height="12"><img src="docs/readme/box-todo.svg" alt="☐" width="12" height="12"><img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"><img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"><img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"><img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"><img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"><img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"><img src="docs/readme/box-done.svg" alt="■" width="12" height="12"><img src="docs/readme/box-todo.svg" alt="☐" width="12" height="12"><img src="docs/readme/box-skip.svg" alt="■" width="12" height="12"><img src="docs/readme/box-skip.svg" alt="■" width="12" height="12"> **13/23**
 
 ## Citation
 
