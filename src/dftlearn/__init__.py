@@ -2,4 +2,11 @@
 
 from __future__ import annotations
 
-__all__: list[str] = []
+from importlib.metadata import PackageNotFoundError, version
+
+try:
+    __version__ = version("dft-learn")
+except PackageNotFoundError:
+    __version__ = "0.0.0"
+
+__all__: list[str] = ["__version__"]

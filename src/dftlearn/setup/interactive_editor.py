@@ -139,9 +139,7 @@ class SetupInteractiveEditor:
         self.btn_save.on_clicked(self._on_save)
 
         init_tag = self._selected_group().site_tag if self._selected_group() else "C1"
-        init_name = (
-            self._selected_group().custom_name if self._selected_group() else ""
-        )
+        init_name = self._selected_group().custom_name if self._selected_group() else ""
         self.text_tag = TextBox(self.ax_tag, "Site tag ", initial=init_tag)
         self.text_name = TextBox(self.ax_name, "Custom name ", initial=init_name)
         self.text_tag.on_submit(self._on_tag_submit)

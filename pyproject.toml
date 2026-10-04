@@ -8,23 +8,38 @@ packages = ["src/dftlearn"]
 [project]
 name = "dft-learn"
 version = "0.2.0"
-description = "Machine learning and data analysis for DFT calculations with GPU acceleration and sklearn compatibility"
+description = "Python tools for DFT / StoBe NEXAFS analysis, transition clustering, and resonant X-ray optical tensors"
 readme = "README.md"
 requires-python = ">=3.12"
 license = {text = "MIT"}
-maintainers = [
-    {name = "Harlan Heilman", email="harlan.heilman@wsu.edu"}
+authors = [
+    {name = "Harlan Heilman", email = "harlan.heilman@wsu.edu"},
 ]
-keywords = ["dft", "nexafs", "spectroscopy", "machine-learning", "gpu", "sklearn"]
+maintainers = [
+    {name = "Harlan Heilman", email = "harlan.heilman@wsu.edu"},
+]
+keywords = [
+    "dft",
+    "nexafs",
+    "stobe",
+    "spectroscopy",
+    "optical-tensors",
+    "clustering",
+    "xas",
+    "scikit-learn",
+]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Scientific/Engineering :: Chemistry",
     "Topic :: Scientific/Engineering :: Physics",
+    "Typing :: Typed",
 ]
-
-# Core dependencies - REQUIRED
 dependencies = [
     "numpy>=1.26.0",
     "scipy>=1.11.0",
@@ -40,6 +55,16 @@ dependencies = [
     "py3dmol>=2.5.2",
     "gemmi>=0.7.5",
 ]
+
+[project.urls]
+Homepage = "https://github.com/WSU-Carbon-Lab/dft-learn"
+Repository = "https://github.com/WSU-Carbon-Lab/dft-learn"
+Issues = "https://github.com/WSU-Carbon-Lab/dft-learn/issues"
+Documentation = "https://huggingface.co/carbon-lab"
+Changelog = "https://github.com/WSU-Carbon-Lab/dft-learn/releases"
+"Hugging Face" = "https://huggingface.co/carbon-lab"
+"Lab website" = "https://labs.wsu.edu/carbon/"
+PyPI = "https://pypi.org/project/dft-learn/"
 
 [project.scripts]
 dftrun = "dftlearn.cli:app"
@@ -208,4 +233,5 @@ dev = [
     "mypy>=1.8.0",
     "ipython>=8.20.0",
     "jupyterlab>=4.4.0",
+    "ty>=0.0.84",
 ]

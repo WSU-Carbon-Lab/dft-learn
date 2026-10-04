@@ -172,9 +172,7 @@ def _txt_exc(rep: ExcOrbitalReport, gnd: GndOrbitalReport) -> str:
             f"E = {rep.homo_energy_ev:.4f} eV"
         )
     else:
-        lines.append(
-            f"HOMO: level {rep.homo_level},  E = {rep.homo_energy_ev:.4f} eV"
-        )
+        lines.append(f"HOMO: level {rep.homo_level},  E = {rep.homo_energy_ev:.4f} eV")
     lines.extend(
         [
             f"LUMO: level {rep.lumo_level},  E = {rep.lumo_energy_ev:.4f} eV",

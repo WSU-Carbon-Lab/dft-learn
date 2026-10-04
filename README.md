@@ -1,87 +1,194 @@
-# DFT-Clustering
-This program takes the output of DFT calculations carried out in the the computational platform StoBe for the simulation of NEXAFS to generate an optical tensor model derived from first principles. The result is a set of peaks that make up an optical model using a tensor based formalism that can be used to carry out simultaneous fits on angle resolved NEXAFS for the extraction of the molecular tilt angle. These peaks can then be used to obtain optical constants that could be subsequently used in the analysis of Resonant Soft X-Ray Scattering (R-SoXS) and Resonant X-Ray Reflectivity (XRR).
+# dft-learn
 
-<p align="center">
-  <img src="docs/images/ovps.png" />
-</p>
+[![PyPI](https://img.shields.io/pypi/v/dft-learn?style=flat-square&logo=pypi&logoColor=white&label=PyPI)](https://pypi.org/project/dft-learn/)
+[![Python](https://img.shields.io/badge/python-3.12%2B-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/downloads/)
+[![CI](https://img.shields.io/badge/CI-GitHub%20Actions-2088FF?style=flat-square&logo=githubactions&logoColor=white)](https://github.com/WSU-Carbon-Lab/dft-learn/actions)
+[![arXiv](https://img.shields.io/badge/arXiv-2509.01734-b31b1b?style=flat-square&logo=arxiv&logoColor=white)](https://arxiv.org/abs/2509.01734)
+[![Hugging Face](https://img.shields.io/badge/Hugging%20Face-carbon--lab-FFD21E?style=flat-square&logo=huggingface&logoColor=black)](https://huggingface.co/carbon-lab)
 
-# dftrun CLI (StoBe build/run)
+Python tools for StoBe-style core-level spectra: parse transitions, cluster by
+Gaussian peak overlap, and build bond-traceable resonant X-ray optical tensors
+for angle-resolved NEXAFS (RSoXS, XRR).
 
-Install and run the StoBe input generator and scheduler:
+[Carbon Lab](https://labs.wsu.edu/carbon/) ·
+[Hugging Face](https://huggingface.co/carbon-lab) ·
+[X-ray Atlas](https://xrayatlas.wsu.edu/) ·
+[arXiv](https://arxiv.org/abs/2509.01734) ·
+[PRL](https://doi.org/10.1103/rfgg-ffyz)
 
-```bash
-uv tool install .
-```
-
-Or from GitHub:
-
-```bash
-uv tool install 'git+https://github.com/WSU-Carbon-Lab/dft-learn'
-```
-
-Verify installation:
+## Install
 
 ```bash
-dftrun --help
+pip install -U dft-learn          # or: uv add dft-learn
+uv tool install dft-learn         # optional CLI: dftrun
 ```
 
-See [scripts/README.md](scripts/README.md) for installation, usage, `dftrun.toml` config, and logging.
+Requires Python 3.12+.
 
-# Build Requirements
-> [!NOTE]
-> This software is developed to be used by the [STOBE](https://www.fhi.mpg.de/1022673/StoBe) dft calculation platform. Calculations must be compleated using STOBE.
+## Quick start
 
-The python helper functions used to require a STOBE to be installed in a particular method. This has been changed. Now the python helpers look for the following environment variable.
+```python
+import numpy as np
+from dftlearn.clustering import TransitionSticks, cluster_by_overlap
+
+sticks = TransitionSticks(
+    energy_ev=np.array([284.0, 284.15, 295.0]),
+    oscillator_strength=np.array([1.0, 0.9, 0.5]),
+    sigma_ev=np.full(3, 0.2),
+    site=np.array(["C1", "C1", "C2"]),
+    os_xx=np.array([0.1, 0.1, 0.0]),
+    os_yy=np.zeros(3),
+    os_zz=np.array([0.2, 0.2, 0.5]),
+)
+result = cluster_by_overlap(sticks, overlap_threshold=50.0)
+print(result.n_iterations, result.energy_ev.shape[0])
+```
+
+StoBe workflow CLI:
+
 ```bash
-STOBE='\path\to\stobe\root\`
+dftrun build --help
+dftrun run --help
+dftrun postprocess --help
 ```
-And they require the followign binaries to be in a bin accessable by the current user.
+
+## Demos
+
+| Space | Dataset |
+|-------|---------|
+| [CuPc optical model](https://huggingface.co/spaces/carbon-lab/cupc-optical-model) (reference) | [optical-cupc](https://huggingface.co/carbon-lab/optical-cupc) |
+| [ZnPc optical model](https://huggingface.co/spaces/carbon-lab/znpc-optical-model) | [optical-znpc](https://huggingface.co/carbon-lab/optical-znpc) |
+
+CuPc walks through the publication workflow: sites, DFT sticks (isotropic / xx / zz),
+clusters, and refinement against experiment.
+
+## Package layout
+
+| Area | Role |
+|------|------|
+| `dftlearn.io` | StoBe / XYZ parsers |
+| `dftlearn.clustering` | Overlap matrices, merge, OS elbow, threshold selection |
+| `dftlearn.xas` | Spectrum reconstruction, C3 symmetry helpers |
+| `dftlearn.visualization` | Optional figures (`viz` extras) |
+| `dftrun` | Build inputs, schedule runs, package spectra |
+| [`igor/`](igor/README.md) | Legacy Igor reference (not the install target) |
+
+<details>
+<summary><strong>Development</strong></summary>
+
 ```bash
-StoBe.x
-xrayspec.x
+git clone https://github.com/WSU-Carbon-Lab/dft-learn.git
+cd dft-learn
+make install && make verify    # ruff + format check + pytest
 ```
-These must be set, or StoBe will fail to instantiate the calculator.
 
-# Install Instructions
-On Windows, download the latest release from the releases tab. Unzip the file and run the installer. The installer will install the necessary files in the appropriate directories.
+| Target | Action |
+|--------|--------|
+| `make test` | pytest |
+| `make lint` | ruff check |
+| `make type-check` | ty (advisory) |
+| `make fix` | ruff check --fix + format |
+| `make build` | sdist + wheel |
 
-# Algorithm Specifications
+Conventions: [`AGENTS.md`](AGENTS.md).
 
-The algorithm works by defining the following parameters:
-1. An energy cutoff that defines what is the maximum DFT transition energy to consider
-2. An oscillator strength threshold that filters transitions that do not have a sufficiently high intensity from subsequent steps
-3. A peak overlap threshold that determines whether two transitions can be clustered together depending on the overlap area between them.
+**Release (Trusted Publishing).** Configure a GitHub Environment named `pypi`
+for the PyPI project [`dft-learn`](https://pypi.org/project/dft-learn/), bump
+the version in `pyproject.toml`, then:
 
-These peak overlaps can then be subsequently used to generate a more compact set of peaks (i.e. transition clusters) that are representative of all the transitions initially calculated by the TP-DFT. The transition clusters are then combined with angle-resolved NEXAFS measurements in order to generate a quantitatively accurate optical model derived from first principle calculations.
+```bash
+git tag v0.2.0 && git push origin v0.2.0
+```
 
-<p align="center">
-  <img src="docs/images/znpc bb fits for xrr both.png" width="300" height="500">
-</p>
+The [Release](https://github.com/WSU-Carbon-Lab/dft-learn/actions/workflows/release.yml)
+workflow publishes to PyPI and creates a GitHub Release.
 
-Finally, the transition clusters that comprise the optical model can be used to identify the chemical, energetic and orientational character of the various NEXAFS features in addition to allow these NEXAFS features to be associated with specific MOs calculated from the TP-DFT.
+</details>
 
-<p align="center">
-  <img src="docs/images/dft bb to mo cl8.png"  width="500" height="500">
-</p>
+## Igor → Python port
 
-The code runs on IGOR 8, however a Python implementation may be developed in the future. Also, the code takes StoBe output files as input, however, as long as the computational platform provides transition energies, transition intensities and the components of the transition dipole moment, then the loading function can be modified to accomodate other platforms.
+Status of the [`igor/`](igor/) clustering pipeline in `dftlearn`
+([#1](https://github.com/WSU-Carbon-Lab/dft-learn/issues/1) ·
+[#2](https://github.com/WSU-Carbon-Lab/dft-learn/issues/2) ·
+[#3](https://github.com/WSU-Carbon-Lab/dft-learn/issues/3)).
 
-<p align="center">
-  <img src="docs/images/gui.png" />
-</p>
+Summaries show one box per capability and **done / total**
+(done = tested or done-untested; out of scope omitted from the total).
 
-The accompanying python files are there to:
-1. Facilitate the procedural generation of the .run files for a Transition Potential calculation carried out in StoBe
-2. Extract the Mulliken Population Analysis from the StoBe output files that can be subsequently loaded into IGOR to aid in the chemical characterization of NEXAFS transitions.
+<img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"> tested ·
+<img src="docs/readme/box-done.svg" alt="■" width="12" height="12"> done, not tested ·
+<img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"> in progress ·
+<img src="docs/readme/box-todo.svg" alt="☐" width="12" height="12"> not started ·
+<img src="docs/readme/box-skip.svg" alt="■" width="12" height="12"> out of scope
 
-# Setup Help
- Setup
-1. Navigate to the following directory: Documents > Wavemetrics > Igor Pro 8 User Files
-2. Place the file clusteringPanel v1.ipf in the folder named "Igor Procedures"
-3. Navigate to the folder Documents > Wavemetrics > Igor Pro 8 User Files > User Procedures
-4. Place the contents of the folder "DFT_Clustering" inside the "User Procedures" directory
-5. Open an IGOR instance. There should be a tab titled Macros there. Within the dropdown menu in Macros there should be an option titled "Clustering Algorithm" which will load in the control panel for the algorithm.
+<details>
+<summary><strong>Ingest</strong> · <img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"><img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"><img src="docs/readme/box-done.svg" alt="■" width="12" height="12"><img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"> 3/4</summary>
 
-Bug reporting/Help
+| | Capability | Completion | Location | Track |
+|:-:|---|---|---|---|
+| <img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"> | `XrayT*.out` / XAS sticks | tested | `dftlearn.io` | [#4](https://github.com/WSU-Carbon-Lab/dft-learn/pull/4) |
+| <img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"> | XYZ geometry & site labels | tested | `dftlearn.io` | |
+| <img src="docs/readme/box-done.svg" alt="■" width="12" height="12"> | Aligned reconstruction tables | done | `dftlearn.xas`, `dftrun postprocess` | [#4](https://github.com/WSU-Carbon-Lab/dft-learn/pull/4) |
+| <img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"> | Full ground / excited / TP load | in progress | `python_pipeline/` | [#2](https://github.com/WSU-Carbon-Lab/dft-learn/issues/2) |
 
-For any concerns email me at victor.murcia@wsu.edu
+</details>
+
+<details>
+<summary><strong>Clustering</strong> · <img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"><img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"><img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"><img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"><img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"><img src="docs/readme/box-todo.svg" alt="☐" width="12" height="12"> 3/6</summary>
+
+| | Capability | Completion | Location | Track |
+|:-:|---|---|---|---|
+| <img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"> | Peak-overlap matrices | tested | `dftlearn.clustering` | [#4](https://github.com/WSU-Carbon-Lab/dft-learn/pull/4) |
+| <img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"> | Iterative overlap merge | tested | `dftlearn.clustering` | [#4](https://github.com/WSU-Carbon-Lab/dft-learn/pull/4) |
+| <img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"> | OS% elbow & threshold selection | tested | `dftlearn.clustering` | [#4](https://github.com/WSU-Carbon-Lab/dft-learn/pull/4) |
+| <img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"> | `filterDFT` orchestration | in progress | — | [#1](https://github.com/WSU-Carbon-Lab/dft-learn/issues/1) |
+| <img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"> | OS × OVP parameter grids | in progress | `dftlearn.clustering` | |
+| <img src="docs/readme/box-todo.svg" alt="☐" width="12" height="12"> | Amplitude refit (pre-merge) | not started | — | [#1](https://github.com/WSU-Carbon-Lab/dft-learn/issues/1) |
+
+</details>
+
+<details>
+<summary><strong>Tensors & experiment</strong> · <img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"><img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"><img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"><img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"><img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"><img src="docs/readme/box-done.svg" alt="■" width="12" height="12"> 2/6</summary>
+
+| | Capability | Completion | Location | Track |
+|:-:|---|---|---|---|
+| <img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"> | C3 dipole fold / site OS | tested | `dftlearn.xas` | |
+| <img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"> | General TDM symmetry classes | in progress | — | [#1](https://github.com/WSU-Carbon-Lab/dft-learn/issues/1) |
+| <img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"> | Film tensors / `simDFT` / tilt | in progress | `python_pipeline/` | [#3](https://github.com/WSU-Carbon-Lab/dft-learn/issues/3) |
+| <img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"> | Bare-atom / Henke step edge | in progress | `python_pipeline/` | [#3](https://github.com/WSU-Carbon-Lab/dft-learn/issues/3) |
+| <img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"> | Multi-spectrum experiment fit | in progress | `python_pipeline/` | [#3](https://github.com/WSU-Carbon-Lab/dft-learn/issues/3) |
+| <img src="docs/readme/box-done.svg" alt="■" width="12" height="12"> | Cluster / site / orbital figures | done | `dftlearn.visualization` | |
+
+</details>
+
+<details>
+<summary><strong>UI</strong> · <img src="docs/readme/box-todo.svg" alt="☐" width="12" height="12"><img src="docs/readme/box-skip.svg" alt="■" width="12" height="12"> 0/1</summary>
+
+| | Capability | Completion | Location | Track |
+|:-:|---|---|---|---|
+| <img src="docs/readme/box-todo.svg" alt="☐" width="12" height="12"> | Interactive clustering panel | not started | HF Space / demos | [#5](https://github.com/WSU-Carbon-Lab/dft-learn/pull/5) |
+| <img src="docs/readme/box-skip.svg" alt="■" width="12" height="12"> | Chem3D viewer | out of scope | — | |
+
+</details>
+
+Overall: <img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"><img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"><img src="docs/readme/box-done.svg" alt="■" width="12" height="12"><img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"><img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"><img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"><img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"><img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"><img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"><img src="docs/readme/box-todo.svg" alt="☐" width="12" height="12"><img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"><img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"><img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"><img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"><img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"><img src="docs/readme/box-done.svg" alt="■" width="12" height="12"><img src="docs/readme/box-todo.svg" alt="☐" width="12" height="12"><img src="docs/readme/box-skip.svg" alt="■" width="12" height="12"> **8/17**
+
+## Citation
+
+```bibtex
+@article{murcia2025opticaltensors,
+  title   = {Quantitative and bond-traceable resonant X-ray optical tensors of organic molecules},
+  author  = {Murcia, Victor and Alqahtani, Obaid and Heilman, Harlan and Collins, Brian A.},
+  journal = {Phys. Rev. Lett.},
+  year    = {2025},
+  doi     = {10.1103/rfgg-ffyz},
+  eprint  = {2509.01734},
+  archivePrefix = {arXiv}
+}
+```
+
+[`CITATION.cff`](CITATION.cff) · [lab publications](https://labs.wsu.edu/carbon/publications/)
+
+## License
+
+MIT ([`LICENSE`](LICENSE)). Maintainer: [Harlan Heilman](mailto:harlan.heilman@wsu.edu).

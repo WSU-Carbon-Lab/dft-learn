@@ -117,9 +117,7 @@ def _show_structure(
     if minimal_only:
         visible = set(minimal_generating_indices(site_groups))
 
-    visible_bonds = [
-        (i, j) for i, j in bonds if i in visible and j in visible
-    ]
+    visible_bonds = [(i, j) for i, j in bonds if i in visible and j in visible]
     for i, j in visible_bonds:
         view.addStyle(
             {"bonds": [{"atom1": i, "atom2": j}]},
@@ -204,8 +202,7 @@ def _render_search_step() -> None:
     compounds: list[PubChemCompound] = st.session_state.compounds
     if compounds:
         options = {
-            f"CID {c.cid} | {c.title} | {c.molecular_formula}": c.cid
-            for c in compounds
+            f"CID {c.cid} | {c.title} | {c.molecular_formula}": c.cid for c in compounds
         }
         label = st.selectbox("Select compound", list(options.keys()))
         st.session_state.selected_cid = options[label]
@@ -246,10 +243,13 @@ def _render_relax_step() -> None:
                 relax=RelaxMethod(method),
                 relax_steps=steps,
             )
-            run_name = st.session_state.run_directory or compound.title.replace(
-                " ",
-                "-",
-            )[:40]
+            run_name = (
+                st.session_state.run_directory
+                or compound.title.replace(
+                    " ",
+                    "-",
+                )[:40]
+            )
             meta = {
                 "source_kind": "pubchem",
                 "pubchem_cid": compound.cid,
@@ -373,9 +373,7 @@ def _render_label_step() -> None:
         bond_i = int(st.session_state.bond_atom_a)
         bond_j = int(st.session_state.bond_atom_b)
         all_bonds = structure_bonds
-        bond_options = {
-            format_bond_label(rows, i, j): (i, j) for i, j in all_bonds
-        }
+        bond_options = {format_bond_label(rows, i, j): (i, j) for i, j in all_bonds}
         if bond_options:
             bond_labels = list(bond_options.keys())
             default_label = format_bond_label(rows, bond_i, bond_j)

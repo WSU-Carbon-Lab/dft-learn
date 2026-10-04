@@ -82,9 +82,7 @@ def _indices_by_element(
 ) -> list[int]:
     key = symbol.strip().capitalize()
     return [
-        i
-        for i, row in enumerate(rows)
-        if element_symbol_from_xyz_label(row[0]) == key
+        i for i, row in enumerate(rows) if element_symbol_from_xyz_label(row[0]) == key
     ]
 
 

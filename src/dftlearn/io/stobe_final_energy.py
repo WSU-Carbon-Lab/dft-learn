@@ -47,9 +47,7 @@ _LINE_PATTERNS: tuple[tuple[re.Pattern[str], str], ...] = (
     (re.compile(rf"Coulomb energy\s+\(H\)\s*=\s*({_FLOAT})"), "coulomb_energy_h"),
     (re.compile(rf"Ex-cor energy\s+\(H\)\s*=\s*({_FLOAT})"), "ex_cor_energy_h"),
     (
-        re.compile(
-            rf"<Rho/r12/Rhof>-<Rhof/r12/Rhof>/2\s+\(H\)\s*=\s*({_FLOAT})"
-        ),
+        re.compile(rf"<Rho/r12/Rhof>-<Rhof/r12/Rhof>/2\s+\(H\)\s*=\s*({_FLOAT})"),
         "rho_r12_diff_h",
     ),
     (
@@ -325,9 +323,9 @@ def enrich_final_energies_delta_vs_gnd(df: pd.DataFrame) -> pd.DataFrame:
         A copy of ``df`` with ``delta_vs_gnd_h`` and ``delta_vs_gnd_ev`` appended.
     """
     out = df.copy()
-    gnd = out[
-        (out["calc_type"] == "gnd") & (out["block_index"].astype(int) == 0)
-    ][["site", "total_energy_h"]].drop_duplicates(subset=["site"], keep="first")
+    gnd = out[(out["calc_type"] == "gnd") & (out["block_index"].astype(int) == 0)][
+        ["site", "total_energy_h"]
+    ].drop_duplicates(subset=["site"], keep="first")
     gmap = gnd.set_index("site")["total_energy_h"]
 
     def delta_h(row: pd.Series) -> float:
