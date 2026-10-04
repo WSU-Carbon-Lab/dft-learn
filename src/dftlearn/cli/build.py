@@ -15,6 +15,7 @@ from rich.console import Console
 from rich.panel import Panel
 
 from dftlearn.cli.shared import load_mol_config
+from dftlearn.io.stobe_run import find_xyz, find_xyz_files
 
 _CONSOLE = Console()
 
@@ -53,23 +54,22 @@ BASISLIB = _stobe_home / "Basis" / "baslib.new7"
 
 
 def _find_xyz_files(directory: Path) -> list[Path]:
-    return list(directory.glob("*.xyz"))
+    """List ``*.xyz`` under ``directory`` (library helper)."""
+    return find_xyz_files(directory)
 
 
 def _auto_detect_xyz(run_directory: Path) -> Path:
-    xyz_files = _find_xyz_files(run_directory)
-    if not xyz_files:
-        raise typer.Exit(1)
-    if len(xyz_files) == 1:
-        return xyz_files[0]
-    dir_name = run_directory.name
-    for xyz_file in xyz_files:
-        if xyz_file.stem == dir_name:
-            return xyz_file
-    choice = typer.prompt(f"Select XYZ file (1-{len(xyz_files)})", type=int)
-    if 1 <= choice <= len(xyz_files):
-        return xyz_files[choice - 1]
-    raise typer.Exit(1)
+    """Resolve XYZ for build; prompt when multiple files and no stem match."""
+    try:
+        return find_xyz(run_directory)
+    except FileNotFoundError:
+        raise typer.Exit(1) from None
+    except ValueError:
+        xyz_files = find_xyz_files(run_directory)
+        choice = typer.prompt(f"Select XYZ file (1-{len(xyz_files)})", type=int)
+        if 1 <= choice <= len(xyz_files):
+            return xyz_files[choice - 1]
+        raise typer.Exit(1) from None
 
 
 def _basis_line(

@@ -1,0 +1,7 @@
+# Synthetic carbon Henke-like table for unit tests
+# Energy(eV)  f1  f2
+280.0  1.0  0.10
+285.0  2.0  0.50
+290.0  1.5  0.80
+300.0  1.2  0.40
+310.0  1.0  0.20

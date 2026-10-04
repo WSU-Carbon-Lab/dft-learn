@@ -35,6 +35,12 @@ from dftlearn.xas.spectrum import (
     xas_delta_ks_shift_ev,
     xas_energy_axis,
 )
+from dftlearn.xas.step_edge import (
+    compound_mu,
+    gaussian_step,
+    gaussian_step_edge,
+    parse_henke_nff,
+)
 
 __all__ = [
     "STOBE_XAS_HA_TO_EV",
@@ -44,12 +50,16 @@ __all__ = [
     "build_al_n_o_c3_frame",
     "build_c3_frame_from_xyz",
     "collect_site_tp_xas",
+    "compound_mu",
     "dipole_cartesian_oscillator_strengths",
     "fold_dipole_c3_tensor",
     "fold_dipoles_c3",
+    "gaussian_step",
+    "gaussian_step_edge",
     "gaussian_xas_spectrum",
     "oscillator_strengths_from_tensors",
     "padded_xas_energy_axis",
+    "parse_henke_nff",
     "piecewise_fwhm_ev",
     "reconstruct_xas_spectrum",
     "shift_and_resample_xas_spectrum",
