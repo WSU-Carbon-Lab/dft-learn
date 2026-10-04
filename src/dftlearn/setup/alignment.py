@@ -163,9 +163,7 @@ def principal_inertia_axis(
         inertia += m * (r2 * np.eye(3) - np.outer(vec, vec))
     evals, evecs = np.linalg.eigh(inertia)
     order = np.argsort(evals)
-    axes = tuple(
-        np.asarray(evecs[:, order[i]], dtype=np.float64) for i in range(3)
-    )
+    axes = tuple(np.asarray(evecs[:, order[i]], dtype=np.float64) for i in range(3))
     return axes[0], axes[1], axes[2]
 
 

@@ -25,6 +25,7 @@ class StoBeOutputSniff(TypedDict):
     has_final_energy: bool
     error_line: str | None
 
+
 _CALC_TO_DIR = {"gnd": "GND", "exc": "EXC", "tp": "TP"}
 _SITE_DIR_PATTERN = re.compile(r"^[A-Z]+\d+$")
 _RESET_TREE_DIRS = ("GND", "EXC", "TP", "NEXAFS", "logs", "packaged_output")

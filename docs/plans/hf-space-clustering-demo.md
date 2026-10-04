@@ -1,10 +1,10 @@
 # Plan: Hugging Face Space demo for DFT clustering
 
-**Status:** planning only (no implementation in this PR)  
-**Branch:** `plan/hf-space-clustering-demo`  
-**Date:** 2026-10-03  
-**Space:** https://huggingface.co/spaces/carbon-lab/dft-learn  
-**Library repo:** https://github.com/WSU-Carbon-Lab/dft-learn  
+**Status:** planning only (no implementation in this PR)
+**Branch:** `plan/hf-space-clustering-demo`
+**Date:** 2026-10-03
+**Space:** https://huggingface.co/spaces/carbon-lab/dft-learn
+**Library repo:** https://github.com/WSU-Carbon-Lab/dft-learn
 
 ---
 

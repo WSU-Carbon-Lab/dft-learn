@@ -1,87 +1,134 @@
-# DFT-Clustering
-This program takes the output of DFT calculations carried out in the the computational platform StoBe for the simulation of NEXAFS to generate an optical tensor model derived from first principles. The result is a set of peaks that make up an optical model using a tensor based formalism that can be used to carry out simultaneous fits on angle resolved NEXAFS for the extraction of the molecular tilt angle. These peaks can then be used to obtain optical constants that could be subsequently used in the analysis of Resonant Soft X-Ray Scattering (R-SoXS) and Resonant X-Ray Reflectivity (XRR).
+# dft-learn
 
-<p align="center">
-  <img src="docs/images/ovps.png" />
-</p>
+[![PyPI](https://img.shields.io/pypi/v/dft-learn.svg)](https://pypi.org/project/dft-learn/)
+[![Python](https://img.shields.io/pypi/pyversions/dft-learn.svg)](https://pypi.org/project/dft-learn/)
+[![CI](https://github.com/WSU-Carbon-Lab/dft-learn/actions/workflows/ci.yml/badge.svg)](https://github.com/WSU-Carbon-Lab/dft-learn/actions/workflows/ci.yml)
+[![Ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
+[![arXiv](https://img.shields.io/badge/arXiv-2509.01734-b31b1b)](https://arxiv.org/abs/2509.01734)
+[![DOI](https://img.shields.io/badge/DOI-10.1103%2Frfgg--ffyz-1d4ed8)](https://doi.org/10.1103/rfgg-ffyz)
+[![Hugging Face](https://img.shields.io/badge/Hugging%20Face-carbon--lab-FFD21E)](https://huggingface.co/carbon-lab)
 
-# dftrun CLI (StoBe build/run)
+**dft-learn** is a Python library for analyzing DFT / StoBe-style core-level spectra:
+filter transitions, cluster by peak overlap, and build bond-traceable resonant X-ray
+optical tensors for angle-resolved NEXAFS and optical-constant work
+(RSoXS, XRR).
 
-Install and run the StoBe input generator and scheduler:
+It is developed by the [WSU Carbon Lab](https://labs.wsu.edu/carbon/)
+([Brian A. Collins · Scholar](https://scholar.google.com/citations?user=nOWIKLoAAAAJ&hl=en)).
+
+Website / org: [huggingface.co/carbon-lab](https://huggingface.co/carbon-lab) ·
+Lab: [labs.wsu.edu/carbon](https://labs.wsu.edu/carbon/) ·
+Atlas: [xrayatlas.wsu.edu](https://xrayatlas.wsu.edu/)
+
+---
+
+## Installation
 
 ```bash
-uv tool install .
+pip install -U dft-learn
 ```
 
-Or from GitHub:
+Or with [uv](https://docs.astral.sh/uv/) (recommended):
 
 ```bash
-uv tool install 'git+https://github.com/WSU-Carbon-Lab/dft-learn'
-```
-
-Verify installation:
-
-```bash
+uv add dft-learn
+# CLI
+uv tool install dft-learn
 dftrun --help
 ```
 
-See [scripts/README.md](scripts/README.md) for installation, usage, `dftrun.toml` config, and logging.
+Requires Python 3.12+.
 
-# Build Requirements
-> [!NOTE]
-> This software is developed to be used by the [STOBE](https://www.fhi.mpg.de/1022673/StoBe) dft calculation platform. Calculations must be compleated using STOBE.
+## Quick start
 
-The python helper functions used to require a STOBE to be installed in a particular method. This has been changed. Now the python helpers look for the following environment variable.
-```bash
-STOBE='\path\to\stobe\root\`
+```python
+import dftlearn
+
+print(dftlearn.__version__)
 ```
-And they require the followign binaries to be in a bin accessable by the current user.
+
+Build StoBe inputs and schedule runs with the CLI:
+
 ```bash
-StoBe.x
-xrayspec.x
+dftrun build --help
+dftrun run --help
+dftrun postprocess --help
 ```
-These must be set, or StoBe will fail to instantiate the calculator.
 
-# Install Instructions
-On Windows, download the latest release from the releases tab. Unzip the file and run the installer. The installer will install the necessary files in the appropriate directories.
+## Interactive demos
 
-# Algorithm Specifications
+| Role | Demo | Data |
+|------|------|------|
+| **Primary** | [CuPc optical model](https://huggingface.co/spaces/carbon-lab/cupc-optical-model) | [optical-cupc](https://huggingface.co/carbon-lab/optical-cupc) |
+| Demo result | [ZnPc optical model](https://huggingface.co/spaces/carbon-lab/znpc-optical-model) | [optical-znpc](https://huggingface.co/carbon-lab/optical-znpc) |
 
-The algorithm works by defining the following parameters:
-1. An energy cutoff that defines what is the maximum DFT transition energy to consider
-2. An oscillator strength threshold that filters transitions that do not have a sufficiently high intensity from subsequent steps
-3. A peak overlap threshold that determines whether two transitions can be clustered together depending on the overlap area between them.
+The CuPc Space is the reference walkthrough for the publication workflow
+([arXiv:2509.01734](https://arxiv.org/abs/2509.01734) /
+[PRL](https://doi.org/10.1103/rfgg-ffyz)): molecule sites, DFT sticks
+(isotropic / xx / zz), clusters, and refinement next to experiment.
 
-These peak overlaps can then be subsequently used to generate a more compact set of peaks (i.e. transition clusters) that are representative of all the transitions initially calculated by the TP-DFT. The transition clusters are then combined with angle-resolved NEXAFS measurements in order to generate a quantitatively accurate optical model derived from first principle calculations.
+## Library goals
 
-<p align="center">
-  <img src="docs/images/znpc bb fits for xrr both.png" width="300" height="500">
-</p>
+- **Composable Python APIs** under `dftlearn` for I/O, clustering / overlap, and analysis
+- **scikit-learn-friendly** estimators and plain functions with explicit inputs / outputs
+- **`dftrun`** for StoBe input generation, job scheduling, and spectrum packaging
+- Headless-friendly numerics; visualization stays optional (`viz` extras)
 
-Finally, the transition clusters that comprise the optical model can be used to identify the chemical, energetic and orientational character of the various NEXAFS features in addition to allow these NEXAFS features to be associated with specific MOs calculated from the TP-DFT.
+Legacy Igor Pro procedures that inspired the clustering pipeline live under
+[`igor/`](igor/README.md) for reference only — they are not the install target.
 
-<p align="center">
-  <img src="docs/images/dft bb to mo cl8.png"  width="500" height="500">
-</p>
+## Development
 
-The code runs on IGOR 8, however a Python implementation may be developed in the future. Also, the code takes StoBe output files as input, however, as long as the computational platform provides transition energies, transition intensities and the components of the transition dipole moment, then the loading function can be modified to accomodate other platforms.
+```bash
+git clone https://github.com/WSU-Carbon-Lab/dft-learn.git
+cd dft-learn
+make install
+make verify          # ruff + format check + pytest
+```
 
-<p align="center">
-  <img src="docs/images/gui.png" />
-</p>
+Useful targets:
 
-The accompanying python files are there to:
-1. Facilitate the procedural generation of the .run files for a Transition Potential calculation carried out in StoBe
-2. Extract the Mulliken Population Analysis from the StoBe output files that can be subsequently loaded into IGOR to aid in the chemical characterization of NEXAFS transitions.
+```bash
+make test
+make lint
+make type-check      # ty (advisory while the tree is typed incrementally)
+make fix             # ruff check --fix + format
+make build           # sdist + wheel via uv
+```
 
-# Setup Help
- Setup
-1. Navigate to the following directory: Documents > Wavemetrics > Igor Pro 8 User Files
-2. Place the file clusteringPanel v1.ipf in the folder named "Igor Procedures"
-3. Navigate to the folder Documents > Wavemetrics > Igor Pro 8 User Files > User Procedures
-4. Place the contents of the folder "DFT_Clustering" inside the "User Procedures" directory
-5. Open an IGOR instance. There should be a tab titled Macros there. Within the dropdown menu in Macros there should be an option titled "Clustering Algorithm" which will load in the control panel for the algorithm.
+Contributor conventions: [`AGENTS.md`](AGENTS.md).
 
-Bug reporting/Help
+### Releasing to PyPI
 
-For any concerns email me at victor.murcia@wsu.edu
+CI runs on every push / PR. Publishing uses
+[Trusted Publishing](https://docs.pypi.org/trusted-publishers/) (OIDC):
+
+1. Configure a GitHub Environment named `pypi` linked to the PyPI project
+   [`dft-learn`](https://pypi.org/project/dft-learn/).
+2. Bump the version in `pyproject.toml`.
+3. Tag and push: `git tag v0.2.0 && git push origin v0.2.0`.
+
+The [Release](https://github.com/WSU-Carbon-Lab/dft-learn/actions/workflows/release.yml)
+workflow builds the sdist/wheel, uploads to PyPI, and creates a GitHub Release.
+
+## Citation
+
+```bibtex
+@article{murcia2025opticaltensors,
+  title   = {Quantitative and bond-traceable resonant X-ray optical tensors of organic molecules},
+  author  = {Murcia, Victor and Alqahtani, Obaid and Heilman, Harlan and Collins, Brian A.},
+  journal = {Phys. Rev. Lett.},
+  year    = {2025},
+  doi     = {10.1103/rfgg-ffyz},
+  eprint  = {2509.01734},
+  archivePrefix = {arXiv}
+}
+```
+
+See also [`CITATION.cff`](CITATION.cff) and the lab
+[publications list](https://labs.wsu.edu/carbon/publications/).
+
+## License
+
+MIT — see [`LICENSE`](LICENSE). Maintainer: Harlan Heilman
+\<harlan.heilman@wsu.edu\>.

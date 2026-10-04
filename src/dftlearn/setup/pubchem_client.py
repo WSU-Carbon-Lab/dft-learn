@@ -137,10 +137,7 @@ def search_pubchem(query: str, *, limit: int = 20) -> list[PubChemCompound]:
 
 def fetch_pubchem_smiles(cid: int) -> str:
     """Return the canonical SMILES string for one PubChem CID."""
-    url = (
-        f"{_PUG_BASE}/compound/cid/{cid}/property/"
-        "CanonicalSMILES,IsomericSMILES/JSON"
-    )
+    url = f"{_PUG_BASE}/compound/cid/{cid}/property/CanonicalSMILES,IsomericSMILES/JSON"
     payload = _fetch_json(url)
     rows = payload.get("PropertyTable", {}).get("Properties", [])
     if not rows:
