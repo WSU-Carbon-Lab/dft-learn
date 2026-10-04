@@ -1,22 +1,17 @@
 # dft-learn
 
-[![PyPI](https://img.shields.io/pypi/v/dft-learn.svg)](https://pypi.org/project/dft-learn/)
-[![Python](https://img.shields.io/pypi/pyversions/dft-learn.svg)](https://pypi.org/project/dft-learn/)
-[![CI](https://github.com/WSU-Carbon-Lab/dft-learn/actions/workflows/ci.yml/badge.svg)](https://github.com/WSU-Carbon-Lab/dft-learn/actions/workflows/ci.yml)
-[![Ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
-[![arXiv](https://img.shields.io/badge/arXiv-2509.01734-b31b1b)](https://arxiv.org/abs/2509.01734)
-[![DOI](https://img.shields.io/badge/DOI-10.1103%2Frfgg--ffyz-1d4ed8)](https://doi.org/10.1103/rfgg-ffyz)
-[![Hugging Face](https://img.shields.io/badge/Hugging%20Face-carbon--lab-FFD21E)](https://huggingface.co/carbon-lab)
+[![PyPI](https://img.shields.io/pypi/v/dft-learn?style=flat-square&logo=pypi&logoColor=white&label=PyPI)](https://pypi.org/project/dft-learn/)
+[![Python](https://img.shields.io/badge/python-3.12%2B-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/downloads/)
+[![CI](https://img.shields.io/badge/CI-GitHub%20Actions-2088FF?style=flat-square&logo=githubactions&logoColor=white)](https://github.com/WSU-Carbon-Lab/dft-learn/actions)
+[![arXiv](https://img.shields.io/badge/arXiv-2509.01734-b31b1b?style=flat-square&logo=arxiv&logoColor=white)](https://arxiv.org/abs/2509.01734)
+[![Hugging Face](https://img.shields.io/badge/Hugging%20Face-carbon--lab-FFD21E?style=flat-square&logo=huggingface&logoColor=black)](https://huggingface.co/carbon-lab)
 
 **dft-learn** is a Python library for analyzing DFT / StoBe-style core-level spectra:
 filter transitions, cluster by peak overlap, and build bond-traceable resonant X-ray
 optical tensors for angle-resolved NEXAFS and optical-constant work
 (RSoXS, XRR).
 
-It is developed by the [WSU Carbon Lab](https://labs.wsu.edu/carbon/)
-([Brian A. Collins · Scholar](https://scholar.google.com/citations?user=nOWIKLoAAAAJ&hl=en)).
-
-Website / org: [huggingface.co/carbon-lab](https://huggingface.co/carbon-lab) ·
+Website / org: [huggingface.co/carbon-lab](https://huggingface.co/carbon-lab)·
 Lab: [labs.wsu.edu/carbon](https://labs.wsu.edu/carbon/) ·
 Atlas: [xrayatlas.wsu.edu](https://xrayatlas.wsu.edu/)
 
