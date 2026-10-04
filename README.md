@@ -6,30 +6,21 @@
 [![arXiv](https://img.shields.io/badge/arXiv-2509.01734-b31b1b?style=flat-square&logo=arxiv&logoColor=white)](https://arxiv.org/abs/2509.01734)
 [![Hugging Face](https://img.shields.io/badge/Hugging%20Face-carbon--lab-FFD21E?style=flat-square&logo=huggingface&logoColor=black)](https://huggingface.co/carbon-lab)
 
-**dft-learn** is a Python library for analyzing DFT / StoBe-style core-level spectra:
-filter transitions, cluster by peak overlap, and build bond-traceable resonant X-ray
-optical tensors for angle-resolved NEXAFS and optical-constant work
-(RSoXS, XRR).
+Python tools for StoBe-style core-level spectra: parse transitions, cluster by
+Gaussian peak overlap, and build bond-traceable resonant X-ray optical tensors
+for angle-resolved NEXAFS (RSoXS, XRR).
 
-Website / org: [huggingface.co/carbon-lab](https://huggingface.co/carbon-lab)·
-Lab: [labs.wsu.edu/carbon](https://labs.wsu.edu/carbon/) ·
-Atlas: [xrayatlas.wsu.edu](https://xrayatlas.wsu.edu/)
+[Carbon Lab](https://labs.wsu.edu/carbon/) ·
+[Hugging Face](https://huggingface.co/carbon-lab) ·
+[X-ray Atlas](https://xrayatlas.wsu.edu/) ·
+[arXiv](https://arxiv.org/abs/2509.01734) ·
+[PRL](https://doi.org/10.1103/rfgg-ffyz)
 
----
-
-## Installation
-
-```bash
-pip install -U dft-learn
-```
-
-Or with [uv](https://docs.astral.sh/uv/) (recommended):
+## Install
 
 ```bash
-uv add dft-learn
-# CLI
-uv tool install dft-learn
-dftrun --help
+pip install -U dft-learn          # or: uv add dft-learn
+uv tool install dft-learn         # optional CLI: dftrun
 ```
 
 Requires Python 3.12+.
@@ -37,12 +28,23 @@ Requires Python 3.12+.
 ## Quick start
 
 ```python
-import dftlearn
+import numpy as np
+from dftlearn.clustering import TransitionSticks, cluster_by_overlap
 
-print(dftlearn.__version__)
+sticks = TransitionSticks(
+    energy_ev=np.array([284.0, 284.15, 295.0]),
+    oscillator_strength=np.array([1.0, 0.9, 0.5]),
+    sigma_ev=np.full(3, 0.2),
+    site=np.array(["C1", "C1", "C2"]),
+    os_xx=np.array([0.1, 0.1, 0.0]),
+    os_yy=np.zeros(3),
+    os_zz=np.array([0.2, 0.2, 0.5]),
+)
+result = cluster_by_overlap(sticks, overlap_threshold=50.0)
+print(result.n_iterations, result.energy_ev.shape[0])
 ```
 
-Build StoBe inputs and schedule runs with the CLI:
+StoBe workflow CLI:
 
 ```bash
 dftrun build --help
@@ -50,112 +52,126 @@ dftrun run --help
 dftrun postprocess --help
 ```
 
-## Interactive demos
+## Demos
 
-| Role | Demo | Data |
-|------|------|------|
-| **Primary** | [CuPc optical model](https://huggingface.co/spaces/carbon-lab/cupc-optical-model) | [optical-cupc](https://huggingface.co/carbon-lab/optical-cupc) |
-| Demo result | [ZnPc optical model](https://huggingface.co/spaces/carbon-lab/znpc-optical-model) | [optical-znpc](https://huggingface.co/carbon-lab/optical-znpc) |
+| Space | Dataset |
+|-------|---------|
+| [CuPc optical model](https://huggingface.co/spaces/carbon-lab/cupc-optical-model) (reference) | [optical-cupc](https://huggingface.co/carbon-lab/optical-cupc) |
+| [ZnPc optical model](https://huggingface.co/spaces/carbon-lab/znpc-optical-model) | [optical-znpc](https://huggingface.co/carbon-lab/optical-znpc) |
 
-The CuPc Space is the reference walkthrough for the publication workflow
-([arXiv:2509.01734](https://arxiv.org/abs/2509.01734) /
-[PRL](https://doi.org/10.1103/rfgg-ffyz)): molecule sites, DFT sticks
-(isotropic / xx / zz), clusters, and refinement next to experiment.
+CuPc walks through the publication workflow: sites, DFT sticks (isotropic / xx / zz),
+clusters, and refinement against experiment.
 
-## Library goals
+## Package layout
 
-- **Composable Python APIs** under `dftlearn` for I/O, clustering / overlap, and analysis
-- **scikit-learn-friendly** estimators and plain functions with explicit inputs / outputs
-- **`dftrun`** for StoBe input generation, job scheduling, and spectrum packaging
-- Headless-friendly numerics; visualization stays optional (`viz` extras)
+| Area | Role |
+|------|------|
+| `dftlearn.io` | StoBe / XYZ parsers |
+| `dftlearn.clustering` | Overlap matrices, merge, OS elbow, threshold selection |
+| `dftlearn.xas` | Spectrum reconstruction, C3 symmetry helpers |
+| `dftlearn.visualization` | Optional figures (`viz` extras) |
+| `dftrun` | Build inputs, schedule runs, package spectra |
+| [`igor/`](igor/README.md) | Legacy Igor reference (not the install target) |
 
-Legacy Igor Pro procedures that inspired the clustering pipeline live under
-[`igor/`](igor/README.md) for reference only — they are not the install target.
-
-## Development
+<details>
+<summary><strong>Development</strong></summary>
 
 ```bash
 git clone https://github.com/WSU-Carbon-Lab/dft-learn.git
 cd dft-learn
-make install
-make verify          # ruff + format check + pytest
+make install && make verify    # ruff + format check + pytest
 ```
 
-Useful targets:
+| Target | Action |
+|--------|--------|
+| `make test` | pytest |
+| `make lint` | ruff check |
+| `make type-check` | ty (advisory) |
+| `make fix` | ruff check --fix + format |
+| `make build` | sdist + wheel |
+
+Conventions: [`AGENTS.md`](AGENTS.md).
+
+**Release (Trusted Publishing).** Configure a GitHub Environment named `pypi`
+for the PyPI project [`dft-learn`](https://pypi.org/project/dft-learn/), bump
+the version in `pyproject.toml`, then:
 
 ```bash
-make test
-make lint
-make type-check      # ty (advisory while the tree is typed incrementally)
-make fix             # ruff check --fix + format
-make build           # sdist + wheel via uv
+git tag v0.2.0 && git push origin v0.2.0
 ```
 
-Contributor conventions: [`AGENTS.md`](AGENTS.md).
-
-### Releasing to PyPI
-
-CI runs on every push / PR. Publishing uses
-[Trusted Publishing](https://docs.pypi.org/trusted-publishers/) (OIDC):
-
-1. Configure a GitHub Environment named `pypi` linked to the PyPI project
-   [`dft-learn`](https://pypi.org/project/dft-learn/).
-2. Bump the version in `pyproject.toml`.
-3. Tag and push: `git tag v0.2.0 && git push origin v0.2.0`.
-
 The [Release](https://github.com/WSU-Carbon-Lab/dft-learn/actions/workflows/release.yml)
-workflow builds the sdist/wheel, uploads to PyPI, and creates a GitHub Release.
-
-<details>
-<summary><strong>Igor → Python conversion</strong></summary>
-
-Port status for the [`igor/`](igor/) clustering pipeline → `dftlearn`.
-See also [#1](https://github.com/WSU-Carbon-Lab/dft-learn/issues/1) ·
-[#2](https://github.com/WSU-Carbon-Lab/dft-learn/issues/2) ·
-[#3](https://github.com/WSU-Carbon-Lab/dft-learn/issues/3).
-
-`✅` tested &nbsp;·&nbsp; `☑️` implemented &nbsp;·&nbsp; `🔄` in progress &nbsp;·&nbsp; `⬜` not started &nbsp;·&nbsp; `➖` out of scope
-
-#### Ingest
-
-| | Capability | Python | Track |
-|:-:|---|---|---|
-| ✅ | `XrayT*.out` / XAS sticks | `io.xray_out`, `io.stobe_xas_sticks` | [#4](https://github.com/WSU-Carbon-Lab/dft-learn/pull/4) |
-| ✅ | XYZ geometry & site labels | `io.xyz_structure` | |
-| ☑️ | Aligned reconstruction tables | `xas.spectrum`, `dftrun postprocess` | [#4](https://github.com/WSU-Carbon-Lab/dft-learn/pull/4) |
-| 🔄 | Full ground / excited / TP load | `python_pipeline.stobeLoader` | [#2](https://github.com/WSU-Carbon-Lab/dft-learn/issues/2) |
-
-#### Clustering & filtering
-
-| | Capability | Python | Track |
-|:-:|---|---|---|
-| ✅ | Peak-overlap matrices | `clustering.overlap` | [#4](https://github.com/WSU-Carbon-Lab/dft-learn/pull/4) |
-| ✅ | Iterative overlap merge | `clustering` | [#4](https://github.com/WSU-Carbon-Lab/dft-learn/pull/4) |
-| ✅ | OS% elbow cutoff | `clustering.os_elbow` | [#4](https://github.com/WSU-Carbon-Lab/dft-learn/pull/4) |
-| ✅ | Overlap-threshold selection | `clustering.selection` | [#4](https://github.com/WSU-Carbon-Lab/dft-learn/pull/4) |
-| 🔄 | `filterDFT` orchestration | — | [#1](https://github.com/WSU-Carbon-Lab/dft-learn/issues/1) |
-| 🔄 | OS × OVP parameter grids | `clustering.selection` | |
-| ⬜ | Amplitude refit (pre-merge) | — | [#1](https://github.com/WSU-Carbon-Lab/dft-learn/issues/1) |
-
-#### Symmetry, tensors & experiment
-
-| | Capability | Python | Track |
-|:-:|---|---|---|
-| ✅ | C3 dipole fold / site OS | `xas.c3_symmetry` | |
-| 🔄 | General TDM symmetry classes | — | [#1](https://github.com/WSU-Carbon-Lab/dft-learn/issues/1) |
-| 🔄 | Film tensors / `simDFT` / tilt | `python_pipeline.multiSpecFitProcs` | [#3](https://github.com/WSU-Carbon-Lab/dft-learn/issues/3) |
-| 🔄 | Bare-atom / Henke step edge | `python_pipeline.stepEdgeProcs` | [#3](https://github.com/WSU-Carbon-Lab/dft-learn/issues/3) |
-| 🔄 | Multi-spectrum experiment fit | `python_pipeline.multiSpecFitProcs` | [#3](https://github.com/WSU-Carbon-Lab/dft-learn/issues/3) |
-| ☑️ | Cluster / site / orbital figures | `visualization` | |
-
-#### UI
-
-| | Capability | Python | Track |
-|:-:|---|---|---|
-| ⬜ | Interactive clustering panel | HF Space / demos | [#5](https://github.com/WSU-Carbon-Lab/dft-learn/pull/5) |
-| ➖ | Chem3D viewer | — | |
+workflow publishes to PyPI and creates a GitHub Release.
 
 </details>
+
+## Igor → Python port
+
+Status of the [`igor/`](igor/) clustering pipeline in `dftlearn`
+([#1](https://github.com/WSU-Carbon-Lab/dft-learn/issues/1) ·
+[#2](https://github.com/WSU-Carbon-Lab/dft-learn/issues/2) ·
+[#3](https://github.com/WSU-Carbon-Lab/dft-learn/issues/3)).
+
+Summaries show one box per capability and **done / total**
+(done = tested or done-untested; out of scope omitted from the total).
+
+<img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"> tested ·
+<img src="docs/readme/box-done.svg" alt="■" width="12" height="12"> done, not tested ·
+<img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"> in progress ·
+<img src="docs/readme/box-todo.svg" alt="☐" width="12" height="12"> not started ·
+<img src="docs/readme/box-skip.svg" alt="■" width="12" height="12"> out of scope
+
+<details>
+<summary><strong>Ingest</strong> · <img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"><img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"><img src="docs/readme/box-done.svg" alt="■" width="12" height="12"><img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"> 3/4</summary>
+
+| | Capability | Completion | Location | Track |
+|:-:|---|---|---|---|
+| <img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"> | `XrayT*.out` / XAS sticks | tested | `dftlearn.io` | [#4](https://github.com/WSU-Carbon-Lab/dft-learn/pull/4) |
+| <img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"> | XYZ geometry & site labels | tested | `dftlearn.io` | |
+| <img src="docs/readme/box-done.svg" alt="■" width="12" height="12"> | Aligned reconstruction tables | done | `dftlearn.xas`, `dftrun postprocess` | [#4](https://github.com/WSU-Carbon-Lab/dft-learn/pull/4) |
+| <img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"> | Full ground / excited / TP load | in progress | `python_pipeline/` | [#2](https://github.com/WSU-Carbon-Lab/dft-learn/issues/2) |
+
+</details>
+
+<details>
+<summary><strong>Clustering</strong> · <img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"><img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"><img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"><img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"><img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"><img src="docs/readme/box-todo.svg" alt="☐" width="12" height="12"> 3/6</summary>
+
+| | Capability | Completion | Location | Track |
+|:-:|---|---|---|---|
+| <img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"> | Peak-overlap matrices | tested | `dftlearn.clustering` | [#4](https://github.com/WSU-Carbon-Lab/dft-learn/pull/4) |
+| <img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"> | Iterative overlap merge | tested | `dftlearn.clustering` | [#4](https://github.com/WSU-Carbon-Lab/dft-learn/pull/4) |
+| <img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"> | OS% elbow & threshold selection | tested | `dftlearn.clustering` | [#4](https://github.com/WSU-Carbon-Lab/dft-learn/pull/4) |
+| <img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"> | `filterDFT` orchestration | in progress | — | [#1](https://github.com/WSU-Carbon-Lab/dft-learn/issues/1) |
+| <img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"> | OS × OVP parameter grids | in progress | `dftlearn.clustering` | |
+| <img src="docs/readme/box-todo.svg" alt="☐" width="12" height="12"> | Amplitude refit (pre-merge) | not started | — | [#1](https://github.com/WSU-Carbon-Lab/dft-learn/issues/1) |
+
+</details>
+
+<details>
+<summary><strong>Tensors & experiment</strong> · <img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"><img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"><img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"><img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"><img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"><img src="docs/readme/box-done.svg" alt="■" width="12" height="12"> 2/6</summary>
+
+| | Capability | Completion | Location | Track |
+|:-:|---|---|---|---|
+| <img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"> | C3 dipole fold / site OS | tested | `dftlearn.xas` | |
+| <img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"> | General TDM symmetry classes | in progress | — | [#1](https://github.com/WSU-Carbon-Lab/dft-learn/issues/1) |
+| <img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"> | Film tensors / `simDFT` / tilt | in progress | `python_pipeline/` | [#3](https://github.com/WSU-Carbon-Lab/dft-learn/issues/3) |
+| <img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"> | Bare-atom / Henke step edge | in progress | `python_pipeline/` | [#3](https://github.com/WSU-Carbon-Lab/dft-learn/issues/3) |
+| <img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"> | Multi-spectrum experiment fit | in progress | `python_pipeline/` | [#3](https://github.com/WSU-Carbon-Lab/dft-learn/issues/3) |
+| <img src="docs/readme/box-done.svg" alt="■" width="12" height="12"> | Cluster / site / orbital figures | done | `dftlearn.visualization` | |
+
+</details>
+
+<details>
+<summary><strong>UI</strong> · <img src="docs/readme/box-todo.svg" alt="☐" width="12" height="12"><img src="docs/readme/box-skip.svg" alt="■" width="12" height="12"> 0/1</summary>
+
+| | Capability | Completion | Location | Track |
+|:-:|---|---|---|---|
+| <img src="docs/readme/box-todo.svg" alt="☐" width="12" height="12"> | Interactive clustering panel | not started | HF Space / demos | [#5](https://github.com/WSU-Carbon-Lab/dft-learn/pull/5) |
+| <img src="docs/readme/box-skip.svg" alt="■" width="12" height="12"> | Chem3D viewer | out of scope | — | |
+
+</details>
+
+Overall: <img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"><img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"><img src="docs/readme/box-done.svg" alt="■" width="12" height="12"><img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"><img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"><img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"><img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"><img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"><img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"><img src="docs/readme/box-todo.svg" alt="☐" width="12" height="12"><img src="docs/readme/box-tested.svg" alt="■" width="12" height="12"><img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"><img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"><img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"><img src="docs/readme/box-wip.svg" alt="☒" width="12" height="12"><img src="docs/readme/box-done.svg" alt="■" width="12" height="12"><img src="docs/readme/box-todo.svg" alt="☐" width="12" height="12"><img src="docs/readme/box-skip.svg" alt="■" width="12" height="12"> **8/17**
 
 ## Citation
 
@@ -171,10 +187,8 @@ See also [#1](https://github.com/WSU-Carbon-Lab/dft-learn/issues/1) ·
 }
 ```
 
-See also [`CITATION.cff`](CITATION.cff) and the lab
-[publications list](https://labs.wsu.edu/carbon/publications/).
+[`CITATION.cff`](CITATION.cff) · [lab publications](https://labs.wsu.edu/carbon/publications/)
 
 ## License
 
-MIT — see [`LICENSE`](LICENSE). Maintainer: Harlan Heilman
-\<harlan.heilman@wsu.edu\>.
+MIT ([`LICENSE`](LICENSE)). Maintainer: [Harlan Heilman](mailto:harlan.heilman@wsu.edu).

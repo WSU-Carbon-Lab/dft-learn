@@ -1,5 +1,6 @@
 output/*
 **/*.svg
+!docs/readme/*.svg
 **/*.csv
 .dotagent/stacks.json
 .venv/
