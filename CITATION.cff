@@ -2,7 +2,7 @@ cff-version: 1.2.0
 message: If you use this work, please cite it as below.
 preferred-citation:
   type: article
-  title: Quantitative and bond-traceable resonant X-ray optical tensors of organic molecules
+  title: Quantitative and Bond-Traceable Resonant X-Ray Optical Tensors of Organic Molecules
   authors:
   - family-names: Murcia
     given-names: Victor
@@ -12,9 +12,17 @@ preferred-citation:
     given-names: Harlan
   - family-names: Collins
     given-names: Brian A.
-  year: 2025
+  journal: Physical Review Letters
+  volume: "137"
+  issue: "15"
+  pages: "158001"
+  year: 2026
+  month: 10
+  publisher: American Physical Society
+  doi: 10.1103/rfgg-ffyz
+  url: https://journals.aps.org/prl/abstract/10.1103/rfgg-ffyz
   identifiers:
+  - type: doi
+    value: 10.1103/rfgg-ffyz
   - type: url
-    value: https://arxiv.org/abs/2509.01734
-  - type: other
-    value: arXiv:2509.01734
+    value: https://journals.aps.org/prl/abstract/10.1103/rfgg-ffyz

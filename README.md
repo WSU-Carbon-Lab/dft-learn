@@ -3,6 +3,7 @@
 [![PyPI](https://img.shields.io/pypi/v/dft-learn?style=flat-square&logo=pypi&logoColor=white&label=PyPI)](https://pypi.org/project/dft-learn/)
 [![Python](https://img.shields.io/badge/python-3.12%2B-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/downloads/)
 [![CI](https://img.shields.io/badge/CI-GitHub%20Actions-2088FF?style=flat-square&logo=githubactions&logoColor=white)](https://github.com/WSU-Carbon-Lab/dft-learn/actions)
+[![PRL](https://img.shields.io/badge/Phys.%20Rev.%20Lett.-137%2C%20158001-003087?style=flat-square)](https://journals.aps.org/prl/abstract/10.1103/rfgg-ffyz)
 [![arXiv](https://img.shields.io/badge/arXiv-2509.01734-b31b1b?style=flat-square&logo=arxiv&logoColor=white)](https://arxiv.org/abs/2509.01734)
 [![Hugging Face](https://img.shields.io/badge/Hugging%20Face-carbon--lab-FFD21E?style=flat-square&logo=huggingface&logoColor=black)](https://huggingface.co/carbon-lab)
 
@@ -13,8 +14,8 @@ for angle-resolved NEXAFS (RSoXS, XRR).
 [Carbon Lab](https://labs.wsu.edu/carbon/) ·
 [Hugging Face](https://huggingface.co/carbon-lab) ·
 [X-ray Atlas](https://xrayatlas.wsu.edu/) ·
-[arXiv](https://arxiv.org/abs/2509.01734) ·
-[PRL](https://doi.org/10.1103/rfgg-ffyz)
+[PRL](https://journals.aps.org/prl/abstract/10.1103/rfgg-ffyz) ·
+[arXiv](https://arxiv.org/abs/2509.01734)
 
 ## Install
 
@@ -193,14 +194,16 @@ Overall: <img src="docs/readme/box-tested.svg" alt="■" width="12" height="12">
 ## Citation
 
 ```bibtex
-@article{murcia2025opticaltensors,
-  title   = {Quantitative and bond-traceable resonant X-ray optical tensors of organic molecules},
+@article{Murcia2026OpticalTensors,
+  title   = {Quantitative and Bond-Traceable Resonant X-Ray Optical Tensors of Organic Molecules},
   author  = {Murcia, Victor and Alqahtani, Obaid and Heilman, Harlan and Collins, Brian A.},
   journal = {Phys. Rev. Lett.},
-  year    = {2025},
+  volume  = {137},
+  issue   = {15},
+  pages   = {158001},
+  year    = {2026},
   doi     = {10.1103/rfgg-ffyz},
-  eprint  = {2509.01734},
-  archivePrefix = {arXiv}
+  url     = {https://journals.aps.org/prl/abstract/10.1103/rfgg-ffyz}
 }
 ```
 

@@ -17,13 +17,13 @@ A Streamlit-based application to generate quantitatively accurate optical tensor
 
 ## 🧠 Key Features
 
-- 📊 **Cluster-based dimensionality reduction** for transition analysis  
-- ⚗️ **DFT-to-Experiment refinement pipeline** for spectral fitting  
-- 📈 **Interactive plotting** of both total and atom-specific spectra  
-- 🧬 **Moiety-level orbital traceability** for interpreting X-ray transitions  
-- 🧪 **Polar angle (θ) analysis** to determine orientation-dependent absorbance  
-- 💾 **XYZ and 3D visualization** of atomic coordinates and orbital distributions  
-- 🔍 **Energy correction diagnostics** across TP, GND, and EXC calculations  
+- 📊 **Cluster-based dimensionality reduction** for transition analysis
+- ⚗️ **DFT-to-Experiment refinement pipeline** for spectral fitting
+- 📈 **Interactive plotting** of both total and atom-specific spectra
+- 🧬 **Moiety-level orbital traceability** for interpreting X-ray transitions
+- 🧪 **Polar angle (θ) analysis** to determine orientation-dependent absorbance
+- 💾 **XYZ and 3D visualization** of atomic coordinates and orbital distributions
+- 🔍 **Energy correction diagnostics** across TP, GND, and EXC calculations
 
 ---
 
@@ -66,17 +66,20 @@ Make sure your output directory contains subfolders like GND/, TP/, and EXC/ wit
 If you use this tool in your research, please cite:
 
 Victor Murcia, Obaid Alqahtani, Harlan Heilman, and Brian A. Collins.
-Quantitative and bond-traceable resonant X-ray optical tensors of organic molecules.
-arXiv:2509.01734 (2025). https://arxiv.org/abs/2509.01734
+Quantitative and Bond-Traceable Resonant X-Ray Optical Tensors of Organic Molecules.
+Phys. Rev. Lett. 137, 158001 (2026).
+https://journals.aps.org/prl/abstract/10.1103/rfgg-ffyz
 
-@misc{murcia2025quantitativebondtraceableresonantxray,
-      title={Quantitative and bond-traceable resonant X-ray optical tensors of organic molecules}, 
-      author={Victor Murcia and Obaid Alqahtani and Harlan Heilman and Brian A. Collins},
-      year={2025},
-      eprint={2509.01734},
-      archivePrefix={arXiv},
-      primaryClass={cond-mat.mtrl-sci},
-      url={https://arxiv.org/abs/2509.01734}, 
+@article{Murcia2026OpticalTensors,
+  title   = {Quantitative and Bond-Traceable Resonant X-Ray Optical Tensors of Organic Molecules},
+  author  = {Murcia, Victor and Alqahtani, Obaid and Heilman, Harlan and Collins, Brian A.},
+  journal = {Phys. Rev. Lett.},
+  volume  = {137},
+  issue   = {15},
+  pages   = {158001},
+  year    = {2026},
+  doi     = {10.1103/rfgg-ffyz},
+  url     = {https://journals.aps.org/prl/abstract/10.1103/rfgg-ffyz}
 }
 
 ## 📬 Contact
